@@ -10,5 +10,5 @@ packages = [
 
 [requirements]
 gleam_otp = "~> 0.5"
-gleam_stdlib = "~> 0.29"
+gleam_stdlib = "~> 0.30"
 gleeunit = "~> 0.10"

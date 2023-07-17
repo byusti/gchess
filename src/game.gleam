@@ -1,6 +1,7 @@
 import gleam/otp/actor
-import gleam/erlang/process
+import gleam/erlang/process.{Subject}
 import gleam/option.{None, Option, Some}
+import gleam/io
 
 pub type Color {
   White
@@ -68,15 +69,40 @@ pub type Game {
   Game(board: Board, turn: Turn, history: List(Move), status: Status, ply: Int)
 }
 
-pub type Message(element) {
+pub type Message {
   Shutdown
-  PrintBoard
+  PrintBoard(reply_with: Subject(Nil))
 }
 
-fn handle_message(message: Message(e), game_state: Game) -> actor.Next(Game) {
+fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
   case message {
     Shutdown -> actor.Stop(process.Normal)
-    PrintBoard -> actor.Continue(game_state)
+    PrintBoard(client) -> {
+      io.print(
+        "   
+   +---+---+---+---+---+---+---+---+
+ 1 | ♖ | ♘ | ♗ | ♕ | ♔ | ♗ | ♘ | ♖ |
+   +---+---+---+---+---+---+---+---+
+ 2 | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ | ♙ |
+   +---+---+---+---+---+---+---+---+
+ 3 |   |   |   |   |   |   |   |   |
+   +---+---+---+---+---+---+---+---+
+ 4 |   |   |   |   |   |   |   |   |
+   +---+---+---+---+---+---+---+---+
+ 5 |   |   |   |   |   |   |   |   |
+   +---+---+---+---+---+---+---+---+ 
+ 6 |   |   |   |   |   |   |   |   |
+   +---+---+---+---+---+---+---+---+
+ 7 | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ | ♟ |
+   +---+---+---+---+---+---+---+---+
+ 8 | ♜ | ♞ | ♝ | ♚ | ♛ | ♝ | ♞ | ♜ |
+   +---+---+---+---+---+---+---+---+
+     A   B   C   D   E   F   G   H
+ ",
+      )
+      process.send(client, Nil)
+      actor.Continue(game_state)
+    }
   }
 }
 

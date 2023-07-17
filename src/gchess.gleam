@@ -1,5 +1,7 @@
-import gleam/io
+import gleam/erlang/process
+import game
 
 pub fn main() {
-  io.println("Hello from gchess!")
+  let game_actor = game.new_game()
+  process.call(game_actor, game.PrintBoard, 10)
 }

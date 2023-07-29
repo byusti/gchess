@@ -66,7 +66,7 @@ pub type Rank {
 
 pub type Board {
   Board(
-    rows: List(List(Option(Piece))),
+    list_of_list_representation: List(List(Option(Piece))),
     black_king_bitboard: bitboard.Bitboard,
     black_queen_bitboard: bitboard.Bitboard,
     black_rook_bitboard: bitboard.Bitboard,
@@ -82,25 +82,31 @@ pub type Board {
   )
 }
 
-// TODO: remove the list of list representation of the board and finish this function
-pub fn board_as_list_of_list(board: Board) -> List(List(Option(Piece))) {
-  board.rows
-}
-
 pub type Game {
   Game(board: Board, turn: Turn, history: List(Move), status: Status, ply: Int)
 }
 
 pub type Message {
+  AllLegalMoves(reply_with: Subject(List(Move)))
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
 
 fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
   case message {
+    AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game_state, client)
   }
+}
+
+fn handle_all_legal_moves(
+  game_state: Game,
+  client: Subject(List(Move)),
+) -> actor.Next(Game) {
+  let legal_moves = []
+  process.send(client, legal_moves)
+  actor.Continue(game_state)
 }
 
 fn handle_print_board(
@@ -111,7 +117,7 @@ fn handle_print_board(
   io.print("   +---+---+---+---+---+---+---+---+")
   io.print("\n")
   list.index_map(
-    game_state.board.rows,
+    game_state.board.list_of_list_representation,
     fn(index, row) {
       io.print(" " <> int.to_string(index) <> " | ")
       list.each(
@@ -208,7 +214,7 @@ pub fn new_server() {
 
   let board =
     Board(
-      rows: [
+      list_of_list_representation: [
         [
           Some(Piece(White, Rook)),
           Some(Piece(White, Knight)),

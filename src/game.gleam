@@ -104,9 +104,168 @@ fn handle_all_legal_moves(
   game_state: Game,
   client: Subject(List(Move)),
 ) -> actor.Next(Game) {
-  let legal_moves = []
+  let legal_moves = generate_move_set(game_state, game_state.turn.color)
   process.send(client, legal_moves)
   actor.Continue(game_state)
+}
+
+const not_a_file = bitboard.Bitboard(
+  bitboard: 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111,
+)
+
+const not_h_file = bitboard.Bitboard(
+  bitboard: 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110,
+)
+
+fn generate_move_set(game_state: Game, color: Color) -> List(Move) {
+  case color {
+    White -> {
+      let move_set = generate_pawn_move_set(color, game_state)
+    }
+    Black -> {
+      let move_set = generate_pawn_move_set(color, game_state)
+    }
+  }
+  todo
+}
+
+fn generate_pawn_move_set(color: Color, game_state: Game) -> bitboard.Bitboard {
+  case color {
+    White -> {
+      let captures = generate_pawn_capture_set(color, game_state)
+      let moves_no_captures =
+        generate_pawn_non_capture_move_set(color, game_state)
+
+      let move_set = bitboard.and(moves_no_captures, captures)
+      move_set
+    }
+
+    Black -> {
+      let captures = generate_pawn_capture_set(color, game_state)
+      let moves_no_captures =
+        generate_pawn_non_capture_move_set(color, game_state)
+
+      let move_set = bitboard.and(moves_no_captures, captures)
+      move_set
+    }
+  }
+}
+
+fn generate_pawn_non_capture_move_set(
+  color: Color,
+  game_state: Game,
+) -> bitboard.Bitboard {
+  case color {
+    White -> {
+      let white_pawn_target_squares =
+        bitboard.shift_right(game_state.board.white_pawn_bitboard, 8)
+      let list_of_enemy_piece_bitboards = [
+        game_state.board.black_king_bitboard,
+        game_state.board.black_queen_bitboard,
+        game_state.board.black_rook_bitboard,
+        game_state.board.black_bishop_bitboard,
+        game_state.board.black_knight_bitboard,
+        game_state.board.black_pawn_bitboard,
+      ]
+      let enemy_pieces =
+        list.fold(
+          list_of_enemy_piece_bitboards,
+          bitboard.Bitboard(bitboard: 0),
+          fn(collector, next) { bitboard.and(collector, next) },
+        )
+      let moves = bitboard.or(white_pawn_target_squares, enemy_pieces)
+      moves
+    }
+
+    Black -> {
+      let black_pawn_target_squares =
+        bitboard.shift_left(game_state.board.black_pawn_bitboard, 8)
+      let list_of_enemy_piece_bitboards = [
+        game_state.board.white_king_bitboard,
+        game_state.board.white_queen_bitboard,
+        game_state.board.white_rook_bitboard,
+        game_state.board.white_bishop_bitboard,
+        game_state.board.white_knight_bitboard,
+        game_state.board.white_pawn_bitboard,
+      ]
+      let enemy_pieces =
+        list.fold(
+          list_of_enemy_piece_bitboards,
+          bitboard.Bitboard(bitboard: 0),
+          fn(collector, next) { bitboard.and(collector, next) },
+        )
+      let moves = bitboard.or(black_pawn_target_squares, enemy_pieces)
+      moves
+    }
+  }
+}
+
+fn generate_pawn_capture_set(
+  color: Color,
+  game_state: Game,
+) -> bitboard.Bitboard {
+  case color {
+    White -> {
+      let white_pawn_attack_set =
+        generate_pawn_attack_set(game_state.board.white_pawn_bitboard, color)
+      let list_of_enemy_piece_bitboards = [
+        game_state.board.black_king_bitboard,
+        game_state.board.black_queen_bitboard,
+        game_state.board.black_rook_bitboard,
+        game_state.board.black_bishop_bitboard,
+        game_state.board.black_knight_bitboard,
+        game_state.board.black_pawn_bitboard,
+      ]
+      let enemy_pieces =
+        list.fold(
+          list_of_enemy_piece_bitboards,
+          bitboard.Bitboard(bitboard: 0),
+          fn(collector, next) { bitboard.and(collector, next) },
+        )
+      let captures = bitboard.or(white_pawn_attack_set, enemy_pieces)
+    }
+
+    Black -> {
+      let black_pawn_attack_set =
+        generate_pawn_attack_set(game_state.board.black_pawn_bitboard, color)
+      let list_of_enemy_piece_bitboards = [
+        game_state.board.white_king_bitboard,
+        game_state.board.white_queen_bitboard,
+        game_state.board.white_rook_bitboard,
+        game_state.board.white_bishop_bitboard,
+        game_state.board.white_knight_bitboard,
+        game_state.board.white_pawn_bitboard,
+      ]
+      let enemy_pieces =
+        list.fold(
+          list_of_enemy_piece_bitboards,
+          bitboard.Bitboard(bitboard: 0),
+          fn(collector, next) { bitboard.and(collector, next) },
+        )
+      let captures = bitboard.or(black_pawn_attack_set, enemy_pieces)
+    }
+  }
+}
+
+fn generate_pawn_attack_set(pawn_bitboard: bitboard.Bitboard, color: Color) {
+  case color {
+    White -> {
+      let east_attack =
+        bitboard.and(bitboard.shift_right(pawn_bitboard, 9), not_a_file)
+      let west_attack =
+        bitboard.and(bitboard.shift_right(pawn_bitboard, 7), not_h_file)
+      let all_attacks = bitboard.and(east_attack, west_attack)
+      all_attacks
+    }
+    Black -> {
+      let east_attack =
+        bitboard.and(bitboard.shift_left(pawn_bitboard, 7), not_a_file)
+      let west_attack =
+        bitboard.and(bitboard.shift_left(pawn_bitboard, 9), not_h_file)
+      let all_attacks = bitboard.and(east_attack, west_attack)
+      all_attacks
+    }
+  }
 }
 
 fn handle_print_board(

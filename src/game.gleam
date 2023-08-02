@@ -64,21 +64,23 @@ pub type Rank {
   Eight
 }
 
+pub type BoardListOfListRepresentation =
+  List(List(Option(Piece)))
+
 pub type Board {
   Board(
-    list_of_list_representation: List(List(Option(Piece))),
     black_king_bitboard: bitboard.Bitboard,
     black_queen_bitboard: bitboard.Bitboard,
     black_rook_bitboard: bitboard.Bitboard,
     black_bishop_bitboard: bitboard.Bitboard,
     black_knight_bitboard: bitboard.Bitboard,
-    black_pawn_bitboard: bitboard.Bitboard,
+    black_pawns_bitboard: bitboard.Bitboard,
     white_king_bitboard: bitboard.Bitboard,
     white_queen_bitboard: bitboard.Bitboard,
     white_rook_bitboard: bitboard.Bitboard,
     white_bishop_bitboard: bitboard.Bitboard,
     white_knight_bitboard: bitboard.Bitboard,
-    white_pawn_bitboard: bitboard.Bitboard,
+    white_pawns_bitboard: bitboard.Bitboard,
   )
 }
 
@@ -90,6 +92,7 @@ pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
+  PrintBoardFromFen(fen: String)
 }
 
 fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
@@ -97,6 +100,7 @@ fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
     AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game_state, client)
+    PrintBoardFromFen(fen) -> handle_print_board_from_fen(game_state, fen)
   }
 }
 
@@ -158,14 +162,14 @@ fn generate_pawn_non_capture_move_set(
   case color {
     White -> {
       let white_pawn_target_squares =
-        bitboard.shift_right(game_state.board.white_pawn_bitboard, 8)
+        bitboard.shift_right(game_state.board.white_pawns_bitboard, 8)
       let list_of_enemy_piece_bitboards = [
         game_state.board.black_king_bitboard,
         game_state.board.black_queen_bitboard,
         game_state.board.black_rook_bitboard,
         game_state.board.black_bishop_bitboard,
         game_state.board.black_knight_bitboard,
-        game_state.board.black_pawn_bitboard,
+        game_state.board.black_pawns_bitboard,
       ]
       let enemy_pieces =
         list.fold(
@@ -179,14 +183,14 @@ fn generate_pawn_non_capture_move_set(
 
     Black -> {
       let black_pawn_target_squares =
-        bitboard.shift_left(game_state.board.black_pawn_bitboard, 8)
+        bitboard.shift_left(game_state.board.black_pawns_bitboard, 8)
       let list_of_enemy_piece_bitboards = [
         game_state.board.white_king_bitboard,
         game_state.board.white_queen_bitboard,
         game_state.board.white_rook_bitboard,
         game_state.board.white_bishop_bitboard,
         game_state.board.white_knight_bitboard,
-        game_state.board.white_pawn_bitboard,
+        game_state.board.white_pawns_bitboard,
       ]
       let enemy_pieces =
         list.fold(
@@ -207,14 +211,14 @@ fn generate_pawn_capture_set(
   case color {
     White -> {
       let white_pawn_attack_set =
-        generate_pawn_attack_set(game_state.board.white_pawn_bitboard, color)
+        generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
       let list_of_enemy_piece_bitboards = [
         game_state.board.black_king_bitboard,
         game_state.board.black_queen_bitboard,
         game_state.board.black_rook_bitboard,
         game_state.board.black_bishop_bitboard,
         game_state.board.black_knight_bitboard,
-        game_state.board.black_pawn_bitboard,
+        game_state.board.black_pawns_bitboard,
       ]
       let enemy_pieces =
         list.fold(
@@ -227,14 +231,14 @@ fn generate_pawn_capture_set(
 
     Black -> {
       let black_pawn_attack_set =
-        generate_pawn_attack_set(game_state.board.black_pawn_bitboard, color)
+        generate_pawn_attack_set(game_state.board.black_pawns_bitboard, color)
       let list_of_enemy_piece_bitboards = [
         game_state.board.white_king_bitboard,
         game_state.board.white_queen_bitboard,
         game_state.board.white_rook_bitboard,
         game_state.board.white_bishop_bitboard,
         game_state.board.white_knight_bitboard,
-        game_state.board.white_pawn_bitboard,
+        game_state.board.white_pawns_bitboard,
       ]
       let enemy_pieces =
         list.fold(
@@ -268,6 +272,111 @@ fn generate_pawn_attack_set(pawn_bitboard: bitboard.Bitboard, color: Color) {
   }
 }
 
+fn bitboard_repr_to_list_of_list_repr(
+  board: Board,
+) -> BoardListOfListRepresentation {
+  let white_king_bitboard = board.white_king_bitboard
+  let white_queen_bitboard = board.white_queen_bitboard
+  let white_rook_bitboard = board.white_rook_bitboard
+  let white_bishop_bitboard = board.white_bishop_bitboard
+  let white_knight_bitboard = board.white_knight_bitboard
+  let white_pawns_bitboard = board.white_pawns_bitboard
+  let black_king_bitboard = board.black_king_bitboard
+  let black_queen_bitboard = board.black_queen_bitboard
+  let black_rook_bitboard = board.black_rook_bitboard
+  let black_bishop_bitboard = board.black_bishop_bitboard
+  let black_knight_bitboard = board.black_knight_bitboard
+  let black_pawns_bitboard = board.black_pawns_bitboard
+
+  // list_of_list_representation: [
+  //   [
+  //     Some(Piece(White, Rook)),
+  //     Some(Piece(White, Knight)),
+  //     Some(Piece(White, Bishop)),
+  //     Some(Piece(White, Queen)),
+  //     Some(Piece(White, King)),
+  //     Some(Piece(White, Bishop)),
+  //     Some(Piece(White, Knight)),
+  //     Some(Piece(White, Rook)),
+  //   ],
+  //   [
+  //     Some(Piece(White, Pawn)),
+  //     Some(Piece(White, Pawn)),
+  //     Some(Piece(White, Pawn)),
+  //     Some(Piece(White, Pawn)),
+  //     Some(Piece(White, Pawn)),
+  //     Some(Piece(White, Pawn)),
+  //     Some(Piece(White, Pawn)),
+  //     Some(Piece(White, Pawn)),
+  //   ],
+  //   [None, None, None, None, None, None, None, None],
+  //   [None, None, None, None, None, None, None, None],
+  //   [None, None, None, None, None, None, None, None],
+  //   [None, None, None, None, None, None, None, None],
+  //   [
+  //     Some(Piece(Black, Pawn)),
+  //     Some(Piece(Black, Pawn)),
+  //     Some(Piece(Black, Pawn)),
+  //     Some(Piece(Black, Pawn)),
+  //     Some(Piece(Black, Pawn)),
+  //     Some(Piece(Black, Pawn)),
+  //     Some(Piece(Black, Pawn)),
+  //     Some(Piece(Black, Pawn)),
+  //   ],
+  //   [
+  //     Some(Piece(Black, Rook)),
+  //     Some(Piece(Black, Knight)),
+  //     Some(Piece(Black, Bishop)),
+  //     Some(Piece(Black, Queen)),
+  //     Some(Piece(Black, King)),
+  //     Some(Piece(Black, Bishop)),
+  //     Some(Piece(Black, Knight)),
+  //     Some(Piece(Black, Rook)),
+  //   ],
+  // ],
+  todo
+}
+
+fn handle_print_board_from_fen(
+  game_state: Game,
+  fen: String,
+) -> actor.Next(Game) {
+  io.print("\n")
+  io.print("   +---+---+---+---+---+---+---+---+")
+  io.print("\n")
+  list.index_map(
+    bitboard_repr_to_list_of_list_repr(game_state.board),
+    fn(index, row) {
+      io.print(" " <> int.to_string(index) <> " | ")
+      list.each(
+        row,
+        fn(piece) {
+          case piece {
+            Some(Piece(White, Pawn)) -> io.print("♙")
+            Some(Piece(White, Knight)) -> io.print("♘")
+            Some(Piece(White, Bishop)) -> io.print("♗")
+            Some(Piece(White, Rook)) -> io.print("♖")
+            Some(Piece(White, Queen)) -> io.print("♕")
+            Some(Piece(White, King)) -> io.print("♔")
+            Some(Piece(Black, Pawn)) -> io.print("♟")
+            Some(Piece(Black, Knight)) -> io.print("♞")
+            Some(Piece(Black, Bishop)) -> io.print("♝")
+            Some(Piece(Black, Rook)) -> io.print("♜")
+            Some(Piece(Black, Queen)) -> io.print("♛")
+            Some(Piece(Black, King)) -> io.print("♚")
+            None -> io.print(" ")
+          }
+          io.print(" | ")
+        },
+      )
+      io.print("\n")
+      io.print("   +---+---+---+---+---+---+---+---+")
+      io.print("\n")
+    },
+  )
+  actor.Continue(game_state)
+}
+
 fn handle_print_board(
   game_state: Game,
   client: Subject(Nil),
@@ -276,7 +385,7 @@ fn handle_print_board(
   io.print("   +---+---+---+---+---+---+---+---+")
   io.print("\n")
   list.index_map(
-    game_state.board.list_of_list_representation,
+    bitboard_repr_to_list_of_list_repr(game_state.board),
     fn(index, row) {
       io.print(" " <> int.to_string(index) <> " | ")
       list.each(
@@ -336,7 +445,7 @@ pub fn new_server() {
       bitboard: 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
-  let white_pawn_bitboard =
+  let white_pawns_bitboard =
     bitboard.Bitboard(
       bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
     )
@@ -366,71 +475,25 @@ pub fn new_server() {
       bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010,
     )
 
-  let black_pawn_bitboard =
+  let black_pawns_bitboard =
     bitboard.Bitboard(
       bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
     )
 
   let board =
     Board(
-      list_of_list_representation: [
-        [
-          Some(Piece(White, Rook)),
-          Some(Piece(White, Knight)),
-          Some(Piece(White, Bishop)),
-          Some(Piece(White, Queen)),
-          Some(Piece(White, King)),
-          Some(Piece(White, Bishop)),
-          Some(Piece(White, Knight)),
-          Some(Piece(White, Rook)),
-        ],
-        [
-          Some(Piece(White, Pawn)),
-          Some(Piece(White, Pawn)),
-          Some(Piece(White, Pawn)),
-          Some(Piece(White, Pawn)),
-          Some(Piece(White, Pawn)),
-          Some(Piece(White, Pawn)),
-          Some(Piece(White, Pawn)),
-          Some(Piece(White, Pawn)),
-        ],
-        [None, None, None, None, None, None, None, None],
-        [None, None, None, None, None, None, None, None],
-        [None, None, None, None, None, None, None, None],
-        [None, None, None, None, None, None, None, None],
-        [
-          Some(Piece(Black, Pawn)),
-          Some(Piece(Black, Pawn)),
-          Some(Piece(Black, Pawn)),
-          Some(Piece(Black, Pawn)),
-          Some(Piece(Black, Pawn)),
-          Some(Piece(Black, Pawn)),
-          Some(Piece(Black, Pawn)),
-          Some(Piece(Black, Pawn)),
-        ],
-        [
-          Some(Piece(Black, Rook)),
-          Some(Piece(Black, Knight)),
-          Some(Piece(Black, Bishop)),
-          Some(Piece(Black, Queen)),
-          Some(Piece(Black, King)),
-          Some(Piece(Black, Bishop)),
-          Some(Piece(Black, Knight)),
-          Some(Piece(Black, Rook)),
-        ],
-      ],
       black_king_bitboard: black_king_bitboard,
       black_queen_bitboard: black_queen_bitboard,
       black_rook_bitboard: black_rook_bitboard,
       black_bishop_bitboard: black_bishop_bitboard,
       black_knight_bitboard: black_knight_bitboard,
-      black_pawn_bitboard: black_pawn_bitboard,
+      black_pawns_bitboard: black_pawns_bitboard,
       white_king_bitboard: white_king_bitboard,
       white_queen_bitboard: white_queen_bitboard,
       white_rook_bitboard: white_rook_bitboard,
       white_bishop_bitboard: white_bishop_bitboard,
       white_knight_bitboard: white_knight_bitboard,
-      white_pawn_bitboard: white_pawn_bitboard,
+      white_pawns_bitboard: white_pawns_bitboard,
     )
 
   let turn = Turn(White)

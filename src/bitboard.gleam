@@ -1,7 +1,44 @@
 import gleam/bitwise
+import gleam/io
+import gleam/int
+import position.{Position}
 
 pub type Bitboard {
   Bitboard(bitboard: Int)
+}
+
+pub fn get_positions(bitboard: Bitboard) -> List(Position) {
+  let positions = []
+  case bitboard.bitboard {
+    0 -> positions
+    _ -> {
+      let count = 63
+      let just_first_bit_of_bb = and(bitboard, new_bitboard(0x8000000000000000))
+      case just_first_bit_of_bb.bitboard {
+        0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
+        _ -> [
+          position.int_to_position(63 - count),
+          ..get_positions_inner(shift_left(bitboard, 1), count - 1)
+        ]
+      }
+    }
+  }
+}
+
+pub fn get_positions_inner(bitboard: Bitboard, count: Int) -> List(Position) {
+  case count < 0 {
+    True -> []
+    False -> {
+      let just_first_bit_of_bb = and(bitboard, new_bitboard(0x8000000000000000))
+      case just_first_bit_of_bb.bitboard {
+        0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
+        _ -> [
+          position.int_to_position(63 - count),
+          ..get_positions_inner(shift_left(bitboard, 1), count - 1)
+        ]
+      }
+    }
+  }
 }
 
 pub fn new_bitboard(bitboard: Int) -> Bitboard {

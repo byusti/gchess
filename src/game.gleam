@@ -4,25 +4,13 @@ import gleam/option.{None, Option, Some}
 import gleam/io
 import gleam/list
 import gleam/int
+import gleam/map
+import gleam/result
 import bitboard
-
-pub type Color {
-  White
-  Black
+import piece.{
+  Bishop, Black, Color, King, Knight, Pawn, Piece, Queen, Rook, White,
 }
-
-pub type Piece {
-  Piece(color: Color, kind: Kind)
-}
-
-pub type Kind {
-  Pawn
-  Knight
-  Bishop
-  Rook
-  Queen
-  King
-}
+import position.{File, Position, Rank}
 
 pub type Turn {
   Turn(color: Color)
@@ -38,37 +26,11 @@ pub type Move {
   Move(from: Position, to: Position)
 }
 
-pub type Position {
-  Position(file: File, rank: Rank)
-}
+pub type BoardMap =
+  map.Map(Position, Option(Piece))
 
-pub type File {
-  A
-  B
-  C
-  D
-  E
-  F
-  G
-  H
-}
-
-pub type Rank {
-  One
-  Two
-  Three
-  Four
-  Five
-  Six
-  Seven
-  Eight
-}
-
-pub type BoardListOfListRepresentation =
-  List(List(Option(Piece)))
-
-pub type Board {
-  Board(
+pub type BoardBB {
+  BoardBB(
     black_king_bitboard: bitboard.Bitboard,
     black_queen_bitboard: bitboard.Bitboard,
     black_rook_bitboard: bitboard.Bitboard,
@@ -85,22 +47,96 @@ pub type Board {
 }
 
 pub type Game {
-  Game(board: Board, turn: Turn, history: List(Move), status: Status, ply: Int)
+  Game(
+    board: BoardBB,
+    turn: Turn,
+    history: List(Move),
+    status: Status,
+    ply: Int,
+  )
 }
 
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
-  PrintBoardFromFen(fen: String)
+  PrintBoardFromFen(reply_with: Subject(Nil), fen: String)
 }
+
+const list_of_positions_in_order = [
+  Position(file: position.A, rank: position.One),
+  Position(file: position.B, rank: position.One),
+  Position(file: position.C, rank: position.One),
+  Position(file: position.D, rank: position.One),
+  Position(file: position.E, rank: position.One),
+  Position(file: position.F, rank: position.One),
+  Position(file: position.G, rank: position.One),
+  Position(file: position.H, rank: position.One),
+  Position(file: position.A, rank: position.Two),
+  Position(file: position.B, rank: position.Two),
+  Position(file: position.C, rank: position.Two),
+  Position(file: position.D, rank: position.Two),
+  Position(file: position.E, rank: position.Two),
+  Position(file: position.F, rank: position.Two),
+  Position(file: position.G, rank: position.Two),
+  Position(file: position.H, rank: position.Two),
+  Position(file: position.A, rank: position.Three),
+  Position(file: position.B, rank: position.Three),
+  Position(file: position.C, rank: position.Three),
+  Position(file: position.D, rank: position.Three),
+  Position(file: position.E, rank: position.Three),
+  Position(file: position.F, rank: position.Three),
+  Position(file: position.G, rank: position.Three),
+  Position(file: position.H, rank: position.Three),
+  Position(file: position.A, rank: position.Four),
+  Position(file: position.B, rank: position.Four),
+  Position(file: position.C, rank: position.Four),
+  Position(file: position.D, rank: position.Four),
+  Position(file: position.E, rank: position.Four),
+  Position(file: position.F, rank: position.Four),
+  Position(file: position.G, rank: position.Four),
+  Position(file: position.H, rank: position.Four),
+  Position(file: position.A, rank: position.Five),
+  Position(file: position.B, rank: position.Five),
+  Position(file: position.C, rank: position.Five),
+  Position(file: position.D, rank: position.Five),
+  Position(file: position.E, rank: position.Five),
+  Position(file: position.F, rank: position.Five),
+  Position(file: position.G, rank: position.Five),
+  Position(file: position.H, rank: position.Five),
+  Position(file: position.A, rank: position.Six),
+  Position(file: position.B, rank: position.Six),
+  Position(file: position.C, rank: position.Six),
+  Position(file: position.D, rank: position.Six),
+  Position(file: position.E, rank: position.Six),
+  Position(file: position.F, rank: position.Six),
+  Position(file: position.G, rank: position.Six),
+  Position(file: position.H, rank: position.Six),
+  Position(file: position.A, rank: position.Seven),
+  Position(file: position.B, rank: position.Seven),
+  Position(file: position.C, rank: position.Seven),
+  Position(file: position.D, rank: position.Seven),
+  Position(file: position.E, rank: position.Seven),
+  Position(file: position.F, rank: position.Seven),
+  Position(file: position.G, rank: position.Seven),
+  Position(file: position.H, rank: position.Seven),
+  Position(file: position.A, rank: position.Eight),
+  Position(file: position.B, rank: position.Eight),
+  Position(file: position.C, rank: position.Eight),
+  Position(file: position.D, rank: position.Eight),
+  Position(file: position.E, rank: position.Eight),
+  Position(file: position.F, rank: position.Eight),
+  Position(file: position.G, rank: position.Eight),
+  Position(file: position.H, rank: position.Eight),
+]
 
 fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
   case message {
     AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game_state, client)
-    PrintBoardFromFen(fen) -> handle_print_board_from_fen(game_state, fen)
+    PrintBoardFromFen(client, fen) ->
+      handle_print_board_from_fen(game_state, client, fen)
   }
 }
 
@@ -272,9 +308,7 @@ fn generate_pawn_attack_set(pawn_bitboard: bitboard.Bitboard, color: Color) {
   }
 }
 
-fn bitboard_repr_to_list_of_list_repr(
-  board: Board,
-) -> BoardListOfListRepresentation {
+fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
   let white_king_bitboard = board.white_king_bitboard
   let white_queen_bitboard = board.white_queen_bitboard
   let white_rook_bitboard = board.white_rook_bitboard
@@ -288,92 +322,282 @@ fn bitboard_repr_to_list_of_list_repr(
   let black_knight_bitboard = board.black_knight_bitboard
   let black_pawns_bitboard = board.black_pawns_bitboard
 
-  // list_of_list_representation: [
-  //   [
-  //     Some(Piece(White, Rook)),
-  //     Some(Piece(White, Knight)),
-  //     Some(Piece(White, Bishop)),
-  //     Some(Piece(White, Queen)),
-  //     Some(Piece(White, King)),
-  //     Some(Piece(White, Bishop)),
-  //     Some(Piece(White, Knight)),
-  //     Some(Piece(White, Rook)),
-  //   ],
-  //   [
-  //     Some(Piece(White, Pawn)),
-  //     Some(Piece(White, Pawn)),
-  //     Some(Piece(White, Pawn)),
-  //     Some(Piece(White, Pawn)),
-  //     Some(Piece(White, Pawn)),
-  //     Some(Piece(White, Pawn)),
-  //     Some(Piece(White, Pawn)),
-  //     Some(Piece(White, Pawn)),
-  //   ],
-  //   [None, None, None, None, None, None, None, None],
-  //   [None, None, None, None, None, None, None, None],
-  //   [None, None, None, None, None, None, None, None],
-  //   [None, None, None, None, None, None, None, None],
-  //   [
-  //     Some(Piece(Black, Pawn)),
-  //     Some(Piece(Black, Pawn)),
-  //     Some(Piece(Black, Pawn)),
-  //     Some(Piece(Black, Pawn)),
-  //     Some(Piece(Black, Pawn)),
-  //     Some(Piece(Black, Pawn)),
-  //     Some(Piece(Black, Pawn)),
-  //     Some(Piece(Black, Pawn)),
-  //   ],
-  //   [
-  //     Some(Piece(Black, Rook)),
-  //     Some(Piece(Black, Knight)),
-  //     Some(Piece(Black, Bishop)),
-  //     Some(Piece(Black, Queen)),
-  //     Some(Piece(Black, King)),
-  //     Some(Piece(Black, Bishop)),
-  //     Some(Piece(Black, Knight)),
-  //     Some(Piece(Black, Rook)),
-  //   ],
-  // ],
-  todo
+  let board_map: map.Map(Position, Option(Piece)) =
+    map.from_list([
+      #(Position(file: position.A, rank: position.One), None),
+      #(Position(file: position.B, rank: position.One), None),
+      #(Position(file: position.C, rank: position.One), None),
+      #(Position(file: position.D, rank: position.One), None),
+      #(Position(file: position.E, rank: position.One), None),
+      #(Position(file: position.F, rank: position.One), None),
+      #(Position(file: position.G, rank: position.One), None),
+      #(Position(file: position.H, rank: position.One), None),
+      #(Position(file: position.A, rank: position.Two), None),
+      #(Position(file: position.B, rank: position.Two), None),
+      #(Position(file: position.C, rank: position.Two), None),
+      #(Position(file: position.D, rank: position.Two), None),
+      #(Position(file: position.E, rank: position.Two), None),
+      #(Position(file: position.F, rank: position.Two), None),
+      #(Position(file: position.G, rank: position.Two), None),
+      #(Position(file: position.H, rank: position.Two), None),
+      #(Position(file: position.A, rank: position.Three), None),
+      #(Position(file: position.B, rank: position.Three), None),
+      #(Position(file: position.C, rank: position.Three), None),
+      #(Position(file: position.D, rank: position.Three), None),
+      #(Position(file: position.E, rank: position.Three), None),
+      #(Position(file: position.F, rank: position.Three), None),
+      #(Position(file: position.G, rank: position.Three), None),
+      #(Position(file: position.H, rank: position.Three), None),
+      #(Position(file: position.A, rank: position.Four), None),
+      #(Position(file: position.B, rank: position.Four), None),
+      #(Position(file: position.C, rank: position.Four), None),
+      #(Position(file: position.D, rank: position.Four), None),
+      #(Position(file: position.E, rank: position.Four), None),
+      #(Position(file: position.F, rank: position.Four), None),
+      #(Position(file: position.G, rank: position.Four), None),
+      #(Position(file: position.H, rank: position.Four), None),
+      #(Position(file: position.A, rank: position.Five), None),
+      #(Position(file: position.B, rank: position.Five), None),
+      #(Position(file: position.C, rank: position.Five), None),
+      #(Position(file: position.D, rank: position.Five), None),
+      #(Position(file: position.E, rank: position.Five), None),
+      #(Position(file: position.F, rank: position.Five), None),
+      #(Position(file: position.G, rank: position.Five), None),
+      #(Position(file: position.H, rank: position.Five), None),
+      #(Position(file: position.A, rank: position.Six), None),
+      #(Position(file: position.B, rank: position.Six), None),
+      #(Position(file: position.C, rank: position.Six), None),
+      #(Position(file: position.D, rank: position.Six), None),
+      #(Position(file: position.E, rank: position.Six), None),
+      #(Position(file: position.F, rank: position.Six), None),
+      #(Position(file: position.G, rank: position.Six), None),
+      #(Position(file: position.H, rank: position.Six), None),
+      #(Position(file: position.A, rank: position.Seven), None),
+      #(Position(file: position.B, rank: position.Seven), None),
+      #(Position(file: position.C, rank: position.Seven), None),
+      #(Position(file: position.D, rank: position.Seven), None),
+      #(Position(file: position.E, rank: position.Seven), None),
+      #(Position(file: position.F, rank: position.Seven), None),
+      #(Position(file: position.G, rank: position.Seven), None),
+      #(Position(file: position.H, rank: position.Seven), None),
+      #(Position(file: position.A, rank: position.Eight), None),
+      #(Position(file: position.B, rank: position.Eight), None),
+      #(Position(file: position.C, rank: position.Eight), None),
+      #(Position(file: position.D, rank: position.Eight), None),
+      #(Position(file: position.E, rank: position.Eight), None),
+      #(Position(file: position.F, rank: position.Eight), None),
+      #(Position(file: position.G, rank: position.Eight), None),
+      #(Position(file: position.H, rank: position.Eight), None),
+    ])
+
+  let white_king_positions = bitboard.get_positions(white_king_bitboard)
+  let white_queen_positions = bitboard.get_positions(white_queen_bitboard)
+  let white_rook_positions = bitboard.get_positions(white_rook_bitboard)
+  let white_bishop_positions = bitboard.get_positions(white_bishop_bitboard)
+  let white_knight_positions = bitboard.get_positions(white_knight_bitboard)
+  let white_pawns_positions = bitboard.get_positions(white_pawns_bitboard)
+  let black_king_positions = bitboard.get_positions(black_king_bitboard)
+  let black_queen_positions = bitboard.get_positions(black_queen_bitboard)
+  let black_rook_positions = bitboard.get_positions(black_rook_bitboard)
+  let black_bishop_positions = bitboard.get_positions(black_bishop_bitboard)
+  let black_knight_positions = bitboard.get_positions(black_knight_bitboard)
+  let black_pawns_positions = bitboard.get_positions(black_pawns_bitboard)
+
+  let board_map =
+    list.fold(
+      white_king_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(White, King)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      white_queen_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(White, Queen)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      white_rook_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(White, Rook)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      white_bishop_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(White, Bishop)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      white_knight_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(White, Knight)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      white_pawns_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(White, Pawn)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      black_king_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(Black, King)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      black_queen_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(Black, Queen)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      black_rook_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(Black, Rook)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      black_bishop_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(Black, Bishop)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      black_knight_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(Black, Knight)))
+      },
+    )
+
+  let board_map =
+    list.fold(
+      black_pawns_positions,
+      board_map,
+      fn(board_map, position) {
+        map.insert(board_map, position, Some(Piece(Black, Pawn)))
+      },
+    )
+
+  board_map
 }
 
 fn handle_print_board_from_fen(
   game_state: Game,
+  client: Subject(Nil),
   fen: String,
 ) -> actor.Next(Game) {
+  let board_map = bitboard_repr_to_map_repr(game_state.board)
+  io.print("\n")
+  io.print("     h   g   f   e   d   c   b   a")
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
-  io.print("\n")
-  list.index_map(
-    bitboard_repr_to_list_of_list_repr(game_state.board),
-    fn(index, row) {
-      io.print(" " <> int.to_string(index) <> " | ")
-      list.each(
-        row,
-        fn(piece) {
-          case piece {
-            Some(Piece(White, Pawn)) -> io.print("♙")
-            Some(Piece(White, Knight)) -> io.print("♘")
-            Some(Piece(White, Bishop)) -> io.print("♗")
-            Some(Piece(White, Rook)) -> io.print("♖")
-            Some(Piece(White, Queen)) -> io.print("♕")
-            Some(Piece(White, King)) -> io.print("♔")
-            Some(Piece(Black, Pawn)) -> io.print("♟")
-            Some(Piece(Black, Knight)) -> io.print("♞")
-            Some(Piece(Black, Bishop)) -> io.print("♝")
-            Some(Piece(Black, Rook)) -> io.print("♜")
-            Some(Piece(Black, Queen)) -> io.print("♛")
-            Some(Piece(Black, King)) -> io.print("♚")
-            None -> io.print(" ")
-          }
+  list.each(
+    list_of_positions_in_order,
+    fn(pos) {
+      let piece_to_print = result.unwrap(map.get(board_map, pos), None)
+      case pos.file {
+        position.A -> {
+          io.print("\n")
+          io.print(
+            " " <> int.to_string(position.rank_to_int(pos.rank)) <> " | ",
+          )
+          io.print(case piece_to_print {
+            Some(Piece(White, Pawn)) -> "♙"
+            Some(Piece(White, Knight)) -> "♘"
+            Some(Piece(White, Bishop)) -> "♗"
+            Some(Piece(White, Rook)) -> "♖"
+            Some(Piece(White, Queen)) -> "♕"
+            Some(Piece(White, King)) -> "♔"
+            Some(Piece(Black, Pawn)) -> "♟"
+            Some(Piece(Black, Knight)) -> "♞"
+            Some(Piece(Black, Bishop)) -> "♝"
+            Some(Piece(Black, Rook)) -> "♜"
+            Some(Piece(Black, Queen)) -> "♛"
+            Some(Piece(Black, King)) -> "♚"
+            None -> " "
+          })
           io.print(" | ")
-        },
-      )
-      io.print("\n")
-      io.print("   +---+---+---+---+---+---+---+---+")
-      io.print("\n")
+        }
+
+        position.H -> {
+          io.print(case piece_to_print {
+            Some(Piece(White, Pawn)) -> "♙"
+            Some(Piece(White, Knight)) -> "♘"
+            Some(Piece(White, Bishop)) -> "♗"
+            Some(Piece(White, Rook)) -> "♖"
+            Some(Piece(White, Queen)) -> "♕"
+            Some(Piece(White, King)) -> "♔"
+            Some(Piece(Black, Pawn)) -> "♟"
+            Some(Piece(Black, Knight)) -> "♞"
+            Some(Piece(Black, Bishop)) -> "♝"
+            Some(Piece(Black, Rook)) -> "♜"
+            Some(Piece(Black, Queen)) -> "♛"
+            Some(Piece(Black, King)) -> "♚"
+            None -> " "
+          })
+
+          io.print(" | ")
+          io.print("\n")
+          io.print("   +---+---+---+---+---+---+---+---+")
+        }
+
+        _ -> {
+          io.print(case piece_to_print {
+            Some(Piece(White, Pawn)) -> "♙"
+            Some(Piece(White, Knight)) -> "♘"
+            Some(Piece(White, Bishop)) -> "♗"
+            Some(Piece(White, Rook)) -> "♖"
+            Some(Piece(White, Queen)) -> "♕"
+            Some(Piece(White, King)) -> "♔"
+            Some(Piece(Black, Pawn)) -> "♟"
+            Some(Piece(Black, Knight)) -> "♞"
+            Some(Piece(Black, Bishop)) -> "♝"
+            Some(Piece(Black, Rook)) -> "♜"
+            Some(Piece(Black, Queen)) -> "♛"
+            Some(Piece(Black, King)) -> "♚"
+            None -> " "
+          })
+          io.print(" | ")
+        }
+      }
     },
   )
+  io.print("\n")
+
+  process.send(client, Nil)
   actor.Continue(game_state)
 }
 
@@ -381,39 +605,83 @@ fn handle_print_board(
   game_state: Game,
   client: Subject(Nil),
 ) -> actor.Next(Game) {
+  let board_map = bitboard_repr_to_map_repr(game_state.board)
+  io.print("\n")
+  io.print("     h   g   f   e   d   c   b   a")
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
-  io.print("\n")
-  list.index_map(
-    bitboard_repr_to_list_of_list_repr(game_state.board),
-    fn(index, row) {
-      io.print(" " <> int.to_string(index) <> " | ")
-      list.each(
-        row,
-        fn(piece) {
-          case piece {
-            Some(Piece(White, Pawn)) -> io.print("♙")
-            Some(Piece(White, Knight)) -> io.print("♘")
-            Some(Piece(White, Bishop)) -> io.print("♗")
-            Some(Piece(White, Rook)) -> io.print("♖")
-            Some(Piece(White, Queen)) -> io.print("♕")
-            Some(Piece(White, King)) -> io.print("♔")
-            Some(Piece(Black, Pawn)) -> io.print("♟")
-            Some(Piece(Black, Knight)) -> io.print("♞")
-            Some(Piece(Black, Bishop)) -> io.print("♝")
-            Some(Piece(Black, Rook)) -> io.print("♜")
-            Some(Piece(Black, Queen)) -> io.print("♛")
-            Some(Piece(Black, King)) -> io.print("♚")
-            None -> io.print(" ")
-          }
+  list.each(
+    list_of_positions_in_order,
+    fn(pos) {
+      let piece_to_print = result.unwrap(map.get(board_map, pos), None)
+      case pos.file {
+        position.A -> {
+          io.print("\n")
+          io.print(
+            " " <> int.to_string(position.rank_to_int(pos.rank)) <> " | ",
+          )
+          io.print(case piece_to_print {
+            Some(Piece(White, Pawn)) -> "♙"
+            Some(Piece(White, Knight)) -> "♘"
+            Some(Piece(White, Bishop)) -> "♗"
+            Some(Piece(White, Rook)) -> "♖"
+            Some(Piece(White, Queen)) -> "♕"
+            Some(Piece(White, King)) -> "♔"
+            Some(Piece(Black, Pawn)) -> "♟"
+            Some(Piece(Black, Knight)) -> "♞"
+            Some(Piece(Black, Bishop)) -> "♝"
+            Some(Piece(Black, Rook)) -> "♜"
+            Some(Piece(Black, Queen)) -> "♛"
+            Some(Piece(Black, King)) -> "♚"
+            None -> " "
+          })
           io.print(" | ")
-        },
-      )
-      io.print("\n")
-      io.print("   +---+---+---+---+---+---+---+---+")
-      io.print("\n")
+        }
+
+        position.H -> {
+          io.print(case piece_to_print {
+            Some(Piece(White, Pawn)) -> "♙"
+            Some(Piece(White, Knight)) -> "♘"
+            Some(Piece(White, Bishop)) -> "♗"
+            Some(Piece(White, Rook)) -> "♖"
+            Some(Piece(White, Queen)) -> "♕"
+            Some(Piece(White, King)) -> "♔"
+            Some(Piece(Black, Pawn)) -> "♟"
+            Some(Piece(Black, Knight)) -> "♞"
+            Some(Piece(Black, Bishop)) -> "♝"
+            Some(Piece(Black, Rook)) -> "♜"
+            Some(Piece(Black, Queen)) -> "♛"
+            Some(Piece(Black, King)) -> "♚"
+            None -> " "
+          })
+
+          io.print(" | ")
+          io.print("\n")
+          io.print("   +---+---+---+---+---+---+---+---+")
+        }
+
+        _ -> {
+          io.print(case piece_to_print {
+            Some(Piece(White, Pawn)) -> "♙"
+            Some(Piece(White, Knight)) -> "♘"
+            Some(Piece(White, Bishop)) -> "♗"
+            Some(Piece(White, Rook)) -> "♖"
+            Some(Piece(White, Queen)) -> "♕"
+            Some(Piece(White, King)) -> "♔"
+            Some(Piece(Black, Pawn)) -> "♟"
+            Some(Piece(Black, Knight)) -> "♞"
+            Some(Piece(Black, Bishop)) -> "♝"
+            Some(Piece(Black, Rook)) -> "♜"
+            Some(Piece(Black, Queen)) -> "♛"
+            Some(Piece(Black, King)) -> "♚"
+            None -> " "
+          })
+          io.print(" | ")
+        }
+      }
     },
   )
+  io.print("\n")
 
   process.send(client, Nil)
   actor.Continue(game_state)
@@ -481,7 +749,7 @@ pub fn new_server() {
     )
 
   let board =
-    Board(
+    BoardBB(
       black_king_bitboard: black_king_bitboard,
       black_queen_bitboard: black_queen_bitboard,
       black_rook_bitboard: black_rook_bitboard,

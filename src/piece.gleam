@@ -1,7 +1,4 @@
-pub type Color {
-  White
-  Black
-}
+import color.{Color}
 
 pub type Piece {
   Piece(color: Color, kind: Kind)

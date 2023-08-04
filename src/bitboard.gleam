@@ -76,3 +76,8 @@ pub fn shift_left(bitboard: Bitboard, shift: Int) -> Bitboard {
 pub fn shift_right(bitboard: Bitboard, shift: Int) -> Bitboard {
   Bitboard(bitwise.shift_right(bitboard.bitboard, shift))
 }
+
+pub fn from_position(position: Position) -> Bitboard {
+  let bitboard = shift_left(new_bitboard(1), 63 - position.to_int(position))
+  todo
+}

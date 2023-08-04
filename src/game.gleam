@@ -7,9 +7,8 @@ import gleam/int
 import gleam/map
 import gleam/result
 import bitboard
-import piece.{
-  Bishop, Black, Color, King, Knight, Pawn, Piece, Queen, Rook, White,
-}
+import piece.{Bishop, King, Knight, Pawn, Piece, Queen, Rook}
+import color.{Black, Color, White}
 import position.{File, Position, Rank}
 
 pub type Turn {
@@ -514,6 +513,10 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
   board_map
 }
 
+fn convert_fen_to_board(fen: String) -> BoardMap {
+  todo
+}
+
 fn handle_print_board_from_fen(
   game_state: Game,
   client: Subject(Nil),
@@ -532,7 +535,7 @@ fn handle_print_board_from_fen(
         position.A -> {
           io.print("\n")
           io.print(
-            " " <> int.to_string(position.rank_to_int(pos.rank)) <> " | ",
+            " " <> int.to_string(position.rank_to_int(pos.rank) - 1) <> " | ",
           )
           io.print(case piece_to_print {
             Some(Piece(White, Pawn)) -> "♙"
@@ -618,7 +621,7 @@ fn handle_print_board(
         position.A -> {
           io.print("\n")
           io.print(
-            " " <> int.to_string(position.rank_to_int(pos.rank)) <> " | ",
+            " " <> int.to_string(position.rank_to_int(pos.rank) - 1) <> " | ",
           )
           io.print(case piece_to_print {
             Some(Piece(White, Pawn)) -> "♙"

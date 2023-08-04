@@ -27,16 +27,35 @@ pub type Rank {
   Eight
 }
 
+pub fn to_int(position: Position) -> Int {
+  let file = file_to_int(position.file)
+  let rank = rank_to_int(position.rank)
+  todo
+}
+
+pub fn file_to_int(file: File) -> Int {
+  case file {
+    A -> 0
+    B -> 1
+    C -> 2
+    D -> 3
+    E -> 4
+    F -> 5
+    G -> 6
+    H -> 7
+  }
+}
+
 pub fn rank_to_int(rank: Rank) -> Int {
   case rank {
-    One -> 1
-    Two -> 2
-    Three -> 3
-    Four -> 4
-    Five -> 5
-    Six -> 6
-    Seven -> 7
-    Eight -> 8
+    One -> 0
+    Two -> 1
+    Three -> 2
+    Four -> 3
+    Five -> 4
+    Six -> 5
+    Seven -> 6
+    Eight -> 7
   }
 }
 

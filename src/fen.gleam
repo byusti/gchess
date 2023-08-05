@@ -1,13 +1,12 @@
-import game.{BoardBB}
+import boardbb.{BoardBB}
 import color.{Black, Color, White}
-import position.{File, Rank}
+import position.{File, Position, Rank}
 import gleam/string
 import gleam/list
 import gleam/option.{None, Option, Some}
-import piece
 import bitboard.{Bitboard}
 
-type CastlingStatus {
+pub type CastlingStatus {
   CastlingStatus(
     white_kingside: Bool,
     white_queenside: Bool,
@@ -16,17 +15,17 @@ type CastlingStatus {
   )
 }
 
-type EnPassant {
+pub type EnPassant {
   EnPassant(file: File, rank: Rank)
 }
 
-type HalfMove =
+pub type HalfMove =
   Int
 
-type FullMove =
+pub type FullMove =
   Int
 
-type Fen {
+pub type Fen {
   Fen(
     board: BoardBB,
     turn: Color,
@@ -37,7 +36,7 @@ type Fen {
   )
 }
 
-fn parse_fen(fen: String) -> Fen {
+pub fn parse_fen(fen: String) -> Fen {
   let fen_string_parts = string.split(fen, " ")
   case list.length(fen_string_parts) == 6 {
     False -> panic as "Invalid FEN string"
@@ -47,7 +46,7 @@ fn parse_fen(fen: String) -> Fen {
       let [castling_string, ..rest] = rest
       let [en_passant_string, ..rest] = rest
       let [halfmove_string, ..rest] = rest
-      let [fullmove_string, ..rest] = rest
+      let [fullmove_string, ..] = rest
       let parsed_board = parse_board(board_string)
       let parsed_turn = parse_turn(turn_string)
       let parsed_castling = parse_castling(castling_string)
@@ -70,7 +69,7 @@ fn parse_fen(fen: String) -> Fen {
   }
 }
 
-fn parse_board(board_string: String) -> BoardBB {
+pub fn parse_board(board_string: String) -> BoardBB {
   // in the context of this function, rank means a an entire row of the board 
   // represented as a string of piece chars and numbers for empy spaces
   // example: "rnbqk1nr"
@@ -105,17 +104,298 @@ fn parse_board(board_string: String) -> BoardBB {
           case square {
             "" -> acc
             "K" -> {
-              todo
+              let new_white_king_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: bitboard.and(
+                  acc.white_king_bitboard,
+                  new_white_king_bitboard,
+                ),
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "Q" -> {
+              let new_white_queen_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: bitboard.and(
+                  acc.white_queen_bitboard,
+                  new_white_queen_bitboard,
+                ),
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "R" -> {
+              let new_white_rook_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: bitboard.and(
+                  acc.white_rook_bitboard,
+                  new_white_rook_bitboard,
+                ),
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "B" -> {
+              let new_white_bishop_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: bitboard.and(
+                  acc.white_bishop_bitboard,
+                  new_white_bishop_bitboard,
+                ),
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "N" -> {
+              let new_white_knight_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: bitboard.and(
+                  acc.white_knight_bitboard,
+                  new_white_knight_bitboard,
+                ),
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "P" -> {
+              let new_white_pawn_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: bitboard.and(
+                  acc.white_pawns_bitboard,
+                  new_white_pawn_bitboard,
+                ),
+              )
+            }
+            "k" -> {
+              let new_black_king_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: bitboard.and(
+                  acc.black_king_bitboard,
+                  new_black_king_bitboard,
+                ),
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "q" -> {
+              let new_black_queen_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: bitboard.and(
+                  acc.black_queen_bitboard,
+                  new_black_queen_bitboard,
+                ),
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "r" -> {
+              let new_black_rook_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: bitboard.and(
+                  acc.black_rook_bitboard,
+                  new_black_rook_bitboard,
+                ),
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "b" -> {
+              let new_black_bishop_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: bitboard.and(
+                  acc.black_bishop_bitboard,
+                  new_black_bishop_bitboard,
+                ),
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "n" -> {
+              let new_black_knight_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: bitboard.and(
+                  acc.black_knight_bitboard,
+                  new_black_knight_bitboard,
+                ),
+                black_pawns_bitboard: acc.black_pawns_bitboard,
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
+            }
+            "p" -> {
+              let new_black_pawns_bitboard =
+                bitboard.from_position(Position(
+                  file: file_index,
+                  rank: rank_index,
+                ))
+              BoardBB(
+                black_king_bitboard: acc.black_king_bitboard,
+                black_queen_bitboard: acc.black_queen_bitboard,
+                black_rook_bitboard: acc.black_rook_bitboard,
+                black_bishop_bitboard: acc.black_bishop_bitboard,
+                black_knight_bitboard: acc.black_knight_bitboard,
+                black_pawns_bitboard: bitboard.and(
+                  acc.black_pawns_bitboard,
+                  new_black_pawns_bitboard,
+                ),
+                white_king_bitboard: acc.white_king_bitboard,
+                white_queen_bitboard: acc.white_queen_bitboard,
+                white_rook_bitboard: acc.white_rook_bitboard,
+                white_bishop_bitboard: acc.white_bishop_bitboard,
+                white_knight_bitboard: acc.white_knight_bitboard,
+                white_pawns_bitboard: acc.white_pawns_bitboard,
+              )
             }
           }
-          todo
         },
       )
-      todo
     },
   )
-
-  todo
 }
 
 fn expand_rank(rank: List(String)) -> List(String) {

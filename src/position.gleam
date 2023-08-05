@@ -1,6 +1,3 @@
-import gleam/io
-import gleam/int
-
 pub type Position {
   Position(file: File, rank: Rank)
 }
@@ -30,7 +27,8 @@ pub type Rank {
 pub fn to_int(position: Position) -> Int {
   let file = file_to_int(position.file)
   let rank = rank_to_int(position.rank)
-  todo
+  let pos_as_int = file + { rank * 8 }
+  pos_as_int
 }
 
 pub fn file_to_int(file: File) -> Int {

@@ -9,7 +9,9 @@ import gleam/result
 import bitboard
 import piece.{Bishop, King, Knight, Pawn, Piece, Queen, Rook}
 import color.{Black, Color, White}
-import position.{File, Position, Rank}
+import position.{Position}
+import board.{BoardMap}
+import boardbb.{BoardBB}
 
 pub type Turn {
   Turn(color: Color)
@@ -23,26 +25,6 @@ pub type Status {
 
 pub type Move {
   Move(from: Position, to: Position)
-}
-
-pub type BoardMap =
-  map.Map(Position, Option(Piece))
-
-pub type BoardBB {
-  BoardBB(
-    black_king_bitboard: bitboard.Bitboard,
-    black_queen_bitboard: bitboard.Bitboard,
-    black_rook_bitboard: bitboard.Bitboard,
-    black_bishop_bitboard: bitboard.Bitboard,
-    black_knight_bitboard: bitboard.Bitboard,
-    black_pawns_bitboard: bitboard.Bitboard,
-    white_king_bitboard: bitboard.Bitboard,
-    white_queen_bitboard: bitboard.Bitboard,
-    white_rook_bitboard: bitboard.Bitboard,
-    white_bishop_bitboard: bitboard.Bitboard,
-    white_knight_bitboard: bitboard.Bitboard,
-    white_pawns_bitboard: bitboard.Bitboard,
-  )
 }
 
 pub type Game {
@@ -511,10 +493,6 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
     )
 
   board_map
-}
-
-fn convert_fen_to_board(fen: String) -> BoardMap {
-  todo
 }
 
 fn handle_print_board_from_fen(

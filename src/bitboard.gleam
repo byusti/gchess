@@ -1,6 +1,4 @@
 import gleam/bitwise
-import gleam/io
-import gleam/int
 import position.{Position}
 
 pub type Bitboard {
@@ -79,5 +77,5 @@ pub fn shift_right(bitboard: Bitboard, shift: Int) -> Bitboard {
 
 pub fn from_position(position: Position) -> Bitboard {
   let bitboard = shift_left(new_bitboard(1), 63 - position.to_int(position))
-  todo
+  bitboard
 }

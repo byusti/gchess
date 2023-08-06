@@ -15,7 +15,7 @@ pub fn get_positions(bitboard: Bitboard) -> List(Position) {
       case just_first_bit_of_bb.bitboard {
         0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
         _ -> [
-          position.int_to_position(63 - count),
+          position.int_to_position(count),
           ..get_positions_inner(shift_left(bitboard, 1), count - 1)
         ]
       }
@@ -31,7 +31,7 @@ pub fn get_positions_inner(bitboard: Bitboard, count: Int) -> List(Position) {
       case just_first_bit_of_bb.bitboard {
         0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
         _ -> [
-          position.int_to_position(63 - count),
+          position.int_to_position(count),
           ..get_positions_inner(shift_left(bitboard, 1), count - 1)
         ]
       }
@@ -76,6 +76,6 @@ pub fn shift_right(bitboard: Bitboard, shift: Int) -> Bitboard {
 }
 
 pub fn from_position(position: Position) -> Bitboard {
-  let bitboard = shift_left(new_bitboard(1), 63 - position.to_int(position))
+  let bitboard = shift_left(new_bitboard(1), position.to_int(position))
   bitboard
 }

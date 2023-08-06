@@ -12,6 +12,7 @@ import color.{Black, Color, White}
 import position.{Position}
 import board.{BoardMap}
 import boardbb.{BoardBB}
+import fen.{Fen}
 
 pub type Turn {
   Turn(color: Color)
@@ -40,9 +41,76 @@ pub type Game {
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
   Shutdown
-  PrintBoard(reply_with: Subject(Nil))
   PrintBoardFromFen(reply_with: Subject(Nil), fen: String)
+  PrintBoard(reply_with: Subject(Nil))
 }
+
+const reverse_list_of_positions_in_order = [
+  Position(file: position.A, rank: position.Eight),
+  Position(file: position.B, rank: position.Eight),
+  Position(file: position.C, rank: position.Eight),
+  Position(file: position.D, rank: position.Eight),
+  Position(file: position.E, rank: position.Eight),
+  Position(file: position.F, rank: position.Eight),
+  Position(file: position.G, rank: position.Eight),
+  Position(file: position.H, rank: position.Eight),
+  Position(file: position.A, rank: position.Seven),
+  Position(file: position.B, rank: position.Seven),
+  Position(file: position.C, rank: position.Seven),
+  Position(file: position.D, rank: position.Seven),
+  Position(file: position.E, rank: position.Seven),
+  Position(file: position.F, rank: position.Seven),
+  Position(file: position.G, rank: position.Seven),
+  Position(file: position.H, rank: position.Seven),
+  Position(file: position.A, rank: position.Six),
+  Position(file: position.B, rank: position.Six),
+  Position(file: position.C, rank: position.Six),
+  Position(file: position.D, rank: position.Six),
+  Position(file: position.E, rank: position.Six),
+  Position(file: position.F, rank: position.Six),
+  Position(file: position.G, rank: position.Six),
+  Position(file: position.H, rank: position.Six),
+  Position(file: position.A, rank: position.Five),
+  Position(file: position.B, rank: position.Five),
+  Position(file: position.C, rank: position.Five),
+  Position(file: position.D, rank: position.Five),
+  Position(file: position.E, rank: position.Five),
+  Position(file: position.F, rank: position.Five),
+  Position(file: position.G, rank: position.Five),
+  Position(file: position.H, rank: position.Five),
+  Position(file: position.A, rank: position.Four),
+  Position(file: position.B, rank: position.Four),
+  Position(file: position.C, rank: position.Four),
+  Position(file: position.D, rank: position.Four),
+  Position(file: position.E, rank: position.Four),
+  Position(file: position.F, rank: position.Four),
+  Position(file: position.G, rank: position.Four),
+  Position(file: position.H, rank: position.Four),
+  Position(file: position.A, rank: position.Three),
+  Position(file: position.B, rank: position.Three),
+  Position(file: position.C, rank: position.Three),
+  Position(file: position.D, rank: position.Three),
+  Position(file: position.E, rank: position.Three),
+  Position(file: position.F, rank: position.Three),
+  Position(file: position.G, rank: position.Three),
+  Position(file: position.H, rank: position.Three),
+  Position(file: position.A, rank: position.Two),
+  Position(file: position.B, rank: position.Two),
+  Position(file: position.C, rank: position.Two),
+  Position(file: position.D, rank: position.Two),
+  Position(file: position.E, rank: position.Two),
+  Position(file: position.F, rank: position.Two),
+  Position(file: position.G, rank: position.Two),
+  Position(file: position.H, rank: position.Two),
+  Position(file: position.A, rank: position.One),
+  Position(file: position.B, rank: position.One),
+  Position(file: position.C, rank: position.One),
+  Position(file: position.D, rank: position.One),
+  Position(file: position.E, rank: position.One),
+  Position(file: position.F, rank: position.One),
+  Position(file: position.G, rank: position.One),
+  Position(file: position.H, rank: position.One),
+]
 
 const list_of_positions_in_order = [
   Position(file: position.A, rank: position.One),
@@ -500,20 +568,25 @@ fn handle_print_board_from_fen(
   client: Subject(Nil),
   fen: String,
 ) -> actor.Next(Game) {
+  let result = fen.from_string(fen)
+  io.print(color.to_string(result.turn))
+  io.print("\n")
+  io.print(int.to_string(result.halfmove))
+  io.print("\n")
+  io.print(int.to_string(result.fullmove))
   let board_map = bitboard_repr_to_map_repr(game_state.board)
   io.print("\n")
-  io.print("     h   g   f   e   d   c   b   a")
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
   list.each(
-    list_of_positions_in_order,
+    reverse_list_of_positions_in_order,
     fn(pos) {
       let piece_to_print = result.unwrap(map.get(board_map, pos), None)
       case pos.file {
         position.A -> {
           io.print("\n")
           io.print(
-            " " <> int.to_string(position.rank_to_int(pos.rank) - 1) <> " | ",
+            " " <> int.to_string(position.rank_to_int(pos.rank) + 1) <> " | ",
           )
           io.print(case piece_to_print {
             Some(Piece(White, Pawn)) -> "♙"
@@ -577,6 +650,7 @@ fn handle_print_board_from_fen(
     },
   )
   io.print("\n")
+  io.print("     a   b   c   d   e   f   g   h\n")
 
   process.send(client, Nil)
   actor.Continue(game_state)
@@ -588,18 +662,17 @@ fn handle_print_board(
 ) -> actor.Next(Game) {
   let board_map = bitboard_repr_to_map_repr(game_state.board)
   io.print("\n")
-  io.print("     h   g   f   e   d   c   b   a")
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
   list.each(
-    list_of_positions_in_order,
+    reverse_list_of_positions_in_order,
     fn(pos) {
       let piece_to_print = result.unwrap(map.get(board_map, pos), None)
       case pos.file {
         position.A -> {
           io.print("\n")
           io.print(
-            " " <> int.to_string(position.rank_to_int(pos.rank) - 1) <> " | ",
+            " " <> int.to_string(position.rank_to_int(pos.rank) + 1) <> " | ",
           )
           io.print(case piece_to_print {
             Some(Piece(White, Pawn)) -> "♙"
@@ -663,6 +736,7 @@ fn handle_print_board(
     },
   )
   io.print("\n")
+  io.print("     a   b   c   d   e   f   g   h\n")
 
   process.send(client, Nil)
   actor.Continue(game_state)
@@ -671,62 +745,62 @@ fn handle_print_board(
 pub fn new_server() {
   let white_king_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
     )
 
   let white_queen_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
     )
 
   let white_rook_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001,
     )
 
   let white_bishop_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100,
     )
 
   let white_knight_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010,
     )
 
   let white_pawns_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
     )
 
   let black_king_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
+      bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let black_queen_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
+      bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let black_rook_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001,
+      bitboard: 0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let black_bishop_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100,
+      bitboard: 0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let black_knight_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010,
+      bitboard: 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let black_pawns_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
+      bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let board =

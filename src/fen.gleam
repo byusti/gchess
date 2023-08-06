@@ -3,8 +3,10 @@ import color.{Black, Color, White}
 import position.{File, Position, Rank}
 import gleam/string
 import gleam/list
+import gleam/int
 import gleam/option.{None, Option, Some}
 import bitboard.{Bitboard}
+import gleam/io
 
 pub type CastlingStatus {
   CastlingStatus(
@@ -36,7 +38,7 @@ pub type Fen {
   )
 }
 
-pub fn parse_fen(fen: String) -> Fen {
+pub fn from_string(fen: String) -> Fen {
   let fen_string_parts = string.split(fen, " ")
   case list.length(fen_string_parts) == 6 {
     False -> panic as "Invalid FEN string"
@@ -47,6 +49,7 @@ pub fn parse_fen(fen: String) -> Fen {
       let [en_passant_string, ..rest] = rest
       let [halfmove_string, ..rest] = rest
       let [fullmove_string, ..] = rest
+
       let parsed_board = parse_board(board_string)
       let parsed_turn = parse_turn(turn_string)
       let parsed_castling = parse_castling(castling_string)
@@ -69,11 +72,14 @@ pub fn parse_fen(fen: String) -> Fen {
   }
 }
 
+// This function parses the board part of the FEN string
 pub fn parse_board(board_string: String) -> BoardBB {
   // in the context of this function, rank means a an entire row of the board 
   // represented as a string of piece chars and numbers for empy spaces
   // example: "rnbqk1nr"
+
   let list_of_ranks_as_strings = string.split(board_string, "/")
+
   let accumulator =
     BoardBB(
       black_king_bitboard: Bitboard(0),
@@ -89,6 +95,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
       white_knight_bitboard: Bitboard(0),
       white_pawns_bitboard: Bitboard(0),
     )
+
   list.index_fold(
     list_of_ranks_as_strings,
     accumulator,
@@ -390,6 +397,9 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 white_knight_bitboard: acc.white_knight_bitboard,
                 white_pawns_bitboard: acc.white_pawns_bitboard,
               )
+            }
+            _ -> {
+              panic
             }
           }
         },

@@ -3,10 +3,8 @@ import color.{Black, Color, White}
 import position.{File, Position, Rank}
 import gleam/string
 import gleam/list
-import gleam/int
 import gleam/option.{None, Option, Some}
 import bitboard.{Bitboard}
-import gleam/io
 
 pub type CastlingStatus {
   CastlingStatus(
@@ -123,7 +121,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 black_bishop_bitboard: acc.black_bishop_bitboard,
                 black_knight_bitboard: acc.black_knight_bitboard,
                 black_pawns_bitboard: acc.black_pawns_bitboard,
-                white_king_bitboard: bitboard.and(
+                white_king_bitboard: bitboard.or(
                   acc.white_king_bitboard,
                   new_white_king_bitboard,
                 ),
@@ -148,7 +146,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 black_knight_bitboard: acc.black_knight_bitboard,
                 black_pawns_bitboard: acc.black_pawns_bitboard,
                 white_king_bitboard: acc.white_king_bitboard,
-                white_queen_bitboard: bitboard.and(
+                white_queen_bitboard: bitboard.or(
                   acc.white_queen_bitboard,
                   new_white_queen_bitboard,
                 ),
@@ -173,7 +171,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 black_pawns_bitboard: acc.black_pawns_bitboard,
                 white_king_bitboard: acc.white_king_bitboard,
                 white_queen_bitboard: acc.white_queen_bitboard,
-                white_rook_bitboard: bitboard.and(
+                white_rook_bitboard: bitboard.or(
                   acc.white_rook_bitboard,
                   new_white_rook_bitboard,
                 ),
@@ -198,7 +196,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 white_king_bitboard: acc.white_king_bitboard,
                 white_queen_bitboard: acc.white_queen_bitboard,
                 white_rook_bitboard: acc.white_rook_bitboard,
-                white_bishop_bitboard: bitboard.and(
+                white_bishop_bitboard: bitboard.or(
                   acc.white_bishop_bitboard,
                   new_white_bishop_bitboard,
                 ),
@@ -223,7 +221,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 white_queen_bitboard: acc.white_queen_bitboard,
                 white_rook_bitboard: acc.white_rook_bitboard,
                 white_bishop_bitboard: acc.white_bishop_bitboard,
-                white_knight_bitboard: bitboard.and(
+                white_knight_bitboard: bitboard.or(
                   acc.white_knight_bitboard,
                   new_white_knight_bitboard,
                 ),
@@ -248,7 +246,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 white_rook_bitboard: acc.white_rook_bitboard,
                 white_bishop_bitboard: acc.white_bishop_bitboard,
                 white_knight_bitboard: acc.white_knight_bitboard,
-                white_pawns_bitboard: bitboard.and(
+                white_pawns_bitboard: bitboard.or(
                   acc.white_pawns_bitboard,
                   new_white_pawn_bitboard,
                 ),
@@ -261,7 +259,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   rank: rank_index,
                 ))
               BoardBB(
-                black_king_bitboard: bitboard.and(
+                black_king_bitboard: bitboard.or(
                   acc.black_king_bitboard,
                   new_black_king_bitboard,
                 ),
@@ -286,7 +284,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 ))
               BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
-                black_queen_bitboard: bitboard.and(
+                black_queen_bitboard: bitboard.or(
                   acc.black_queen_bitboard,
                   new_black_queen_bitboard,
                 ),
@@ -311,7 +309,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
               BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
-                black_rook_bitboard: bitboard.and(
+                black_rook_bitboard: bitboard.or(
                   acc.black_rook_bitboard,
                   new_black_rook_bitboard,
                 ),
@@ -336,7 +334,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
-                black_bishop_bitboard: bitboard.and(
+                black_bishop_bitboard: bitboard.or(
                   acc.black_bishop_bitboard,
                   new_black_bishop_bitboard,
                 ),
@@ -361,7 +359,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
                 black_bishop_bitboard: acc.black_bishop_bitboard,
-                black_knight_bitboard: bitboard.and(
+                black_knight_bitboard: bitboard.or(
                   acc.black_knight_bitboard,
                   new_black_knight_bitboard,
                 ),
@@ -386,7 +384,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                 black_rook_bitboard: acc.black_rook_bitboard,
                 black_bishop_bitboard: acc.black_bishop_bitboard,
                 black_knight_bitboard: acc.black_knight_bitboard,
-                black_pawns_bitboard: bitboard.and(
+                black_pawns_bitboard: bitboard.or(
                   acc.black_pawns_bitboard,
                   new_black_pawns_bitboard,
                 ),

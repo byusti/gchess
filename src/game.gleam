@@ -12,7 +12,7 @@ import color.{Black, Color, White}
 import position.{Position}
 import board.{BoardMap}
 import boardbb.{BoardBB}
-import fen.{Fen}
+import fen
 
 pub type Turn {
   Turn(color: Color)
@@ -41,11 +41,11 @@ pub type Game {
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
   Shutdown
-  PrintBoardFromFen(reply_with: Subject(Nil), fen: String)
   PrintBoard(reply_with: Subject(Nil))
 }
 
-const reverse_list_of_positions_in_order = [
+// Hard coded list of all positions in traversal order
+const positions_in_traversal_order = [
   Position(file: position.A, rank: position.Eight),
   Position(file: position.B, rank: position.Eight),
   Position(file: position.C, rank: position.Eight),
@@ -110,73 +110,6 @@ const reverse_list_of_positions_in_order = [
   Position(file: position.F, rank: position.One),
   Position(file: position.G, rank: position.One),
   Position(file: position.H, rank: position.One),
-]
-
-const list_of_positions_in_order = [
-  Position(file: position.A, rank: position.One),
-  Position(file: position.B, rank: position.One),
-  Position(file: position.C, rank: position.One),
-  Position(file: position.D, rank: position.One),
-  Position(file: position.E, rank: position.One),
-  Position(file: position.F, rank: position.One),
-  Position(file: position.G, rank: position.One),
-  Position(file: position.H, rank: position.One),
-  Position(file: position.A, rank: position.Two),
-  Position(file: position.B, rank: position.Two),
-  Position(file: position.C, rank: position.Two),
-  Position(file: position.D, rank: position.Two),
-  Position(file: position.E, rank: position.Two),
-  Position(file: position.F, rank: position.Two),
-  Position(file: position.G, rank: position.Two),
-  Position(file: position.H, rank: position.Two),
-  Position(file: position.A, rank: position.Three),
-  Position(file: position.B, rank: position.Three),
-  Position(file: position.C, rank: position.Three),
-  Position(file: position.D, rank: position.Three),
-  Position(file: position.E, rank: position.Three),
-  Position(file: position.F, rank: position.Three),
-  Position(file: position.G, rank: position.Three),
-  Position(file: position.H, rank: position.Three),
-  Position(file: position.A, rank: position.Four),
-  Position(file: position.B, rank: position.Four),
-  Position(file: position.C, rank: position.Four),
-  Position(file: position.D, rank: position.Four),
-  Position(file: position.E, rank: position.Four),
-  Position(file: position.F, rank: position.Four),
-  Position(file: position.G, rank: position.Four),
-  Position(file: position.H, rank: position.Four),
-  Position(file: position.A, rank: position.Five),
-  Position(file: position.B, rank: position.Five),
-  Position(file: position.C, rank: position.Five),
-  Position(file: position.D, rank: position.Five),
-  Position(file: position.E, rank: position.Five),
-  Position(file: position.F, rank: position.Five),
-  Position(file: position.G, rank: position.Five),
-  Position(file: position.H, rank: position.Five),
-  Position(file: position.A, rank: position.Six),
-  Position(file: position.B, rank: position.Six),
-  Position(file: position.C, rank: position.Six),
-  Position(file: position.D, rank: position.Six),
-  Position(file: position.E, rank: position.Six),
-  Position(file: position.F, rank: position.Six),
-  Position(file: position.G, rank: position.Six),
-  Position(file: position.H, rank: position.Six),
-  Position(file: position.A, rank: position.Seven),
-  Position(file: position.B, rank: position.Seven),
-  Position(file: position.C, rank: position.Seven),
-  Position(file: position.D, rank: position.Seven),
-  Position(file: position.E, rank: position.Seven),
-  Position(file: position.F, rank: position.Seven),
-  Position(file: position.G, rank: position.Seven),
-  Position(file: position.H, rank: position.Seven),
-  Position(file: position.A, rank: position.Eight),
-  Position(file: position.B, rank: position.Eight),
-  Position(file: position.C, rank: position.Eight),
-  Position(file: position.D, rank: position.Eight),
-  Position(file: position.E, rank: position.Eight),
-  Position(file: position.F, rank: position.Eight),
-  Position(file: position.G, rank: position.Eight),
-  Position(file: position.H, rank: position.Eight),
 ]
 
 fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
@@ -184,8 +117,6 @@ fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
     AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game_state, client)
-    PrintBoardFromFen(client, fen) ->
-      handle_print_board_from_fen(game_state, client, fen)
   }
 }
 
@@ -563,23 +494,13 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
   board_map
 }
 
-fn handle_print_board_from_fen(
-  game_state: Game,
-  client: Subject(Nil),
-  fen: String,
-) -> actor.Next(Game) {
-  let result = fen.from_string(fen)
-  io.print(color.to_string(result.turn))
-  io.print("\n")
-  io.print(int.to_string(result.halfmove))
-  io.print("\n")
-  io.print(int.to_string(result.fullmove))
-  let board_map = bitboard_repr_to_map_repr(game_state.board)
-  io.print("\n")
+pub fn print_board_from_fen(fen: String) {
+  let parsed_fen = fen.from_string(fen)
+  let board_map = bitboard_repr_to_map_repr(parsed_fen.board)
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
   list.each(
-    reverse_list_of_positions_in_order,
+    positions_in_traversal_order,
     fn(pos) {
       let piece_to_print = result.unwrap(map.get(board_map, pos), None)
       case pos.file {
@@ -651,9 +572,6 @@ fn handle_print_board_from_fen(
   )
   io.print("\n")
   io.print("     a   b   c   d   e   f   g   h\n")
-
-  process.send(client, Nil)
-  actor.Continue(game_state)
 }
 
 fn handle_print_board(
@@ -665,7 +583,7 @@ fn handle_print_board(
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
   list.each(
-    reverse_list_of_positions_in_order,
+    positions_in_traversal_order,
     fn(pos) {
       let piece_to_print = result.unwrap(map.get(board_map, pos), None)
       case pos.file {

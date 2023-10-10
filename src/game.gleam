@@ -112,7 +112,10 @@ const positions_in_traversal_order = [
   Position(file: position.H, rank: position.One),
 ]
 
-fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
+fn handle_message(
+  message: Message,
+  game_state: Game,
+) -> actor.Next(Message, Game) {
   case message {
     AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
     Shutdown -> actor.Stop(process.Normal)
@@ -123,10 +126,10 @@ fn handle_message(message: Message, game_state: Game) -> actor.Next(Game) {
 fn handle_all_legal_moves(
   game_state: Game,
   client: Subject(List(Move)),
-) -> actor.Next(Game) {
+) -> actor.Next(Message, Game) {
   let legal_moves = generate_move_set(game_state, game_state.turn.color)
   process.send(client, legal_moves)
-  actor.Continue(game_state)
+  actor.continue(game_state)
 }
 
 const not_a_file = bitboard.Bitboard(
@@ -577,7 +580,7 @@ pub fn print_board_from_fen(fen: String) {
 fn handle_print_board(
   game_state: Game,
   client: Subject(Nil),
-) -> actor.Next(Game) {
+) -> actor.Next(Message, Game) {
   let board_map = bitboard_repr_to_map_repr(game_state.board)
   io.print("\n")
   io.print("\n")
@@ -657,7 +660,7 @@ fn handle_print_board(
   io.print("     a   b   c   d   e   f   g   h\n")
 
   process.send(client, Nil)
-  actor.Continue(game_state)
+  actor.continue(game_state)
 }
 
 pub fn new_server() {

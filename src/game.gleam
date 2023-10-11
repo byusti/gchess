@@ -6,12 +6,13 @@ import gleam/list
 import gleam/int
 import gleam/map
 import gleam/result
-import bitboard
+import bitboard.{Bitboard}
 import piece.{Bishop, King, Knight, Pawn, Piece, Queen, Rook}
 import color.{Black, Color, White}
 import position.{Position}
 import board.{BoardMap}
 import boardbb.{BoardBB}
+import move.{Move}
 import fen
 
 pub type Turn {
@@ -22,10 +23,6 @@ pub type Status {
   Checkmate
   Stalemate
   InProgress
-}
-
-pub type Move {
-  Move(from: Position, to: Position)
 }
 
 pub type Game {
@@ -127,7 +124,7 @@ fn handle_all_legal_moves(
   game_state: Game,
   client: Subject(List(Move)),
 ) -> actor.Next(Message, Game) {
-  let legal_moves = generate_move_set(game_state, game_state.turn.color)
+  let legal_moves = generate_move_list(game_state, game_state.turn.color)
   process.send(client, legal_moves)
   actor.continue(game_state)
 }
@@ -140,48 +137,36 @@ const not_h_file = bitboard.Bitboard(
   bitboard: 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110,
 )
 
-fn generate_move_set(game_state: Game, color: Color) -> List(Move) {
-  case color {
-    White -> {
-      let move_set = generate_pawn_move_set(color, game_state)
-    }
-    Black -> {
-      let move_set = generate_pawn_move_set(color, game_state)
-    }
-  }
-  todo
+fn generate_move_list(game_state: Game, color: Color) -> List(Move) {
+  generate_pawn_move_list(color, game_state)
 }
 
-fn generate_pawn_move_set(color: Color, game_state: Game) -> bitboard.Bitboard {
-  case color {
-    White -> {
-      let captures = generate_pawn_capture_set(color, game_state)
-      let moves_no_captures =
-        generate_pawn_non_capture_move_set(color, game_state)
+fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
+  let capture_list = generate_pawn_capture_move_list(color, game_state)
+  let moves_no_captures =
+    generate_pawn_non_capture_move_bitboard(color, game_state)
 
-      let move_set = bitboard.and(moves_no_captures, captures)
-      move_set
-    }
+  let non_capture_dest_list = bitboard.get_positions(moves_no_captures)
 
-    Black -> {
-      let captures = generate_pawn_capture_set(color, game_state)
-      let moves_no_captures =
-        generate_pawn_non_capture_move_set(color, game_state)
-
-      let move_set = bitboard.and(moves_no_captures, captures)
-      move_set
-    }
-  }
+  let non_capture_move_list =
+    list.map(
+      non_capture_dest_list,
+      fn(dest) -> Move {
+        let origin = position.get_rear_position(dest, color)
+        Move(from: origin, to: dest)
+      },
+    )
+  list.append(capture_list, non_capture_move_list)
 }
 
-fn generate_pawn_non_capture_move_set(
+fn generate_pawn_non_capture_move_bitboard(
   color: Color,
   game_state: Game,
 ) -> bitboard.Bitboard {
   case color {
     White -> {
       let white_pawn_target_squares =
-        bitboard.shift_right(game_state.board.white_pawns_bitboard, 8)
+        bitboard.shift_left(game_state.board.white_pawns_bitboard, 8)
       let list_of_enemy_piece_bitboards = [
         game_state.board.black_king_bitboard,
         game_state.board.black_queen_bitboard,
@@ -194,15 +179,16 @@ fn generate_pawn_non_capture_move_set(
         list.fold(
           list_of_enemy_piece_bitboards,
           bitboard.Bitboard(bitboard: 0),
-          fn(collector, next) { bitboard.and(collector, next) },
+          fn(collector, next) -> Bitboard { bitboard.or(collector, next) },
         )
-      let moves = bitboard.or(white_pawn_target_squares, enemy_pieces)
+      let moves = bitboard.exclusive_or(white_pawn_target_squares, enemy_pieces)
+      let moves = bitboard.and(moves, white_pawn_target_squares)
       moves
     }
 
     Black -> {
       let black_pawn_target_squares =
-        bitboard.shift_left(game_state.board.black_pawns_bitboard, 8)
+        bitboard.shift_right(game_state.board.black_pawns_bitboard, 8)
       let list_of_enemy_piece_bitboards = [
         game_state.board.white_king_bitboard,
         game_state.board.white_queen_bitboard,
@@ -215,59 +201,97 @@ fn generate_pawn_non_capture_move_set(
         list.fold(
           list_of_enemy_piece_bitboards,
           bitboard.Bitboard(bitboard: 0),
-          fn(collector, next) { bitboard.and(collector, next) },
+          fn(collector, next) { bitboard.or(collector, next) },
         )
-      let moves = bitboard.or(black_pawn_target_squares, enemy_pieces)
+      let moves = bitboard.exclusive_or(black_pawn_target_squares, enemy_pieces)
+      let moves = bitboard.and(moves, black_pawn_target_squares)
       moves
     }
   }
 }
 
-fn generate_pawn_capture_set(
-  color: Color,
-  game_state: Game,
-) -> bitboard.Bitboard {
-  case color {
-    White -> {
-      let white_pawn_attack_set =
-        generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
-      let list_of_enemy_piece_bitboards = [
-        game_state.board.black_king_bitboard,
-        game_state.board.black_queen_bitboard,
-        game_state.board.black_rook_bitboard,
-        game_state.board.black_bishop_bitboard,
-        game_state.board.black_knight_bitboard,
-        game_state.board.black_pawns_bitboard,
-      ]
-      let enemy_pieces =
-        list.fold(
-          list_of_enemy_piece_bitboards,
-          bitboard.Bitboard(bitboard: 0),
-          fn(collector, next) { bitboard.and(collector, next) },
-        )
-      let captures = bitboard.or(white_pawn_attack_set, enemy_pieces)
-    }
+fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move) {
+  let pawn_attack_set =
+    generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
+  let list_of_enemy_piece_bitboards = [
+    game_state.board.black_king_bitboard,
+    game_state.board.black_queen_bitboard,
+    game_state.board.black_rook_bitboard,
+    game_state.board.black_bishop_bitboard,
+    game_state.board.black_knight_bitboard,
+    game_state.board.black_pawns_bitboard,
+  ]
+  let enemy_pieces =
+    list.fold(
+      list_of_enemy_piece_bitboards,
+      bitboard.Bitboard(bitboard: 0),
+      fn(collector, next) { bitboard.and(collector, next) },
+    )
+  let pawn_capture_destination_set = bitboard.and(pawn_attack_set, enemy_pieces)
 
-    Black -> {
-      let black_pawn_attack_set =
-        generate_pawn_attack_set(game_state.board.black_pawns_bitboard, color)
-      let list_of_enemy_piece_bitboards = [
-        game_state.board.white_king_bitboard,
-        game_state.board.white_queen_bitboard,
-        game_state.board.white_rook_bitboard,
-        game_state.board.white_bishop_bitboard,
-        game_state.board.white_knight_bitboard,
-        game_state.board.white_pawns_bitboard,
-      ]
-      let enemy_pieces =
-        list.fold(
-          list_of_enemy_piece_bitboards,
-          bitboard.Bitboard(bitboard: 0),
-          fn(collector, next) { bitboard.and(collector, next) },
+  let [east_origins, west_origins] = case color {
+    White -> {
+      let east_origins =
+        bitboard.and(
+          bitboard.shift_right(pawn_capture_destination_set, 9),
+          not_a_file,
         )
-      let captures = bitboard.or(black_pawn_attack_set, enemy_pieces)
+      let west_origins =
+        bitboard.and(
+          bitboard.shift_right(pawn_capture_destination_set, 7),
+          not_h_file,
+        )
+      [east_origins, west_origins]
+    }
+    Black -> {
+      let east_origins =
+        bitboard.and(
+          bitboard.shift_left(pawn_capture_destination_set, 9),
+          not_a_file,
+        )
+      let west_origins =
+        bitboard.and(
+          bitboard.shift_left(pawn_capture_destination_set, 7),
+          not_h_file,
+        )
+      [east_origins, west_origins]
     }
   }
+
+  let pawn_capture_origin_set = bitboard.and(east_origins, west_origins)
+
+  let pawn_capture_origin_list = bitboard.get_positions(pawn_capture_origin_set)
+
+  let pawn_capture_destination_list =
+    bitboard.get_positions(pawn_capture_destination_set)
+
+  // we need to go through the list of origins and for each origin
+  // if one or both of its attack squares are in the destination list,
+  // then we combine the origin and dest into a move and add that move to the list of moves
+  let pawn_capture_move_list =
+    list.fold(
+      pawn_capture_origin_list,
+      [],
+      fn(collector, position) -> List(Move) {
+        let east_attack = position.get_position(position, 1, 1)
+        let west_attack = position.get_position(position, 1, -1)
+        let east_attack_in_dest_list =
+          list.contains(pawn_capture_destination_list, east_attack)
+        let west_attack_in_dest_list =
+          list.contains(pawn_capture_destination_list, west_attack)
+        let moves = case [east_attack_in_dest_list, west_attack_in_dest_list] {
+          [True, True] -> [
+            Move(from: position, to: east_attack),
+            Move(from: position, to: west_attack),
+          ]
+          [True, False] -> [Move(from: position, to: east_attack)]
+          [False, True] -> [Move(from: position, to: west_attack)]
+          [False, False] -> []
+        }
+        list.append(collector, moves)
+      },
+    )
+  pawn_capture_move_list
 }
 
 fn generate_pawn_attack_set(pawn_bitboard: bitboard.Bitboard, color: Color) {

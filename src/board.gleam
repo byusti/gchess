@@ -1,8 +1,8 @@
-import position.{Position}
-import piece.{Piece}
-import boardbb.{BoardBB}
+import position.{type Position}
+import piece.{type Piece}
+import boardbb.{type BoardBB}
 import fen.{parse_board}
-import gleam/option.{Option}
+import gleam/option.{type Option}
 import gleam/map
 import gleam/string
 import gleam/list

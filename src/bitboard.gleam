@@ -1,6 +1,6 @@
 import gleam/bitwise
-import position.{Position}
-import move.{Move}
+import position.{type Position}
+import move.{type Move}
 
 pub type Bitboard {
   Bitboard(bitboard: Int)
@@ -16,7 +16,7 @@ pub fn get_moves(bitboard: Bitboard, position: Position) -> List(Move) {
       case just_first_bit_of_bb.bitboard {
         0 -> get_moves_inner(shift_left(bitboard, 1), count - 1, position)
         _ -> [
-          Move(position, position.int_to_position(count)),
+          move.Move(position, position.int_to_position(count)),
           ..get_moves_inner(shift_left(bitboard, 1), count - 1, position)
         ]
       }
@@ -36,7 +36,7 @@ pub fn get_moves_inner(
       case just_first_bit_of_bb.bitboard {
         0 -> get_moves_inner(shift_left(bitboard, 1), count - 1, position)
         _ -> [
-          Move(position, position.int_to_position(count)),
+          move.Move(position, position.int_to_position(count)),
           ..get_moves_inner(shift_left(bitboard, 1), count - 1, position)
         ]
       }

@@ -1,4 +1,3 @@
-// import gleam/erlang/process
 import game
 import gleam/erlang/process
 import gleam/io

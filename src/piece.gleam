@@ -1,4 +1,4 @@
-import color.{Color}
+import color.{type Color}
 
 pub type Piece {
   Piece(color: Color, kind: Kind)

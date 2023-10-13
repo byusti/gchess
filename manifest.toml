@@ -11,6 +11,7 @@ packages = [
 
 [requirements]
 gleam_bitwise = { version = "~> 1.2" }
+gleam_erlang = { version = "~> 0.22" }
 gleam_otp = { version = "~> 0.6" }
 gleam_stdlib = { version = "~> 0.30" }
 gleeunit = { version = "~> 0.10" }

@@ -1,4 +1,4 @@
-import position.{Position}
+import position.{type Position}
 
 pub type Move {
   Move(from: Position, to: Position)

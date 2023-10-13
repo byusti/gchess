@@ -1,4 +1,4 @@
-import color.{Black, Color, White}
+import color.{type Color, Black, White}
 
 pub type Position {
   Position(file: File, rank: Rank)
@@ -24,6 +24,13 @@ pub type Rank {
   Six
   Seven
   Eight
+}
+
+pub fn distance_between(position1: Position, position2: Position) -> Int {
+  let pos1_as_int = to_int(position1)
+  let pos2_as_int = to_int(position2)
+  let distance = pos1_as_int - pos2_as_int
+  distance
 }
 
 pub fn to_int(position: Position) -> Int {

@@ -1,9 +1,9 @@
-import boardbb.{BoardBB}
-import color.{Black, Color, White}
-import position.{File, Position, Rank}
+import boardbb.{type BoardBB}
+import color.{type Color, Black, White}
+import position.{type File, type Rank, Position}
 import gleam/string
 import gleam/list
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 import bitboard.{Bitboard}
 
 pub type CastlingStatus {
@@ -79,7 +79,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
   let list_of_ranks_as_strings = string.split(board_string, "/")
 
   let accumulator =
-    BoardBB(
+    boardbb.BoardBB(
       black_king_bitboard: Bitboard(0),
       black_queen_bitboard: Bitboard(0),
       black_rook_bitboard: Bitboard(0),
@@ -114,7 +114,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -138,7 +138,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -162,7 +162,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -186,7 +186,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -210,7 +210,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -234,7 +234,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -258,7 +258,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: bitboard.or(
                   acc.black_king_bitboard,
                   new_black_king_bitboard,
@@ -282,7 +282,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: bitboard.or(
                   acc.black_queen_bitboard,
@@ -306,7 +306,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: bitboard.or(
@@ -330,7 +330,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -354,7 +354,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -378,7 +378,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
                   file: file_index,
                   rank: rank_index,
                 ))
-              BoardBB(
+              boardbb.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,

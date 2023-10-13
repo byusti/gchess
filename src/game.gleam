@@ -1,18 +1,18 @@
 import gleam/otp/actor
-import gleam/erlang/process.{Subject}
-import gleam/option.{None, Option, Some}
+import gleam/erlang/process.{type Subject}
+import gleam/option.{type Option, None, Some}
 import gleam/io
 import gleam/list
 import gleam/int
 import gleam/map
 import gleam/result
-import bitboard.{Bitboard}
-import piece.{Bishop, King, Knight, Pawn, Piece, Queen, Rook}
-import color.{Black, Color, White}
-import position.{Position}
-import board.{BoardMap}
-import boardbb.{BoardBB}
-import move.{Move}
+import bitboard.{type Bitboard}
+import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
+import color.{type Color, Black, White}
+import board.{type BoardMap}
+import boardbb.{type BoardBB}
+import move.{type Move}
+import position.{type Position}
 import fen
 
 pub type Status {
@@ -39,70 +39,70 @@ pub type Message {
 
 // Hard coded list of all positions in traversal order
 const positions_in_traversal_order = [
-  Position(file: position.A, rank: position.Eight),
-  Position(file: position.B, rank: position.Eight),
-  Position(file: position.C, rank: position.Eight),
-  Position(file: position.D, rank: position.Eight),
-  Position(file: position.E, rank: position.Eight),
-  Position(file: position.F, rank: position.Eight),
-  Position(file: position.G, rank: position.Eight),
-  Position(file: position.H, rank: position.Eight),
-  Position(file: position.A, rank: position.Seven),
-  Position(file: position.B, rank: position.Seven),
-  Position(file: position.C, rank: position.Seven),
-  Position(file: position.D, rank: position.Seven),
-  Position(file: position.E, rank: position.Seven),
-  Position(file: position.F, rank: position.Seven),
-  Position(file: position.G, rank: position.Seven),
-  Position(file: position.H, rank: position.Seven),
-  Position(file: position.A, rank: position.Six),
-  Position(file: position.B, rank: position.Six),
-  Position(file: position.C, rank: position.Six),
-  Position(file: position.D, rank: position.Six),
-  Position(file: position.E, rank: position.Six),
-  Position(file: position.F, rank: position.Six),
-  Position(file: position.G, rank: position.Six),
-  Position(file: position.H, rank: position.Six),
-  Position(file: position.A, rank: position.Five),
-  Position(file: position.B, rank: position.Five),
-  Position(file: position.C, rank: position.Five),
-  Position(file: position.D, rank: position.Five),
-  Position(file: position.E, rank: position.Five),
-  Position(file: position.F, rank: position.Five),
-  Position(file: position.G, rank: position.Five),
-  Position(file: position.H, rank: position.Five),
-  Position(file: position.A, rank: position.Four),
-  Position(file: position.B, rank: position.Four),
-  Position(file: position.C, rank: position.Four),
-  Position(file: position.D, rank: position.Four),
-  Position(file: position.E, rank: position.Four),
-  Position(file: position.F, rank: position.Four),
-  Position(file: position.G, rank: position.Four),
-  Position(file: position.H, rank: position.Four),
-  Position(file: position.A, rank: position.Three),
-  Position(file: position.B, rank: position.Three),
-  Position(file: position.C, rank: position.Three),
-  Position(file: position.D, rank: position.Three),
-  Position(file: position.E, rank: position.Three),
-  Position(file: position.F, rank: position.Three),
-  Position(file: position.G, rank: position.Three),
-  Position(file: position.H, rank: position.Three),
-  Position(file: position.A, rank: position.Two),
-  Position(file: position.B, rank: position.Two),
-  Position(file: position.C, rank: position.Two),
-  Position(file: position.D, rank: position.Two),
-  Position(file: position.E, rank: position.Two),
-  Position(file: position.F, rank: position.Two),
-  Position(file: position.G, rank: position.Two),
-  Position(file: position.H, rank: position.Two),
-  Position(file: position.A, rank: position.One),
-  Position(file: position.B, rank: position.One),
-  Position(file: position.C, rank: position.One),
-  Position(file: position.D, rank: position.One),
-  Position(file: position.E, rank: position.One),
-  Position(file: position.F, rank: position.One),
-  Position(file: position.G, rank: position.One),
-  Position(file: position.H, rank: position.One),
+  position.Position(file: position.A, rank: position.Eight),
+  position.Position(file: position.B, rank: position.Eight),
+  position.Position(file: position.C, rank: position.Eight),
+  position.Position(file: position.D, rank: position.Eight),
+  position.Position(file: position.E, rank: position.Eight),
+  position.Position(file: position.F, rank: position.Eight),
+  position.Position(file: position.G, rank: position.Eight),
+  position.Position(file: position.H, rank: position.Eight),
+  position.Position(file: position.A, rank: position.Seven),
+  position.Position(file: position.B, rank: position.Seven),
+  position.Position(file: position.C, rank: position.Seven),
+  position.Position(file: position.D, rank: position.Seven),
+  position.Position(file: position.E, rank: position.Seven),
+  position.Position(file: position.F, rank: position.Seven),
+  position.Position(file: position.G, rank: position.Seven),
+  position.Position(file: position.H, rank: position.Seven),
+  position.Position(file: position.A, rank: position.Six),
+  position.Position(file: position.B, rank: position.Six),
+  position.Position(file: position.C, rank: position.Six),
+  position.Position(file: position.D, rank: position.Six),
+  position.Position(file: position.E, rank: position.Six),
+  position.Position(file: position.F, rank: position.Six),
+  position.Position(file: position.G, rank: position.Six),
+  position.Position(file: position.H, rank: position.Six),
+  position.Position(file: position.A, rank: position.Five),
+  position.Position(file: position.B, rank: position.Five),
+  position.Position(file: position.C, rank: position.Five),
+  position.Position(file: position.D, rank: position.Five),
+  position.Position(file: position.E, rank: position.Five),
+  position.Position(file: position.F, rank: position.Five),
+  position.Position(file: position.G, rank: position.Five),
+  position.Position(file: position.H, rank: position.Five),
+  position.Position(file: position.A, rank: position.Four),
+  position.Position(file: position.B, rank: position.Four),
+  position.Position(file: position.C, rank: position.Four),
+  position.Position(file: position.D, rank: position.Four),
+  position.Position(file: position.E, rank: position.Four),
+  position.Position(file: position.F, rank: position.Four),
+  position.Position(file: position.G, rank: position.Four),
+  position.Position(file: position.H, rank: position.Four),
+  position.Position(file: position.A, rank: position.Three),
+  position.Position(file: position.B, rank: position.Three),
+  position.Position(file: position.C, rank: position.Three),
+  position.Position(file: position.D, rank: position.Three),
+  position.Position(file: position.E, rank: position.Three),
+  position.Position(file: position.F, rank: position.Three),
+  position.Position(file: position.G, rank: position.Three),
+  position.Position(file: position.H, rank: position.Three),
+  position.Position(file: position.A, rank: position.Two),
+  position.Position(file: position.B, rank: position.Two),
+  position.Position(file: position.C, rank: position.Two),
+  position.Position(file: position.D, rank: position.Two),
+  position.Position(file: position.E, rank: position.Two),
+  position.Position(file: position.F, rank: position.Two),
+  position.Position(file: position.G, rank: position.Two),
+  position.Position(file: position.H, rank: position.Two),
+  position.Position(file: position.A, rank: position.One),
+  position.Position(file: position.B, rank: position.One),
+  position.Position(file: position.C, rank: position.One),
+  position.Position(file: position.D, rank: position.One),
+  position.Position(file: position.E, rank: position.One),
+  position.Position(file: position.F, rank: position.One),
+  position.Position(file: position.G, rank: position.One),
+  position.Position(file: position.H, rank: position.One),
 ]
 
 fn handle_message(
@@ -239,7 +239,7 @@ fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
       let moves =
         list.map(
           knight_unblocked_target_squares,
-          fn(dest) -> Move { Move(from: origin, to: dest) },
+          fn(dest) -> Move { move.Move(from: origin, to: dest) },
         )
       list.append(collector, moves)
     },
@@ -258,7 +258,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
       non_capture_dest_list,
       fn(dest) -> Move {
         let origin = position.get_rear_position(dest, color)
-        Move(from: origin, to: dest)
+        move.Move(from: origin, to: dest)
       },
     )
   list.append(capture_list, non_capture_move_list)
@@ -386,11 +386,11 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
           list.contains(pawn_capture_destination_list, west_attack)
         let moves = case [east_attack_in_dest_list, west_attack_in_dest_list] {
           [True, True] -> [
-            Move(from: position, to: east_attack),
-            Move(from: position, to: west_attack),
+            move.Move(from: position, to: east_attack),
+            move.Move(from: position, to: west_attack),
           ]
-          [True, False] -> [Move(from: position, to: east_attack)]
-          [False, True] -> [Move(from: position, to: west_attack)]
+          [True, False] -> [move.Move(from: position, to: east_attack)]
+          [False, True] -> [move.Move(from: position, to: west_attack)]
           [False, False] -> []
         }
         list.append(collector, moves)
@@ -434,72 +434,72 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
   let black_knight_bitboard = board.black_knight_bitboard
   let black_pawns_bitboard = board.black_pawns_bitboard
 
-  let board_map: map.Map(Position, Option(Piece)) =
+  let board_map: map.Map(position.Position, Option(piece.Piece)) =
     map.from_list([
-      #(Position(file: position.A, rank: position.One), None),
-      #(Position(file: position.B, rank: position.One), None),
-      #(Position(file: position.C, rank: position.One), None),
-      #(Position(file: position.D, rank: position.One), None),
-      #(Position(file: position.E, rank: position.One), None),
-      #(Position(file: position.F, rank: position.One), None),
-      #(Position(file: position.G, rank: position.One), None),
-      #(Position(file: position.H, rank: position.One), None),
-      #(Position(file: position.A, rank: position.Two), None),
-      #(Position(file: position.B, rank: position.Two), None),
-      #(Position(file: position.C, rank: position.Two), None),
-      #(Position(file: position.D, rank: position.Two), None),
-      #(Position(file: position.E, rank: position.Two), None),
-      #(Position(file: position.F, rank: position.Two), None),
-      #(Position(file: position.G, rank: position.Two), None),
-      #(Position(file: position.H, rank: position.Two), None),
-      #(Position(file: position.A, rank: position.Three), None),
-      #(Position(file: position.B, rank: position.Three), None),
-      #(Position(file: position.C, rank: position.Three), None),
-      #(Position(file: position.D, rank: position.Three), None),
-      #(Position(file: position.E, rank: position.Three), None),
-      #(Position(file: position.F, rank: position.Three), None),
-      #(Position(file: position.G, rank: position.Three), None),
-      #(Position(file: position.H, rank: position.Three), None),
-      #(Position(file: position.A, rank: position.Four), None),
-      #(Position(file: position.B, rank: position.Four), None),
-      #(Position(file: position.C, rank: position.Four), None),
-      #(Position(file: position.D, rank: position.Four), None),
-      #(Position(file: position.E, rank: position.Four), None),
-      #(Position(file: position.F, rank: position.Four), None),
-      #(Position(file: position.G, rank: position.Four), None),
-      #(Position(file: position.H, rank: position.Four), None),
-      #(Position(file: position.A, rank: position.Five), None),
-      #(Position(file: position.B, rank: position.Five), None),
-      #(Position(file: position.C, rank: position.Five), None),
-      #(Position(file: position.D, rank: position.Five), None),
-      #(Position(file: position.E, rank: position.Five), None),
-      #(Position(file: position.F, rank: position.Five), None),
-      #(Position(file: position.G, rank: position.Five), None),
-      #(Position(file: position.H, rank: position.Five), None),
-      #(Position(file: position.A, rank: position.Six), None),
-      #(Position(file: position.B, rank: position.Six), None),
-      #(Position(file: position.C, rank: position.Six), None),
-      #(Position(file: position.D, rank: position.Six), None),
-      #(Position(file: position.E, rank: position.Six), None),
-      #(Position(file: position.F, rank: position.Six), None),
-      #(Position(file: position.G, rank: position.Six), None),
-      #(Position(file: position.H, rank: position.Six), None),
-      #(Position(file: position.A, rank: position.Seven), None),
-      #(Position(file: position.B, rank: position.Seven), None),
-      #(Position(file: position.C, rank: position.Seven), None),
-      #(Position(file: position.D, rank: position.Seven), None),
-      #(Position(file: position.E, rank: position.Seven), None),
-      #(Position(file: position.F, rank: position.Seven), None),
-      #(Position(file: position.G, rank: position.Seven), None),
-      #(Position(file: position.H, rank: position.Seven), None),
-      #(Position(file: position.A, rank: position.Eight), None),
-      #(Position(file: position.B, rank: position.Eight), None),
-      #(Position(file: position.C, rank: position.Eight), None),
-      #(Position(file: position.D, rank: position.Eight), None),
-      #(Position(file: position.E, rank: position.Eight), None),
-      #(Position(file: position.F, rank: position.Eight), None),
-      #(Position(file: position.G, rank: position.Eight), None),
-      #(Position(file: position.H, rank: position.Eight), None),
+      #(position.Position(file: position.A, rank: position.One), None),
+      #(position.Position(file: position.B, rank: position.One), None),
+      #(position.Position(file: position.C, rank: position.One), None),
+      #(position.Position(file: position.D, rank: position.One), None),
+      #(position.Position(file: position.E, rank: position.One), None),
+      #(position.Position(file: position.F, rank: position.One), None),
+      #(position.Position(file: position.G, rank: position.One), None),
+      #(position.Position(file: position.H, rank: position.One), None),
+      #(position.Position(file: position.A, rank: position.Two), None),
+      #(position.Position(file: position.B, rank: position.Two), None),
+      #(position.Position(file: position.C, rank: position.Two), None),
+      #(position.Position(file: position.D, rank: position.Two), None),
+      #(position.Position(file: position.E, rank: position.Two), None),
+      #(position.Position(file: position.F, rank: position.Two), None),
+      #(position.Position(file: position.G, rank: position.Two), None),
+      #(position.Position(file: position.H, rank: position.Two), None),
+      #(position.Position(file: position.A, rank: position.Three), None),
+      #(position.Position(file: position.B, rank: position.Three), None),
+      #(position.Position(file: position.C, rank: position.Three), None),
+      #(position.Position(file: position.D, rank: position.Three), None),
+      #(position.Position(file: position.E, rank: position.Three), None),
+      #(position.Position(file: position.F, rank: position.Three), None),
+      #(position.Position(file: position.G, rank: position.Three), None),
+      #(position.Position(file: position.H, rank: position.Three), None),
+      #(position.Position(file: position.A, rank: position.Four), None),
+      #(position.Position(file: position.B, rank: position.Four), None),
+      #(position.Position(file: position.C, rank: position.Four), None),
+      #(position.Position(file: position.D, rank: position.Four), None),
+      #(position.Position(file: position.E, rank: position.Four), None),
+      #(position.Position(file: position.F, rank: position.Four), None),
+      #(position.Position(file: position.G, rank: position.Four), None),
+      #(position.Position(file: position.H, rank: position.Four), None),
+      #(position.Position(file: position.A, rank: position.Five), None),
+      #(position.Position(file: position.B, rank: position.Five), None),
+      #(position.Position(file: position.C, rank: position.Five), None),
+      #(position.Position(file: position.D, rank: position.Five), None),
+      #(position.Position(file: position.E, rank: position.Five), None),
+      #(position.Position(file: position.F, rank: position.Five), None),
+      #(position.Position(file: position.G, rank: position.Five), None),
+      #(position.Position(file: position.H, rank: position.Five), None),
+      #(position.Position(file: position.A, rank: position.Six), None),
+      #(position.Position(file: position.B, rank: position.Six), None),
+      #(position.Position(file: position.C, rank: position.Six), None),
+      #(position.Position(file: position.D, rank: position.Six), None),
+      #(position.Position(file: position.E, rank: position.Six), None),
+      #(position.Position(file: position.F, rank: position.Six), None),
+      #(position.Position(file: position.G, rank: position.Six), None),
+      #(position.Position(file: position.H, rank: position.Six), None),
+      #(position.Position(file: position.A, rank: position.Seven), None),
+      #(position.Position(file: position.B, rank: position.Seven), None),
+      #(position.Position(file: position.C, rank: position.Seven), None),
+      #(position.Position(file: position.D, rank: position.Seven), None),
+      #(position.Position(file: position.E, rank: position.Seven), None),
+      #(position.Position(file: position.F, rank: position.Seven), None),
+      #(position.Position(file: position.G, rank: position.Seven), None),
+      #(position.Position(file: position.H, rank: position.Seven), None),
+      #(position.Position(file: position.A, rank: position.Eight), None),
+      #(position.Position(file: position.B, rank: position.Eight), None),
+      #(position.Position(file: position.C, rank: position.Eight), None),
+      #(position.Position(file: position.D, rank: position.Eight), None),
+      #(position.Position(file: position.E, rank: position.Eight), None),
+      #(position.Position(file: position.F, rank: position.Eight), None),
+      #(position.Position(file: position.G, rank: position.Eight), None),
+      #(position.Position(file: position.H, rank: position.Eight), None),
     ])
 
   let white_king_positions = bitboard.get_positions(white_king_bitboard)
@@ -520,7 +520,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       white_king_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(White, King)))
+        map.insert(board_map, position, Some(piece.Piece(White, King)))
       },
     )
 
@@ -529,7 +529,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       white_queen_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(White, Queen)))
+        map.insert(board_map, position, Some(piece.Piece(White, Queen)))
       },
     )
 
@@ -538,7 +538,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       white_rook_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(White, Rook)))
+        map.insert(board_map, position, Some(piece.Piece(White, Rook)))
       },
     )
 
@@ -547,7 +547,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       white_bishop_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(White, Bishop)))
+        map.insert(board_map, position, Some(piece.Piece(White, Bishop)))
       },
     )
 
@@ -556,7 +556,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       white_knight_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(White, Knight)))
+        map.insert(board_map, position, Some(piece.Piece(White, Knight)))
       },
     )
 
@@ -565,7 +565,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       white_pawns_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(White, Pawn)))
+        map.insert(board_map, position, Some(piece.Piece(White, Pawn)))
       },
     )
 
@@ -574,7 +574,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       black_king_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(Black, King)))
+        map.insert(board_map, position, Some(piece.Piece(Black, King)))
       },
     )
 
@@ -583,7 +583,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       black_queen_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(Black, Queen)))
+        map.insert(board_map, position, Some(piece.Piece(Black, Queen)))
       },
     )
 
@@ -592,7 +592,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       black_rook_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(Black, Rook)))
+        map.insert(board_map, position, Some(piece.Piece(Black, Rook)))
       },
     )
 
@@ -601,7 +601,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       black_bishop_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(Black, Bishop)))
+        map.insert(board_map, position, Some(piece.Piece(Black, Bishop)))
       },
     )
 
@@ -610,7 +610,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       black_knight_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(Black, Knight)))
+        map.insert(board_map, position, Some(piece.Piece(Black, Knight)))
       },
     )
 
@@ -619,7 +619,7 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       black_pawns_positions,
       board_map,
       fn(board_map, position) {
-        map.insert(board_map, position, Some(Piece(Black, Pawn)))
+        map.insert(board_map, position, Some(piece.Piece(Black, Pawn)))
       },
     )
 
@@ -642,18 +642,18 @@ pub fn print_board_from_fen(fen: String) {
             " " <> int.to_string(position.rank_to_int(pos.rank) + 1) <> " | ",
           )
           io.print(case piece_to_print {
-            Some(Piece(White, Pawn)) -> "♙"
-            Some(Piece(White, Knight)) -> "♘"
-            Some(Piece(White, Bishop)) -> "♗"
-            Some(Piece(White, Rook)) -> "♖"
-            Some(Piece(White, Queen)) -> "♕"
-            Some(Piece(White, King)) -> "♔"
-            Some(Piece(Black, Pawn)) -> "♟"
-            Some(Piece(Black, Knight)) -> "♞"
-            Some(Piece(Black, Bishop)) -> "♝"
-            Some(Piece(Black, Rook)) -> "♜"
-            Some(Piece(Black, Queen)) -> "♛"
-            Some(Piece(Black, King)) -> "♚"
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
             None -> " "
           })
           io.print(" | ")
@@ -661,18 +661,18 @@ pub fn print_board_from_fen(fen: String) {
 
         position.H -> {
           io.print(case piece_to_print {
-            Some(Piece(White, Pawn)) -> "♙"
-            Some(Piece(White, Knight)) -> "♘"
-            Some(Piece(White, Bishop)) -> "♗"
-            Some(Piece(White, Rook)) -> "♖"
-            Some(Piece(White, Queen)) -> "♕"
-            Some(Piece(White, King)) -> "♔"
-            Some(Piece(Black, Pawn)) -> "♟"
-            Some(Piece(Black, Knight)) -> "♞"
-            Some(Piece(Black, Bishop)) -> "♝"
-            Some(Piece(Black, Rook)) -> "♜"
-            Some(Piece(Black, Queen)) -> "♛"
-            Some(Piece(Black, King)) -> "♚"
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
             None -> " "
           })
 
@@ -683,18 +683,18 @@ pub fn print_board_from_fen(fen: String) {
 
         _ -> {
           io.print(case piece_to_print {
-            Some(Piece(White, Pawn)) -> "♙"
-            Some(Piece(White, Knight)) -> "♘"
-            Some(Piece(White, Bishop)) -> "♗"
-            Some(Piece(White, Rook)) -> "♖"
-            Some(Piece(White, Queen)) -> "♕"
-            Some(Piece(White, King)) -> "♔"
-            Some(Piece(Black, Pawn)) -> "♟"
-            Some(Piece(Black, Knight)) -> "♞"
-            Some(Piece(Black, Bishop)) -> "♝"
-            Some(Piece(Black, Rook)) -> "♜"
-            Some(Piece(Black, Queen)) -> "♛"
-            Some(Piece(Black, King)) -> "♚"
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
             None -> " "
           })
           io.print(" | ")
@@ -725,18 +725,18 @@ fn handle_print_board(
             " " <> int.to_string(position.rank_to_int(pos.rank) + 1) <> " | ",
           )
           io.print(case piece_to_print {
-            Some(Piece(White, Pawn)) -> "♙"
-            Some(Piece(White, Knight)) -> "♘"
-            Some(Piece(White, Bishop)) -> "♗"
-            Some(Piece(White, Rook)) -> "♖"
-            Some(Piece(White, Queen)) -> "♕"
-            Some(Piece(White, King)) -> "♔"
-            Some(Piece(Black, Pawn)) -> "♟"
-            Some(Piece(Black, Knight)) -> "♞"
-            Some(Piece(Black, Bishop)) -> "♝"
-            Some(Piece(Black, Rook)) -> "♜"
-            Some(Piece(Black, Queen)) -> "♛"
-            Some(Piece(Black, King)) -> "♚"
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
             None -> " "
           })
           io.print(" | ")
@@ -744,18 +744,18 @@ fn handle_print_board(
 
         position.H -> {
           io.print(case piece_to_print {
-            Some(Piece(White, Pawn)) -> "♙"
-            Some(Piece(White, Knight)) -> "♘"
-            Some(Piece(White, Bishop)) -> "♗"
-            Some(Piece(White, Rook)) -> "♖"
-            Some(Piece(White, Queen)) -> "♕"
-            Some(Piece(White, King)) -> "♔"
-            Some(Piece(Black, Pawn)) -> "♟"
-            Some(Piece(Black, Knight)) -> "♞"
-            Some(Piece(Black, Bishop)) -> "♝"
-            Some(Piece(Black, Rook)) -> "♜"
-            Some(Piece(Black, Queen)) -> "♛"
-            Some(Piece(Black, King)) -> "♚"
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
             None -> " "
           })
 
@@ -766,18 +766,18 @@ fn handle_print_board(
 
         _ -> {
           io.print(case piece_to_print {
-            Some(Piece(White, Pawn)) -> "♙"
-            Some(Piece(White, Knight)) -> "♘"
-            Some(Piece(White, Bishop)) -> "♗"
-            Some(Piece(White, Rook)) -> "♖"
-            Some(Piece(White, Queen)) -> "♕"
-            Some(Piece(White, King)) -> "♔"
-            Some(Piece(Black, Pawn)) -> "♟"
-            Some(Piece(Black, Knight)) -> "♞"
-            Some(Piece(Black, Bishop)) -> "♝"
-            Some(Piece(Black, Rook)) -> "♜"
-            Some(Piece(Black, Queen)) -> "♛"
-            Some(Piece(Black, King)) -> "♚"
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
             None -> " "
           })
           io.print(" | ")
@@ -880,7 +880,7 @@ pub fn new_game() {
     )
 
   let board =
-    BoardBB(
+    boardbb.BoardBB(
       black_king_bitboard: black_king_bitboard,
       black_queen_bitboard: black_queen_bitboard,
       black_rook_bitboard: black_rook_bitboard,

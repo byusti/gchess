@@ -221,7 +221,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
     list.fold(
       list_of_enemy_piece_bitboards,
       bitboard.Bitboard(bitboard: 0),
-      fn(collector, next) { bitboard.and(collector, next) },
+      fn(collector, next) { bitboard.or(collector, next) },
     )
   let pawn_capture_destination_set = bitboard.and(pawn_attack_set, enemy_pieces)
 
@@ -254,7 +254,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
     }
   }
 
-  let pawn_capture_origin_set = bitboard.and(east_origins, west_origins)
+  let pawn_capture_origin_set = bitboard.or(east_origins, west_origins)
 
   let pawn_capture_origin_list = bitboard.get_positions(pawn_capture_origin_set)
 
@@ -294,18 +294,18 @@ fn generate_pawn_attack_set(pawn_bitboard: bitboard.Bitboard, color: Color) {
   case color {
     White -> {
       let east_attack =
-        bitboard.and(bitboard.shift_right(pawn_bitboard, 9), not_a_file)
+        bitboard.and(bitboard.shift_left(pawn_bitboard, 9), not_a_file)
       let west_attack =
-        bitboard.and(bitboard.shift_right(pawn_bitboard, 7), not_h_file)
-      let all_attacks = bitboard.and(east_attack, west_attack)
+        bitboard.and(bitboard.shift_left(pawn_bitboard, 7), not_h_file)
+      let all_attacks = bitboard.or(east_attack, west_attack)
       all_attacks
     }
     Black -> {
       let east_attack =
-        bitboard.and(bitboard.shift_left(pawn_bitboard, 7), not_a_file)
+        bitboard.and(bitboard.shift_right(pawn_bitboard, 7), not_a_file)
       let west_attack =
-        bitboard.and(bitboard.shift_left(pawn_bitboard, 9), not_h_file)
-      let all_attacks = bitboard.and(east_attack, west_attack)
+        bitboard.and(bitboard.shift_right(pawn_bitboard, 9), not_h_file)
+      let all_attacks = bitboard.or(east_attack, west_attack)
       all_attacks
     }
   }

@@ -126,15 +126,124 @@ fn handle_all_legal_moves(
 }
 
 const not_a_file = bitboard.Bitboard(
-  bitboard: 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111,
-)
-
-const not_h_file = bitboard.Bitboard(
   bitboard: 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110,
 )
 
+const not_b_file = bitboard.Bitboard(
+  bitboard: 0b11111101_11111101_11111101_11111101_11111101_11111101_11111101_11111101,
+)
+
+const not_g_file = bitboard.Bitboard(
+  bitboard: 0b10111111_10111111_10111111_10111111_10111111_10111111_10111111_10111111,
+)
+
+const not_h_file = bitboard.Bitboard(
+  bitboard: 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111,
+)
+
 fn generate_move_list(game_state: Game, color: Color) -> List(Move) {
-  generate_pawn_move_list(color, game_state)
+  list.append(
+    generate_pawn_move_list(color, game_state),
+    generate_knight_move_list(color, game_state),
+  )
+}
+
+fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
+  let knight_bitboard = case color {
+    White -> game_state.board.white_knight_bitboard
+    Black -> game_state.board.black_knight_bitboard
+  }
+
+  let knight_origin_squares = bitboard.get_positions(knight_bitboard)
+
+  list.fold(
+    knight_origin_squares,
+    [],
+    fn(collector, origin) {
+      let knight_bitboard = bitboard.from_position(origin)
+      let north_target_squares =
+        bitboard.or(
+          bitboard.and(bitboard.shift_left(knight_bitboard, 17), not_a_file),
+          bitboard.and(bitboard.shift_left(knight_bitboard, 15), not_h_file),
+        )
+
+      let south_target_squares =
+        bitboard.or(
+          bitboard.and(bitboard.shift_right(knight_bitboard, 17), not_h_file),
+          bitboard.and(bitboard.shift_right(knight_bitboard, 15), not_a_file),
+        )
+
+      let west_target_squares =
+        bitboard.or(
+          bitboard.and(
+            bitboard.and(bitboard.shift_right(knight_bitboard, 10), not_h_file),
+            not_g_file,
+          ),
+          bitboard.and(
+            bitboard.and(bitboard.shift_left(knight_bitboard, 6), not_h_file),
+            not_g_file,
+          ),
+        )
+
+      let east_target_squares =
+        bitboard.or(
+          bitboard.and(
+            bitboard.and(bitboard.shift_right(knight_bitboard, 6), not_a_file),
+            not_b_file,
+          ),
+          bitboard.and(
+            bitboard.and(bitboard.shift_left(knight_bitboard, 10), not_a_file),
+            not_b_file,
+          ),
+        )
+
+      let knight_target_squares =
+        bitboard.or(
+          bitboard.or(north_target_squares, south_target_squares),
+          bitboard.or(west_target_squares, east_target_squares),
+        )
+
+      let list_of_friendly_piece_bitboards = case color {
+        White -> [
+          game_state.board.white_king_bitboard,
+          game_state.board.white_queen_bitboard,
+          game_state.board.white_rook_bitboard,
+          game_state.board.white_bishop_bitboard,
+          game_state.board.white_knight_bitboard,
+          game_state.board.white_pawns_bitboard,
+        ]
+        Black -> [
+          game_state.board.black_king_bitboard,
+          game_state.board.black_queen_bitboard,
+          game_state.board.black_rook_bitboard,
+          game_state.board.black_bishop_bitboard,
+          game_state.board.black_knight_bitboard,
+          game_state.board.black_pawns_bitboard,
+        ]
+      }
+
+      let friendly_pieces =
+        list.fold(
+          list_of_friendly_piece_bitboards,
+          bitboard.Bitboard(bitboard: 0),
+          fn(collector, next) -> Bitboard { bitboard.or(collector, next) },
+        )
+
+      //Get bitboard for target squares that are not occupied by friendly pieces
+      let knight_unblocked_target_square_bb =
+        bitboard.and(knight_target_squares, bitboard.not(friendly_pieces))
+
+      let knight_unblocked_target_squares =
+        bitboard.get_positions(knight_unblocked_target_square_bb)
+
+      let moves =
+        list.map(
+          knight_unblocked_target_squares,
+          fn(dest) -> Move { Move(from: origin, to: dest) },
+        )
+      list.append(collector, moves)
+    },
+  )
 }
 
 fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {

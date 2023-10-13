@@ -15,10 +15,6 @@ import boardbb.{BoardBB}
 import move.{Move}
 import fen
 
-pub type Turn {
-  Turn(color: Color)
-}
-
 pub type Status {
   Checkmate
   Stalemate
@@ -28,7 +24,7 @@ pub type Status {
 pub type Game {
   Game(
     board: BoardBB,
-    turn: Turn,
+    turn: Color,
     history: List(Move),
     status: Status,
     ply: Int,
@@ -124,7 +120,7 @@ fn handle_all_legal_moves(
   game_state: Game,
   client: Subject(List(Move)),
 ) -> actor.Next(Message, Game) {
-  let legal_moves = generate_move_list(game_state, game_state.turn.color)
+  let legal_moves = generate_move_list(game_state, game_state.turn)
   process.send(client, legal_moves)
   actor.continue(game_state)
 }
@@ -687,7 +683,33 @@ fn handle_print_board(
   actor.continue(game_state)
 }
 
-pub fn new_server() {
+pub fn new_game_from_fen(fen_string: String) {
+  let fen = fen.from_string(fen_string)
+
+  let status = InProgress
+
+  let ply = case fen.turn {
+    White -> {
+      { fen.fullmove - 1 } * 2
+    }
+    Black -> {
+      { fen.fullmove - 1 } * 2 + 1
+    }
+  }
+
+  let game_state =
+    Game(
+      board: fen.board,
+      turn: fen.turn,
+      history: [],
+      status: status,
+      ply: ply,
+    )
+  let assert Ok(actor) = actor.start(game_state, handle_message)
+  actor
+}
+
+pub fn new_game() {
   let white_king_bitboard =
     bitboard.Bitboard(
       bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
@@ -764,7 +786,7 @@ pub fn new_server() {
       white_pawns_bitboard: white_pawns_bitboard,
     )
 
-  let turn = Turn(White)
+  let turn = White
 
   let history = []
 

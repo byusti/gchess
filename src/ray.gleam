@@ -42,7 +42,7 @@ pub const a2_north_west = bitboard.Bitboard(
 )
 
 pub const b2_north_west = bitboard.Bitboard(
-  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000001_0000000_00000000,
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000001_00000000_00000000,
 )
 
 pub const c2_north_west = bitboard.Bitboard(

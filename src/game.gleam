@@ -37,8 +37,9 @@ pub type Message {
   PrintBoard(reply_with: Subject(Nil))
 }
 
-// Hard coded list of all positions in traversal order
-const positions_in_traversal_order = [
+// Hard coded list of all positions in the order they will be printed
+// Right now we only print the board from whites perspective
+const positions_in_printing_order = [
   position.Position(file: position.A, rank: position.Eight),
   position.Position(file: position.B, rank: position.Eight),
   position.Position(file: position.C, rank: position.Eight),
@@ -105,6 +106,22 @@ const positions_in_traversal_order = [
   position.Position(file: position.H, rank: position.One),
 ]
 
+const not_a_file = bitboard.Bitboard(
+  bitboard: 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110,
+)
+
+const not_b_file = bitboard.Bitboard(
+  bitboard: 0b11111101_11111101_11111101_11111101_11111101_11111101_11111101_11111101,
+)
+
+const not_g_file = bitboard.Bitboard(
+  bitboard: 0b10111111_10111111_10111111_10111111_10111111_10111111_10111111_10111111,
+)
+
+const not_h_file = bitboard.Bitboard(
+  bitboard: 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111,
+)
+
 fn handle_message(
   message: Message,
   game_state: Game,
@@ -125,27 +142,186 @@ fn handle_all_legal_moves(
   actor.continue(game_state)
 }
 
-const not_a_file = bitboard.Bitboard(
-  bitboard: 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110,
-)
-
-const not_b_file = bitboard.Bitboard(
-  bitboard: 0b11111101_11111101_11111101_11111101_11111101_11111101_11111101_11111101,
-)
-
-const not_g_file = bitboard.Bitboard(
-  bitboard: 0b10111111_10111111_10111111_10111111_10111111_10111111_10111111_10111111,
-)
-
-const not_h_file = bitboard.Bitboard(
-  bitboard: 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111,
-)
-
 fn generate_move_list(game_state: Game, color: Color) -> List(Move) {
-  list.append(
+  let list_of_move_lists = [
     generate_pawn_move_list(color, game_state),
     generate_knight_move_list(color, game_state),
+  ]
+  // generate_bishop_move_list(color, game_state),
+  list.fold(
+    list_of_move_lists,
+    [],
+    fn(collector, next) { list.append(collector, next) },
   )
+}
+
+//DIAGNOL MASKS
+// a1 - h1
+
+const diagonal_mask_a1 = 0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000000
+
+const diagonal_mask_b1 = 0b00000000_10000000_01000000_00100000_00010000_00001000_00000101_00000000
+
+const diagonal_mask_c1 = 0b00000000_00000000_10000000_01000000_00100000_00010001_00001010_00000000
+
+const diagonal_mask_d1 = 0b00000000_00000000_00000000_10000000_01000001_00100010_00010100_00000000
+
+const diagonal_mask_e1 = 0b00000000_00000000_00000000_00000001_10000010_01000100_00101000_00000000
+
+const diagonal_mask_f1 = 0b00000000_00000000_00000000_00000000_00000100_10001000_01010000_00000000
+
+const diagonal_mask_g1 = 0b00000000_00000000_00000000_00000000_00001000_00010000_10100000_00000000
+
+const diagonal_mask_h1 = 0b00000000_00000000_00000000_00000000_00010000_00100000_01000000_00000000
+
+// a2 - h2
+
+const diagonal_mask_a2 = 0b01000000_00100000_00010000_00001000_00000100_00000010_00000000_00000010
+
+const diagonal_mask_b2 = 0b10000000_01000000_00100000_00010000_00001000_00000101_00000000_00000101
+
+const diagonal_mask_c2 = 0b00000000_10000000_01000000_00100000_00010001_00001010_00000000_00001010
+
+const diagonal_mask_d2 = 0b00000000_00000000_10000000_01000001_00100010_00010100_00000000_00010100
+
+const diagonal_mask_e2 = 0b00000000_00000000_00000001_10000010_01000100_00101000_00000000_00101000
+
+const diagonal_mask_f2 = 0b00000000_00000000_00000000_00000100_10001000_01010000_00000000_01010000
+
+const diagonal_mask_g2 = 0b00000000_00000000_00000000_00001000_00010000_10100000_00000000_10100000
+
+const diagonal_mask_h2 = 0b00000000_00000000_00000000_00010000_00100000_01000000_00000000_01000000
+
+// a3 - h3
+
+const diagonal_mask_a3 = 0b00100000_00010000_00001000_00000100_00000010_00000000_00000010_00000100
+
+const diagonal_mask_b3 = 0b01000000_00100000_00010000_00001000_00000101_00000000_00000101_00001000
+
+const diagonal_mask_c3 = 0b10000000_01000000_00100000_00010001_00001010_00000000_00001010_00010001
+
+const diagonal_mask_d3 = 0b00000000_10000000_01000001_00100010_00010100_00000000_00010100_00100010
+
+const diagonal_mask_e3 = 0b00000000_00000001_10000010_01000100_00101000_00000000_00101000_01000100
+
+const diagonal_mask_f3 = 0b00000000_00000000_00000100_10001000_01010000_00000000_01010000_10001000
+
+const diagonal_mask_g3 = 0b00000000_00000000_00001000_00010000_10100000_00000000_10100000_00010000
+
+const diagonal_mask_h3 = 0b00000000_00000000_00010000_00100000_01000000_00000000_01000000_00100000
+
+// a4 - h4
+
+const diagonal_mask_a4 = 0b00010000_00001000_00000100_00000010_00000000_00000010_00000100_00001000
+
+const diagonal_mask_b4 = 0b00100000_00010000_00001000_00000101_00000000_00000101_00001000_00010000
+
+const diagonal_mask_c4 = 0b01000000_00100000_00010001_00001010_00000000_00001010_00010001_00100000
+
+const diagonal_mask_d4 = 0b10000000_01000001_00100010_00010100_00000000_00010100_00100010_01000001
+
+const diagonal_mask_e4 = 0b00000001_10000010_01000100_00101000_00000000_00101000_01000100_10000010
+
+const diagonal_mask_f4 = 0b00000000_00000100_10001000_01010000_00000000_01010000_10001000_00000100
+
+const diagonal_mask_g4 = 0b00000000_00001000_00010000_10100000_00000000_10100000_00010000_00001000
+
+const diagonal_mask_h4 = 0b00000000_00010000_00100000_01000000_00000000_01000000_00100000_00010000
+
+// a5 - h5
+
+const diagonal_mask_a5 = 0b00001000_00000100_00000010_00000000_00000010_00000100_00001000_00010000
+
+const diagonal_mask_b5 = 0b00010000_00001000_00000101_00000000_00000101_00001000_00010000_00100000
+
+const diagonal_mask_c5 = 0b00100000_00010001_00001010_00000000_00001010_00010001_00100000_01000000
+
+const diagonal_mask_d5 = 0b01000000_00100010_00010100_00000000_00010100_00100010_01000001_10000000
+
+const diagonal_mask_e5 = 0b10000001_01000100_00101000_00000000_00101000_01000100_10000010_00000000
+
+const diagonal_mask_f5 = 0b00000010_10001000_01010000_00000000_01010000_10001000_00000100_00000000
+
+const diagonal_mask_g5 = 0b00000100_00010000_10100000_00000000_10100000_00010000_00001000_00000000
+
+const diagonal_mask_h5 = 0b00001000_00100000_01000000_00000000_01000000_00100000_00010000_00000000
+
+// a6 - h6
+
+const diagonal_mask_a6 = 0b00000100_00000010_00000000_00000010_00000100_00001000_00010000_00100000
+
+const diagonal_mask_b6 = 0b00001000_00000101_00000000_00000101_00001000_00010000_00100000_01000000
+
+const diagonal_mask_c6 = 0b00010000_00001010_00000000_00001010_00010001_00100000_01000000_10000000
+
+const diagonal_mask_d6 = 0b00100000_00010100_00000000_00010100_00100010_01000001_10000000_00000000
+
+const diagonal_mask_e6 = 0b01000001_00101000_00000000_00101000_01000100_10000010_00000000_00000000
+
+const diagonal_mask_f6 = 0b10000010_01010000_00000000_01010000_10001000_00000100_00000000_00000000
+
+const diagonal_mask_g6 = 0b00000100_10100000_00000000_10100000_00010000_00001000_00000000_00000000
+
+const diagonal_mask_h6 = 0b00001000_01000000_00000000_01000000_00100000_00010000_00000000_00000000
+
+// a7 - h7
+
+const diagonal_mask_a7 = 0b00000010_00000000_00000010_00000100_00001000_00010000_00100000_01000000
+
+const diagonal_mask_b7 = 0b00000101_00000000_00000101_00001000_00010000_00100000_01000000_10000000
+
+const diagonal_mask_c7 = 0b00001010_00000000_00001010_00010001_00100000_01000000_10000000_00000000
+
+const diagonal_mask_d7 = 0b00010100_00000000_00010100_00100010_01000001_10000000_00000000_00000000
+
+const diagonal_mask_e7 = 0b00101000_00000000_00101000_01000100_10000010_00000000_00000000_00000000
+
+const diagonal_mask_f7 = 0b01010000_00000000_01010000_10001000_00000100_00000000_00000000_00000000
+
+const diagonal_mask_g7 = 0b10100000_00000000_10100000_00010000_00001000_00000000_00000000_00000000
+
+const diagonal_mask_h7 = 0b01000000_00000000_01000000_00100000_00010000_00000000_00000000_00000000
+
+// a8 - h8
+
+const diagonal_mask_a8 = 0b00000000_00000010_00000100_00001000_00010000_00100000_01000000_10000000
+
+const diagonal_mask_b8 = 0b00000000_00000101_00001000_00010000_00100000_01000000_10000000_00000000
+
+const diagonal_mask_c8 = 0b00000000_00001010_00010001_00100000_01000000_10000000_00000000_00000000
+
+const diagonal_mask_d8 = 0b00000000_00010100_00100010_01000001_10000000_00000000_00000000_00000000
+
+const diagonal_mask_e8 = 0b00000000_00101000_01000100_10000010_00000001_00000000_00000000_00000000
+
+const diagonal_mask_f8 = 0b00000000_01010000_10001000_00000100_00000010_00000001_00000000_00000000
+
+const diagonal_mask_g8 = 0b00000000_10100000_00010000_00001000_00000100_00000010_00000000_00000000
+
+const diagonal_mask_h8 = 0b00000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001
+
+fn generate_bishop_move_list(color: Color, game_state: Game) -> List(Move) {
+  let bishop_bitboard = case color {
+    White -> game_state.board.white_bishop_bitboard
+    Black -> game_state.board.black_bishop_bitboard
+  }
+
+  let bishop_origin_squares = bitboard.get_positions(bishop_bitboard)
+
+  list.fold(
+    bishop_origin_squares,
+    [],
+    fn(collector, bishop_origin_square) {
+      let bishop_bitboard = bitboard.from_position(bishop_origin_square)
+      let bishop_north_west_target_squares_bb = {
+        bitboard.shift_left(bishop_bitboard, 7)
+        todo
+      }
+      todo
+    },
+  )
+
+  todo
 }
 
 fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
@@ -154,6 +330,9 @@ fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
     Black -> game_state.board.black_knight_bitboard
   }
 
+  //TODO: there should be a faster way to do this that doesn't involve
+  //converting the bitboard to a list of positions and then back to a bitboard.
+  // applies to other pieces as well
   let knight_origin_squares = bitboard.get_positions(knight_bitboard)
 
   list.fold(
@@ -632,7 +811,7 @@ pub fn print_board_from_fen(fen: String) {
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
   list.each(
-    positions_in_traversal_order,
+    positions_in_printing_order,
     fn(pos) {
       let piece_to_print = result.unwrap(map.get(board_map, pos), None)
       case pos.file {
@@ -715,7 +894,7 @@ fn handle_print_board(
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
   list.each(
-    positions_in_traversal_order,
+    positions_in_printing_order,
     fn(pos) {
       let piece_to_print = result.unwrap(map.get(board_map, pos), None)
       case pos.file {

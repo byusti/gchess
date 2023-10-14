@@ -1,4 +1,7 @@
 import color.{type Color, Black, White}
+import gleam/io
+import gleam/int
+import gleam/option.{None, Option, Some}
 
 pub type Position {
   Position(file: File, rank: Rank)
@@ -99,10 +102,15 @@ pub fn rank_to_int(rank: Rank) -> Int {
   }
 }
 
-pub fn int_to_position(i: Int) -> Position {
-  let file = int_to_file(i % 8)
-  let rank = int_to_rank(i / 8)
-  Position(file, rank)
+pub fn from_int(i: Int) -> Option(Position) {
+  case i {
+    i if i >= 0 && i < 64 -> {
+      let file = int_to_file(i % 8)
+      let rank = int_to_rank(i / 8)
+      Some(Position(file, rank))
+    }
+    _ -> None
+  }
 }
 
 pub fn int_to_rank(i: Int) -> Rank {

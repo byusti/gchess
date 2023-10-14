@@ -1,275 +1,275 @@
 import bitboard.{type Bitboard}
 
-//DIAGNOL MASKS
+// NORTH WEST DIAGONAL MASKS
 // a1 - h1
 
-const a1_north_west = bitboard.Bitboard(
+pub const a1_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b1_north_west = bitboard.Bitboard(
+pub const b1_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000001_00000000,
 )
 
-const c1_north_west = bitboard.Bitboard(
+pub const c1_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000001_00000010_00000000,
 )
 
-const d1_north_west = bitboard.Bitboard(
+pub const d1_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000001_00000010_00000100_00000000,
 )
 
-const e1_north_west = bitboard.Bitboard(
+pub const e1_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000001_00000010_00000100_00001000_00000000,
 )
 
-const f1_north_west = bitboard.Bitboard(
+pub const f1_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000001_00000010_00000100_00001000_00010000_00000000,
 )
 
-const g1_north_west = bitboard.Bitboard(
+pub const g1_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000001_00000010_00000100_00001000_00010000_00100000_00000000,
 )
 
-const h1_north_west = bitboard.Bitboard(
+pub const h1_north_west = bitboard.Bitboard(
   bitboard: 0b00000001_00000010_00000100_00001000_00010000_00100000_01000000_00000000,
 )
 
 // a2 - h2
 
-const a2_north_west = bitboard.Bitboard(
+pub const a2_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b2_north_west = bitboard.Bitboard(
+pub const b2_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000001_0000000_00000000,
 )
 
-const c2_north_west = bitboard.Bitboard(
+pub const c2_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000001_00000010_00000000_00000000,
 )
 
-const d2_north_west = bitboard.Bitboard(
+pub const d2_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000001_00000010_00000100_00000000_00000000,
 )
 
-const e2_north_west = bitboard.Bitboard(
+pub const e2_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000001_00000010_00000100_00001000_00000000_00000000,
 )
 
-const f2_north_west = bitboard.Bitboard(
+pub const f2_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000001_00000010_00000100_00001000_00010000_00000000_00000000,
 )
 
-const g2_north_west = bitboard.Bitboard(
+pub const g2_north_west = bitboard.Bitboard(
   bitboard: 0b00000001_00000010_00000100_00001000_00010000_00100000_00000000_00000000,
 )
 
-const h2_north_west = bitboard.Bitboard(
+pub const h2_north_west = bitboard.Bitboard(
   bitboard: 0b00000010_00000100_00001000_00010000_00100000_01000000_00000000_00000000,
 )
 
 // a3 - h3
 
-const a3_north_west = bitboard.Bitboard(
+pub const a3_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b3_north_west = bitboard.Bitboard(
+pub const b3_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000001_00000000_00000000_00000000,
 )
 
-const c3_north_west = bitboard.Bitboard(
+pub const c3_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000001_00000010_00000000_00000000_00000000,
 )
 
-const d3_north_west = bitboard.Bitboard(
+pub const d3_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000001_00000010_00000100_00000000_00000000_00000000,
 )
 
-const e3_north_west = bitboard.Bitboard(
+pub const e3_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000001_00000010_00000100_00001000_00000000_00000000_00000000,
 )
 
-const f3_north_west = bitboard.Bitboard(
+pub const f3_north_west = bitboard.Bitboard(
   bitboard: 0b00000001_00000010_00000100_00001000_00010000_00000000_00000000_00000000,
 )
 
-const g3_north_west = bitboard.Bitboard(
+pub const g3_north_west = bitboard.Bitboard(
   bitboard: 0b00000010_00000100_00001000_00010000_00100000_00000000_00000000_00000000,
 )
 
-const h3_north_west = bitboard.Bitboard(
+pub const h3_north_west = bitboard.Bitboard(
   bitboard: 0b00000100_00001000_00010000_00100000_01000000_00000000_00000000_00000000,
 )
 
 // a4 - h4
 
-const a4_north_west = bitboard.Bitboard(
+pub const a4_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b4_north_west = bitboard.Bitboard(
+pub const b4_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
 )
 
-const c4_north_west = bitboard.Bitboard(
+pub const c4_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000001_00000010_00000000_00000000_00000000_00000000,
 )
 
-const d4_north_west = bitboard.Bitboard(
+pub const d4_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000001_00000010_00000100_00000000_00000000_00000000_00000000,
 )
 
-const e4_north_west = bitboard.Bitboard(
+pub const e4_north_west = bitboard.Bitboard(
   bitboard: 0b00000001_00000010_00000100_00001000_00000000_00000000_00000000_00000000,
 )
 
-const f4_north_west = bitboard.Bitboard(
+pub const f4_north_west = bitboard.Bitboard(
   bitboard: 0b00000010_00000100_00001000_00010000_00000000_00000000_00000000_00000000,
 )
 
-const g4_north_west = bitboard.Bitboard(
+pub const g4_north_west = bitboard.Bitboard(
   bitboard: 0b00000100_00001000_00010000_00100000_00000000_00000000_00000000_00000000,
 )
 
-const h4_north_west = bitboard.Bitboard(
+pub const h4_north_west = bitboard.Bitboard(
   bitboard: 0b00001000_00010000_00100000_01000000_00000000_00000000_00000000_00000000,
 )
 
 // a5 - h5
 
-const a5_north_west = bitboard.Bitboard(
+pub const a5_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b5_north_west = bitboard.Bitboard(
+pub const b5_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000001_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c5_north_west = bitboard.Bitboard(
+pub const c5_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000001_00000010_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d5_north_west = bitboard.Bitboard(
+pub const d5_north_west = bitboard.Bitboard(
   bitboard: 0b00000001_00000010_00000100_00000000_00000000_00000000_00000000_00000000,
 )
 
-const e5_north_west = bitboard.Bitboard(
+pub const e5_north_west = bitboard.Bitboard(
   bitboard: 0b00000010_00000100_00001000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f5_north_west = bitboard.Bitboard(
+pub const f5_north_west = bitboard.Bitboard(
   bitboard: 0b00000100_00001000_00010000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g5_north_west = bitboard.Bitboard(
+pub const g5_north_west = bitboard.Bitboard(
   bitboard: 0b00001000_00010000_00100000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h5_north_west = bitboard.Bitboard(
+pub const h5_north_west = bitboard.Bitboard(
   bitboard: 0b00010000_00100000_01000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a6 - h6
 
-const a6_north_west = bitboard.Bitboard(
+pub const a6_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b6_north_west = bitboard.Bitboard(
+pub const b6_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000001_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c6_north_west = bitboard.Bitboard(
+pub const c6_north_west = bitboard.Bitboard(
   bitboard: 0b00000001_00000010_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d6_north_west = bitboard.Bitboard(
+pub const d6_north_west = bitboard.Bitboard(
   bitboard: 0b00000010_00000100_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const e6_north_west = bitboard.Bitboard(
+pub const e6_north_west = bitboard.Bitboard(
   bitboard: 0b00000100_00001000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f6_north_west = bitboard.Bitboard(
+pub const f6_north_west = bitboard.Bitboard(
   bitboard: 0b00001000_00010000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g6_north_west = bitboard.Bitboard(
+pub const g6_north_west = bitboard.Bitboard(
   bitboard: 0b00010000_00100000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h6_north_west = bitboard.Bitboard(
+pub const h6_north_west = bitboard.Bitboard(
   bitboard: 0b00100000_01000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a7 - h7
 
-const a7_north_west = bitboard.Bitboard(
+pub const a7_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b7_north_west = bitboard.Bitboard(
+pub const b7_north_west = bitboard.Bitboard(
   bitboard: 0b00000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c7_north_west = bitboard.Bitboard(
+pub const c7_north_west = bitboard.Bitboard(
   bitboard: 0b00000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d7_north_west = bitboard.Bitboard(
+pub const d7_north_west = bitboard.Bitboard(
   bitboard: 0b00000100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const e7_north_west = bitboard.Bitboard(
+pub const e7_north_west = bitboard.Bitboard(
   bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f7_north_west = bitboard.Bitboard(
+pub const f7_north_west = bitboard.Bitboard(
   bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g7_north_west = bitboard.Bitboard(
+pub const g7_north_west = bitboard.Bitboard(
   bitboard: 0b00100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h7_north_west = bitboard.Bitboard(
+pub const h7_north_west = bitboard.Bitboard(
   bitboard: 0b01000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a8 - h8
 
-const a8_north_west = bitboard.Bitboard(
+pub const a8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b8_north_west = bitboard.Bitboard(
+pub const b8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c8_north_west = bitboard.Bitboard(
+pub const c8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d8_north_west = bitboard.Bitboard(
+pub const d8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000010_00000000,
 )
 
-const e8_north_west = bitboard.Bitboard(
+pub const e8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f8_north_west = bitboard.Bitboard(
+pub const f8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g8_north_west = bitboard.Bitboard(
+pub const g8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h8_north_west = bitboard.Bitboard(
+pub const h8_north_west = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
@@ -277,272 +277,818 @@ const h8_north_west = bitboard.Bitboard(
 
 // a1 - h1
 
-const a1_north_east = bitboard.Bitboard(
+pub const a1_north_east = bitboard.Bitboard(
   bitboard: 0b10000000_01000000_00100000_00010000_00001000_00000100_00000010_00000000,
 )
 
-const b1_north_east = bitboard.Bitboard(
+pub const b1_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_10000000_01000000_00100000_00010000_00001000_00000100_00000000,
 )
 
-const c1_north_east = bitboard.Bitboard(
+pub const c1_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_10000000_01000000_00100000_00010000_00001000_00000000,
 )
 
-const d1_north_east = bitboard.Bitboard(
+pub const d1_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_10000000_01000000_00100000_00010000_00000000,
 )
 
-const e1_north_east = bitboard.Bitboard(
+pub const e1_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_10000000_01000000_00100000_00000000,
 )
 
-const f1_north_east = bitboard.Bitboard(
+pub const f1_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_10000000_01000000_00000000,
 )
 
-const g1_north_east = bitboard.Bitboard(
+pub const g1_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_10000000_00000000,
 )
 
-const h1_north_east = bitboard.Bitboard(
+pub const h1_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000000,
 )
 
 // a2 - h2
 
-const a2_north_east = bitboard.Bitboard(
+pub const a2_north_east = bitboard.Bitboard(
   bitboard: 0b01000000_00100000_00010000_00001000_00000100_00000010_00000000_00000000,
 )
 
-const b2_north_east = bitboard.Bitboard(
+pub const b2_north_east = bitboard.Bitboard(
   bitboard: 0b10000000_01000000_00100000_00010000_00001000_00000100_00000000_00000000,
 )
 
-const c2_north_east = bitboard.Bitboard(
+pub const c2_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_10000000_01000000_00100000_00010000_00001000_00000000_00000000,
 )
 
-const d2_north_east = bitboard.Bitboard(
+pub const d2_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_10000000_01000000_00100000_00010000_00000000_00000000,
 )
 
-const e2_north_east = bitboard.Bitboard(
+pub const e2_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_10000000_01000000_00100000_00000000_00000000,
 )
 
-const f2_north_east = bitboard.Bitboard(
+pub const f2_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_10000000_01000000_00000000_00000000,
 )
 
-const g2_north_east = bitboard.Bitboard(
+pub const g2_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_10000000_00000000_00000000,
 )
 
-const h2_north_east = bitboard.Bitboard(
+pub const h2_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a3 - h3
 
-const a3_north_east = bitboard.Bitboard(
+pub const a3_north_east = bitboard.Bitboard(
   bitboard: 0b00100000_00010000_00001000_00000100_00000010_00000000_00000000_00000000,
 )
 
-const b3_north_east = bitboard.Bitboard(
+pub const b3_north_east = bitboard.Bitboard(
   bitboard: 0b01000000_00100000_00010000_00001000_00000100_00000000_00000000_00000000,
 )
 
-const c3_north_east = bitboard.Bitboard(
+pub const c3_north_east = bitboard.Bitboard(
   bitboard: 0b10000000_01000000_00100000_00010000_00001000_00000000_00000000_00000000,
 )
 
-const d3_north_east = bitboard.Bitboard(
+pub const d3_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_10000000_01000000_00100000_00010000_00000000_00000000_00000000,
 )
 
-const e3_north_east = bitboard.Bitboard(
+pub const e3_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_10000000_01000000_00100000_00000000_00000000_00000000,
 )
 
-const f3_north_east = bitboard.Bitboard(
+pub const f3_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_10000000_01000000_00000000_00000000_00000000,
 )
 
-const g3_north_east = bitboard.Bitboard(
+pub const g3_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_10000000_00000000_00000000_00000000,
 )
 
-const h3_north_east = bitboard.Bitboard(
+pub const h3_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a4 - h4
 
-const a4_north_east = bitboard.Bitboard(
+pub const a4_north_east = bitboard.Bitboard(
   bitboard: 0b00010000_00001000_00000100_00000010_00000000_00000000_00000000_00000000,
 )
 
-const b4_north_east = bitboard.Bitboard(
+pub const b4_north_east = bitboard.Bitboard(
   bitboard: 0b00100000_00010000_00001000_00000100_00000000_00000000_00000000_00000000,
 )
 
-const c4_north_east = bitboard.Bitboard(
+pub const c4_north_east = bitboard.Bitboard(
   bitboard: 0b01000000_00100000_00010000_00001000_00000000_00000000_00000000_00000000,
 )
 
-const d4_north_east = bitboard.Bitboard(
+pub const d4_north_east = bitboard.Bitboard(
   bitboard: 0b10000000_01000000_00100000_00010000_00000000_00000000_00000000_00000000,
 )
 
-const e4_north_east = bitboard.Bitboard(
+pub const e4_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_10000000_01000000_00100000_00000000_00000000_00000000_00000000,
 )
 
-const f4_north_east = bitboard.Bitboard(
+pub const f4_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_10000000_01000000_00000000_00000000_00000000_00000000,
 )
 
-const g4_north_east = bitboard.Bitboard(
+pub const g4_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_10000000_00000000_00000000_00000000_00000000,
 )
 
-const h4_north_east = bitboard.Bitboard(
+pub const h4_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a5 - h5
 
-const a5_north_east = bitboard.Bitboard(
+pub const a5_north_east = bitboard.Bitboard(
   bitboard: 0b00001000_00000100_00000010_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b5_north_east = bitboard.Bitboard(
+pub const b5_north_east = bitboard.Bitboard(
   bitboard: 0b00010000_00001000_00000100_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c5_north_east = bitboard.Bitboard(
+pub const c5_north_east = bitboard.Bitboard(
   bitboard: 0b00100000_00010000_00001000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d5_north_east = bitboard.Bitboard(
+pub const d5_north_east = bitboard.Bitboard(
   bitboard: 0b01000000_00100000_00010000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const e5_north_east = bitboard.Bitboard(
+pub const e5_north_east = bitboard.Bitboard(
   bitboard: 0b10000000_01000000_00100000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f5_north_east = bitboard.Bitboard(
+pub const f5_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_10000000_01000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g5_north_east = bitboard.Bitboard(
+pub const g5_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_10000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h5_north_east = bitboard.Bitboard(
+pub const h5_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a6 - h6
 
-const a6_north_east = bitboard.Bitboard(
+pub const a6_north_east = bitboard.Bitboard(
   bitboard: 0b00000100_00000010_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b6_north_east = bitboard.Bitboard(
+pub const b6_north_east = bitboard.Bitboard(
   bitboard: 0b00001000_00000100_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c6_north_east = bitboard.Bitboard(
+pub const c6_north_east = bitboard.Bitboard(
   bitboard: 0b00010000_00001000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d6_north_east = bitboard.Bitboard(
+pub const d6_north_east = bitboard.Bitboard(
   bitboard: 0b00100000_00010000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const e6_north_east = bitboard.Bitboard(
+pub const e6_north_east = bitboard.Bitboard(
   bitboard: 0b01000000_00100000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f6_north_east = bitboard.Bitboard(
+pub const f6_north_east = bitboard.Bitboard(
   bitboard: 0b10000000_01000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g6_north_east = bitboard.Bitboard(
+pub const g6_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_10000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h6_north_east = bitboard.Bitboard(
+pub const h6_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a7 - h7
 
-const a7_north_east = bitboard.Bitboard(
+pub const a7_north_east = bitboard.Bitboard(
   bitboard: 0b00000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b7_north_east = bitboard.Bitboard(
+pub const b7_north_east = bitboard.Bitboard(
   bitboard: 0b00000100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c7_north_east = bitboard.Bitboard(
+pub const c7_north_east = bitboard.Bitboard(
   bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d7_north_east = bitboard.Bitboard(
+pub const d7_north_east = bitboard.Bitboard(
   bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const e7_north_east = bitboard.Bitboard(
+pub const e7_north_east = bitboard.Bitboard(
   bitboard: 0b00100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f7_north_east = bitboard.Bitboard(
+pub const f7_north_east = bitboard.Bitboard(
   bitboard: 0b01000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g7_north_east = bitboard.Bitboard(
+pub const g7_north_east = bitboard.Bitboard(
   bitboard: 0b10000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h7_north_east = bitboard.Bitboard(
+pub const h7_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 // a8 - h8
 
-const a8_north_east = bitboard.Bitboard(
+pub const a8_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const b8_north_east = bitboard.Bitboard(
+pub const b8_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const c8_north_east = bitboard.Bitboard(
+pub const c8_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const d8_north_east = bitboard.Bitboard(
+pub const d8_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const e8_north_east = bitboard.Bitboard(
+pub const e8_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const f8_north_east = bitboard.Bitboard(
+pub const f8_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const g8_north_east = bitboard.Bitboard(
+pub const g8_north_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-const h8_north_east = bitboard.Bitboard(
+pub const h8_north_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// SOUTH WEST MASKS
+// a1 - h1
+pub const a1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const c1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const d1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const e1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const f1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const g1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const h1_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a2 - h2
+
+pub const a2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000001,
+)
+
+pub const c2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010,
+)
+
+pub const d2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000100,
+)
+
+pub const e2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
+)
+
+pub const f2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
+)
+
+pub const g2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100000,
+)
+
+pub const h2_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000000,
+)
+
+// a3 - h3
+
+pub const a3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000001_00000000,
+)
+
+pub const c3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000010_00000001,
+)
+
+pub const d3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000100_00000010,
+)
+
+pub const e3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00001000_00000100,
+)
+
+pub const f3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00010000_00001000,
+)
+
+pub const g3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00100000_00010000,
+)
+
+pub const h3_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_01000000_00100000,
+)
+
+// a4 - h4
+
+pub const a4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000001_00000000_00000000,
+)
+
+pub const c4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000010_00000001_00000000,
+)
+
+pub const d4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000100_00000010_00000001,
+)
+
+pub const e4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00001000_00000100_00000010,
+)
+
+pub const f4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00010000_00001000_00000100,
+)
+
+pub const g4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00100000_00010000_00001000,
+)
+
+pub const h4_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_01000000_00100000_00010000,
+)
+
+// a5 - h5
+
+pub const a5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000001_00000000_00000000_00000000,
+)
+
+pub const c5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000010_00000001_00000000_00000000,
+)
+
+pub const d5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000100_00000010_00000001_00000000,
+)
+
+pub const e5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00001000_00000100_00000010_00000001,
+)
+
+pub const f5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00010000_00001000_00000100_00000010,
+)
+
+pub const g5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00100000_00010000_00001000_00000100,
+)
+
+pub const h5_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_01000000_00100000_00010000_00001000,
+)
+
+// a6 - h6
+
+pub const a6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000001_00000000_00000000_00000000_00000000,
+)
+
+pub const c6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000010_00000001_00000000_00000000_00000000,
+)
+
+pub const d6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000100_00000010_00000001_00000000_00000000,
+)
+
+pub const e6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00001000_00000100_00000010_00000001_00000000,
+)
+
+pub const f6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00010000_00001000_00000100_00000010_00000001,
+)
+
+pub const g6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00100000_00010000_00001000_00000100_00000010,
+)
+
+pub const h6_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_01000000_00100000_00010000_00001000_00000100,
+)
+
+// a7 - h7
+
+pub const a7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000001_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const c7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000010_00000001_00000000_00000000_00000000_00000000,
+)
+
+pub const d7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000100_00000010_00000001_00000000_00000000_00000000,
+)
+
+pub const e7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00001000_00000100_00000010_00000001_00000000_00000000,
+)
+
+pub const f7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00010000_00001000_00000100_00000010_00000001_00000000,
+)
+
+pub const g7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00100000_00010000_00001000_00000100_00000010_00000001,
+)
+
+pub const h7_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_01000000_00100000_00010000_00001000_00000100_00000010,
+)
+
+// a8 - h8
+
+pub const a8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000001_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const c8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000010_00000001_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const d8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00000100_00000010_00000001_00000000_00000000_00000000_00000000,
+)
+
+pub const e8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00001000_00000100_00000010_00000001_00000000_00000000_00000000,
+)
+
+pub const f8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00010000_00001000_00000100_00000010_00000001_00000000_00000000,
+)
+
+pub const g8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_00100000_00010000_00001000_00000100_00000010_00000001_00000000,
+)
+
+pub const h8_south_west = bitboard.Bitboard(
+  bitboard: 0b00000000_01000000_00100000_00010000_00001000_00000100_00000010_00000001,
+)
+
+// SOUTH EAST MASKS
+
+// a1 - h1
+
+pub const a1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const b1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const c1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const d1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const e1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const f1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const g1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const h1_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a2 - h2
+
+pub const a2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000010,
+)
+
+pub const b2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000100,
+)
+
+pub const c2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
+)
+
+pub const d2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
+)
+
+pub const e2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100000,
+)
+
+pub const f2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000000,
+)
+
+pub const g2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000000,
+)
+
+pub const h2_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a3 - h3
+
+pub const a3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000010_00000100,
+)
+
+pub const b3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000100_00001000,
+)
+
+pub const c3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00001000_00010000,
+)
+
+pub const d3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00010000_00100000,
+)
+
+pub const e3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00100000_01000000,
+)
+
+pub const f3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_01000000_10000000,
+)
+
+pub const g3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_10000000_00000000,
+)
+
+pub const h3_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a4 - h4
+
+pub const a4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000010_00000100_00001000,
+)
+
+pub const b4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000100_00001000_00010000,
+)
+
+pub const c4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00001000_00010000_00100000,
+)
+
+pub const d4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00010000_00100000_01000000,
+)
+
+pub const e4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00100000_01000000_10000000,
+)
+
+pub const f4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_01000000_10000000_00000000,
+)
+
+pub const g4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_10000000_00000000_00000000,
+)
+
+pub const h4_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a5 - h5
+
+pub const a5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000010_00000100_00001000_00010000,
+)
+
+pub const b5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000100_00001000_00010000_00100000,
+)
+
+pub const c5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00001000_00010000_00100000_01000000,
+)
+
+pub const d5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00010000_00100000_01000000_10000000,
+)
+
+pub const e5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00100000_01000000_10000000_00000000,
+)
+
+pub const f5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_01000000_10000000_00000000_00000000,
+)
+
+pub const g5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_10000000_00000000_00000000_00000000,
+)
+
+pub const h5_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a6 - h6
+
+pub const a6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000010_00000100_00001000_00010000_00100000,
+)
+
+pub const b6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000100_00001000_00010000_00100000_01000000,
+)
+
+pub const c6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00001000_00010000_00100000_01000000_10000000,
+)
+
+pub const d6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00010000_00100000_01000000_10000000_00000000,
+)
+
+pub const e6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00100000_01000000_10000000_00000000_00000000,
+)
+
+pub const f6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_01000000_10000000_00000000_00000000_00000000,
+)
+
+pub const g6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_10000000_00000000_00000000_00000000_00000000,
+)
+
+pub const h6_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a7 - h7
+
+pub const a7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000010_00000100_00001000_00010000_00100000_01000000,
+)
+
+pub const b7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000100_00001000_00010000_00100000_01000000_10000000,
+)
+
+pub const c7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00001000_00010000_00100000_01000000_10000000_00000000,
+)
+
+pub const d7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00010000_00100000_01000000_10000000_00000000_00000000,
+)
+
+pub const e7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00100000_01000000_10000000_00000000_00000000_00000000,
+)
+
+pub const f7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_01000000_10000000_00000000_00000000_00000000_00000000,
+)
+
+pub const g7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_10000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const h7_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+// a8 - h8
+
+pub const a8_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000010_00000100_00001000_00010000_00100000_01000000_10000000,
+)
+
+pub const b8_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00000100_00001000_00010000_00100000_01000000_10000000_00000000,
+)
+
+pub const c8_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00001000_00010000_00100000_01000000_10000000_00000000_00000000,
+)
+
+pub const d8_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00010000_00100000_01000000_10000000_00000000_00000000_00000000,
+)
+
+pub const e8_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_00100000_01000000_10000000_00000000_00000000_00000000_00000000,
+)
+
+pub const f8_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_01000000_10000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const g8_south_east = bitboard.Bitboard(
+  bitboard: 0b00000000_10000000_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+pub const h8_south_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )

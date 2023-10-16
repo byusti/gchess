@@ -7,7 +7,7 @@ import move
 pub fn main() {
   let game_actor =
     game.new_game_from_fen(
-      "rnbqkbnr/pppppppp/8/P7/8/R4PR1/1PPPP1PP/1NBQKBN1 w kq - 0 1",
+      "rnbqkbnr/pppppppp/8/8/3Q4/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1",
     )
   process.call(game_actor, game.PrintBoard, 100)
   let assert list_of_moves = process.call(game_actor, game.AllLegalMoves, 100)

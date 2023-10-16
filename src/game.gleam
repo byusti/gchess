@@ -153,7 +153,9 @@ fn generate_move_list(game_state: Game, color: Color) -> List(Move) {
     generate_bishop_move_list(color, game_state),
     generate_rook_move_list(color, game_state),
     generate_queen_move_list(color, game_state),
+    generate_king_move_list(color, game_state),
   ]
+
   list.fold(
     list_of_move_lists,
     [],
@@ -770,6 +772,96 @@ fn occupied_squares_black(board: BoardBB) -> Bitboard {
   )
 }
 
+fn generate_king_move_list(color: Color, game_state: Game) -> List(Move) {
+  let king_bitboard = case color {
+    White -> game_state.board.white_king_bitboard
+    Black -> game_state.board.black_king_bitboard
+  }
+
+  let king_origin_squares = bitboard.get_positions(king_bitboard)
+
+  list.fold(
+    king_origin_squares,
+    [],
+    fn(collector, origin) {
+      let king_bitboard = bitboard.from_position(origin)
+      let north_west_north_east_target_squares =
+        bitboard.or(
+          bitboard.and(bitboard.shift_left(king_bitboard, 9), not_a_file),
+          bitboard.and(bitboard.shift_left(king_bitboard, 7), not_h_file),
+        )
+
+      let south_west_south_east_target_squares =
+        bitboard.or(
+          bitboard.and(bitboard.shift_right(king_bitboard, 9), not_h_file),
+          bitboard.and(bitboard.shift_right(king_bitboard, 7), not_a_file),
+        )
+
+      let west_east_target_squares =
+        bitboard.or(
+          bitboard.and(bitboard.shift_left(king_bitboard, 1), not_a_file),
+          bitboard.and(bitboard.shift_right(king_bitboard, 1), not_h_file),
+        )
+
+      let north_south_target_squares =
+        bitboard.or(
+          bitboard.shift_left(king_bitboard, 8),
+          bitboard.shift_right(king_bitboard, 8),
+        )
+
+      let king_target_squares =
+        bitboard.or(
+          bitboard.or(
+            north_west_north_east_target_squares,
+            south_west_south_east_target_squares,
+          ),
+          bitboard.or(west_east_target_squares, north_south_target_squares),
+        )
+
+      let list_of_friendly_piece_bitboards = case color {
+        White -> [
+          game_state.board.white_king_bitboard,
+          game_state.board.white_queen_bitboard,
+          game_state.board.white_rook_bitboard,
+          game_state.board.white_bishop_bitboard,
+          game_state.board.white_knight_bitboard,
+          game_state.board.white_pawns_bitboard,
+        ]
+        Black -> [
+          game_state.board.black_king_bitboard,
+          game_state.board.black_queen_bitboard,
+          game_state.board.black_rook_bitboard,
+          game_state.board.black_bishop_bitboard,
+          game_state.board.black_knight_bitboard,
+          game_state.board.black_pawns_bitboard,
+        ]
+      }
+
+      let friendly_pieces =
+        list.fold(
+          list_of_friendly_piece_bitboards,
+          bitboard.Bitboard(bitboard: 0),
+          fn(collector, next) -> Bitboard { bitboard.or(collector, next) },
+        )
+
+      //Get bitboard for target squares that are not occupied by friendly pieces
+      let king_unblocked_target_square_bb =
+        bitboard.and(king_target_squares, bitboard.not(friendly_pieces))
+
+      let knight_unblocked_target_squares =
+        bitboard.get_positions(king_unblocked_target_square_bb)
+
+      let moves =
+        list.map(
+          knight_unblocked_target_squares,
+          fn(dest) -> Move { move.Move(from: origin, to: dest) },
+        )
+      list.append(collector, moves)
+    },
+  )
+}
+
+//TODO still broken...
 fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
   let queen_bitboard = case color {
     White -> game_state.board.white_queen_bitboard
@@ -1366,9 +1458,6 @@ fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
     Black -> game_state.board.black_knight_bitboard
   }
 
-  //TODO: there should be a faster way to do this that doesn't involve
-  //converting the bitboard to a list of positions and then back to a bitboard.
-  // applies to other pieces as well
   let knight_origin_squares = bitboard.get_positions(knight_bitboard)
 
   list.fold(
@@ -1495,6 +1584,9 @@ fn generate_pawn_non_capture_move_bitboard(
         game_state.board.black_knight_bitboard,
         game_state.board.black_pawns_bitboard,
       ]
+
+      let occupied_squares_white = occupied_squares_white(game_state.board)
+
       let enemy_pieces =
         list.fold(
           list_of_enemy_piece_bitboards,
@@ -1503,6 +1595,7 @@ fn generate_pawn_non_capture_move_bitboard(
         )
       let moves = bitboard.exclusive_or(white_pawn_target_squares, enemy_pieces)
       let moves = bitboard.and(moves, white_pawn_target_squares)
+      let moves = bitboard.and(moves, bitboard.not(occupied_squares_white))
       moves
     }
 
@@ -1517,6 +1610,9 @@ fn generate_pawn_non_capture_move_bitboard(
         game_state.board.white_knight_bitboard,
         game_state.board.white_pawns_bitboard,
       ]
+
+      let occupied_squares_black = occupied_squares_black(game_state.board)
+
       let enemy_pieces =
         list.fold(
           list_of_enemy_piece_bitboards,
@@ -1525,6 +1621,7 @@ fn generate_pawn_non_capture_move_bitboard(
         )
       let moves = bitboard.exclusive_or(black_pawn_target_squares, enemy_pieces)
       let moves = bitboard.and(moves, black_pawn_target_squares)
+      let moves = bitboard.and(moves, bitboard.not(occupied_squares_black))
       moves
     }
   }

@@ -148,16 +148,292 @@ fn handle_all_legal_moves(
 
 fn generate_move_list(game_state: Game, color: Color) -> List(Move) {
   let list_of_move_lists = [
-    generate_pawn_move_list(color, game_state),
-    generate_knight_move_list(color, game_state),
-    generate_bishop_move_list(color, game_state),
+    // generate_pawn_move_list(color, game_state),
+    // generate_knight_move_list(color, game_state),
+    // generate_bishop_move_list(color, game_state),
+    generate_rook_move_list(color, game_state),
   ]
-  // generate_bishop_move_list(color, game_state),
   list.fold(
     list_of_move_lists,
     [],
     fn(collector, next) { list.append(collector, next) },
   )
+}
+
+fn look_up_east_ray_bb(origin_square: Position) -> Bitboard {
+  case origin_square {
+    position.Position(file: A, rank: One) -> ray.a1_east
+    position.Position(file: A, rank: Two) -> ray.a2_east
+    position.Position(file: A, rank: Three) -> ray.a3_east
+    position.Position(file: A, rank: Four) -> ray.a4_east
+    position.Position(file: A, rank: Five) -> ray.a5_east
+    position.Position(file: A, rank: Six) -> ray.a6_east
+    position.Position(file: A, rank: Seven) -> ray.a7_east
+    position.Position(file: A, rank: Eight) -> ray.a8_east
+    position.Position(file: B, rank: One) -> ray.b1_east
+    position.Position(file: B, rank: Two) -> ray.b2_east
+    position.Position(file: B, rank: Three) -> ray.b3_east
+    position.Position(file: B, rank: Four) -> ray.b4_east
+    position.Position(file: B, rank: Five) -> ray.b5_east
+    position.Position(file: B, rank: Six) -> ray.b6_east
+    position.Position(file: B, rank: Seven) -> ray.b7_east
+    position.Position(file: B, rank: Eight) -> ray.b8_east
+    position.Position(file: C, rank: One) -> ray.c1_east
+    position.Position(file: C, rank: Two) -> ray.c2_east
+    position.Position(file: C, rank: Three) -> ray.c3_east
+    position.Position(file: C, rank: Four) -> ray.c4_east
+    position.Position(file: C, rank: Five) -> ray.c5_east
+    position.Position(file: C, rank: Six) -> ray.c6_east
+    position.Position(file: C, rank: Seven) -> ray.c7_east
+    position.Position(file: C, rank: Eight) -> ray.c8_east
+    position.Position(file: D, rank: One) -> ray.d1_east
+    position.Position(file: D, rank: Two) -> ray.d2_east
+    position.Position(file: D, rank: Three) -> ray.d3_east
+    position.Position(file: D, rank: Four) -> ray.d4_east
+    position.Position(file: D, rank: Five) -> ray.d5_east
+    position.Position(file: D, rank: Six) -> ray.d6_east
+    position.Position(file: D, rank: Seven) -> ray.d7_east
+    position.Position(file: D, rank: Eight) -> ray.d8_east
+    position.Position(file: E, rank: One) -> ray.e1_east
+    position.Position(file: E, rank: Two) -> ray.e2_east
+    position.Position(file: E, rank: Three) -> ray.e3_east
+    position.Position(file: E, rank: Four) -> ray.e4_east
+    position.Position(file: E, rank: Five) -> ray.e5_east
+    position.Position(file: E, rank: Six) -> ray.e6_east
+    position.Position(file: E, rank: Seven) -> ray.e7_east
+    position.Position(file: E, rank: Eight) -> ray.e8_east
+    position.Position(file: F, rank: One) -> ray.f1_east
+    position.Position(file: F, rank: Two) -> ray.f2_east
+    position.Position(file: F, rank: Three) -> ray.f3_east
+    position.Position(file: F, rank: Four) -> ray.f4_east
+    position.Position(file: F, rank: Five) -> ray.f5_east
+    position.Position(file: F, rank: Six) -> ray.f6_east
+    position.Position(file: F, rank: Seven) -> ray.f7_east
+    position.Position(file: F, rank: Eight) -> ray.f8_east
+    position.Position(file: G, rank: One) -> ray.g1_east
+    position.Position(file: G, rank: Two) -> ray.g2_east
+    position.Position(file: G, rank: Three) -> ray.g3_east
+    position.Position(file: G, rank: Four) -> ray.g4_east
+    position.Position(file: G, rank: Five) -> ray.g5_east
+    position.Position(file: G, rank: Six) -> ray.g6_east
+    position.Position(file: G, rank: Seven) -> ray.g7_east
+    position.Position(file: G, rank: Eight) -> ray.g8_east
+    position.Position(file: H, rank: One) -> ray.h1_east
+    position.Position(file: H, rank: Two) -> ray.h2_east
+    position.Position(file: H, rank: Three) -> ray.h3_east
+    position.Position(file: H, rank: Four) -> ray.h4_east
+    position.Position(file: H, rank: Five) -> ray.h5_east
+    position.Position(file: H, rank: Six) -> ray.h6_east
+    position.Position(file: H, rank: Seven) -> ray.h7_east
+    position.Position(file: H, rank: Eight) -> ray.h8_east
+  }
+}
+
+fn look_up_north_ray_bb(origin_square: Position) -> Bitboard {
+  case origin_square {
+    position.Position(file: A, rank: Eight) -> ray.a8_north
+    position.Position(file: A, rank: Seven) -> ray.a7_north
+    position.Position(file: A, rank: Six) -> ray.a6_north
+    position.Position(file: A, rank: Five) -> ray.a5_north
+    position.Position(file: A, rank: Four) -> ray.a4_north
+    position.Position(file: A, rank: Three) -> ray.a3_north
+    position.Position(file: A, rank: Two) -> ray.a2_north
+    position.Position(file: A, rank: One) -> ray.a1_north
+    position.Position(file: B, rank: Eight) -> ray.b8_north
+    position.Position(file: B, rank: Seven) -> ray.b7_north
+    position.Position(file: B, rank: Six) -> ray.b6_north
+    position.Position(file: B, rank: Five) -> ray.b5_north
+    position.Position(file: B, rank: Four) -> ray.b4_north
+    position.Position(file: B, rank: Three) -> ray.b3_north
+    position.Position(file: B, rank: Two) -> ray.b2_north
+    position.Position(file: B, rank: One) -> ray.b1_north
+    position.Position(file: C, rank: Eight) -> ray.c8_north
+    position.Position(file: C, rank: Seven) -> ray.c7_north
+    position.Position(file: C, rank: Six) -> ray.c6_north
+    position.Position(file: C, rank: Five) -> ray.c5_north
+    position.Position(file: C, rank: Four) -> ray.c4_north
+    position.Position(file: C, rank: Three) -> ray.c3_north
+    position.Position(file: C, rank: Two) -> ray.c2_north
+    position.Position(file: C, rank: One) -> ray.c1_north
+    position.Position(file: D, rank: Eight) -> ray.d8_north
+    position.Position(file: D, rank: Seven) -> ray.d7_north
+    position.Position(file: D, rank: Six) -> ray.d6_north
+    position.Position(file: D, rank: Five) -> ray.d5_north
+    position.Position(file: D, rank: Four) -> ray.d4_north
+    position.Position(file: D, rank: Three) -> ray.d3_north
+    position.Position(file: D, rank: Two) -> ray.d2_north
+    position.Position(file: D, rank: One) -> ray.d1_north
+    position.Position(file: E, rank: Eight) -> ray.e8_north
+    position.Position(file: E, rank: Seven) -> ray.e7_north
+    position.Position(file: E, rank: Six) -> ray.e6_north
+    position.Position(file: E, rank: Five) -> ray.e5_north
+    position.Position(file: E, rank: Four) -> ray.e4_north
+    position.Position(file: E, rank: Three) -> ray.e3_north
+    position.Position(file: E, rank: Two) -> ray.e2_north
+    position.Position(file: E, rank: One) -> ray.e1_north
+    position.Position(file: F, rank: Eight) -> ray.f8_north
+    position.Position(file: F, rank: Seven) -> ray.f7_north
+    position.Position(file: F, rank: Six) -> ray.f6_north
+    position.Position(file: F, rank: Five) -> ray.f5_north
+    position.Position(file: F, rank: Four) -> ray.f4_north
+    position.Position(file: F, rank: Three) -> ray.f3_north
+    position.Position(file: F, rank: Two) -> ray.f2_north
+    position.Position(file: F, rank: One) -> ray.f1_north
+    position.Position(file: G, rank: Eight) -> ray.g8_north
+    position.Position(file: G, rank: Seven) -> ray.g7_north
+    position.Position(file: G, rank: Six) -> ray.g6_north
+    position.Position(file: G, rank: Five) -> ray.g5_north
+    position.Position(file: G, rank: Four) -> ray.g4_north
+    position.Position(file: G, rank: Three) -> ray.g3_north
+    position.Position(file: G, rank: Two) -> ray.g2_north
+    position.Position(file: G, rank: One) -> ray.g1_north
+    position.Position(file: H, rank: Eight) -> ray.h8_north
+    position.Position(file: H, rank: Seven) -> ray.h7_north
+    position.Position(file: H, rank: Six) -> ray.h6_north
+    position.Position(file: H, rank: Five) -> ray.h5_north
+    position.Position(file: H, rank: Four) -> ray.h4_north
+    position.Position(file: H, rank: Three) -> ray.h3_north
+    position.Position(file: H, rank: Two) -> ray.h2_north
+    position.Position(file: H, rank: One) -> ray.h1_north
+  }
+}
+
+fn look_up_west_ray_bb(origin_square: Position) -> Bitboard {
+  case origin_square {
+    position.Position(file: H, rank: Eight) -> ray.h8_west
+    position.Position(file: H, rank: Seven) -> ray.h7_west
+    position.Position(file: H, rank: Six) -> ray.h6_west
+    position.Position(file: H, rank: Five) -> ray.h5_west
+    position.Position(file: H, rank: Four) -> ray.h4_west
+    position.Position(file: H, rank: Three) -> ray.h3_west
+    position.Position(file: H, rank: Two) -> ray.h2_west
+    position.Position(file: H, rank: One) -> ray.h1_west
+    position.Position(file: G, rank: Eight) -> ray.g8_west
+    position.Position(file: G, rank: Seven) -> ray.g7_west
+    position.Position(file: G, rank: Six) -> ray.g6_west
+    position.Position(file: G, rank: Five) -> ray.g5_west
+    position.Position(file: G, rank: Four) -> ray.g4_west
+    position.Position(file: G, rank: Three) -> ray.g3_west
+    position.Position(file: G, rank: Two) -> ray.g2_west
+    position.Position(file: G, rank: One) -> ray.g1_west
+    position.Position(file: F, rank: Eight) -> ray.f8_west
+    position.Position(file: F, rank: Seven) -> ray.f7_west
+    position.Position(file: F, rank: Six) -> ray.f6_west
+    position.Position(file: F, rank: Five) -> ray.f5_west
+    position.Position(file: F, rank: Four) -> ray.f4_west
+    position.Position(file: F, rank: Three) -> ray.f3_west
+    position.Position(file: F, rank: Two) -> ray.f2_west
+    position.Position(file: F, rank: One) -> ray.f1_west
+    position.Position(file: E, rank: Eight) -> ray.e8_west
+    position.Position(file: E, rank: Seven) -> ray.e7_west
+    position.Position(file: E, rank: Six) -> ray.e6_west
+    position.Position(file: E, rank: Five) -> ray.e5_west
+    position.Position(file: E, rank: Four) -> ray.e4_west
+    position.Position(file: E, rank: Three) -> ray.e3_west
+    position.Position(file: E, rank: Two) -> ray.e2_west
+    position.Position(file: E, rank: One) -> ray.e1_west
+    position.Position(file: D, rank: Eight) -> ray.d8_west
+    position.Position(file: D, rank: Seven) -> ray.d7_west
+    position.Position(file: D, rank: Six) -> ray.d6_west
+    position.Position(file: D, rank: Five) -> ray.d5_west
+    position.Position(file: D, rank: Four) -> ray.d4_west
+    position.Position(file: D, rank: Three) -> ray.d3_west
+    position.Position(file: D, rank: Two) -> ray.d2_west
+    position.Position(file: D, rank: One) -> ray.d1_west
+    position.Position(file: C, rank: Eight) -> ray.c8_west
+    position.Position(file: C, rank: Seven) -> ray.c7_west
+    position.Position(file: C, rank: Six) -> ray.c6_west
+    position.Position(file: C, rank: Five) -> ray.c5_west
+    position.Position(file: C, rank: Four) -> ray.c4_west
+    position.Position(file: C, rank: Three) -> ray.c3_west
+    position.Position(file: C, rank: Two) -> ray.c2_west
+    position.Position(file: C, rank: One) -> ray.c1_west
+    position.Position(file: B, rank: Eight) -> ray.b8_west
+    position.Position(file: B, rank: Seven) -> ray.b7_west
+    position.Position(file: B, rank: Six) -> ray.b6_west
+    position.Position(file: B, rank: Five) -> ray.b5_west
+    position.Position(file: B, rank: Four) -> ray.b4_west
+    position.Position(file: B, rank: Three) -> ray.b3_west
+    position.Position(file: B, rank: Two) -> ray.b2_west
+    position.Position(file: B, rank: One) -> ray.b1_west
+    position.Position(file: A, rank: Eight) -> ray.a8_west
+    position.Position(file: A, rank: Seven) -> ray.a7_west
+    position.Position(file: A, rank: Six) -> ray.a6_west
+    position.Position(file: A, rank: Five) -> ray.a5_west
+    position.Position(file: A, rank: Four) -> ray.a4_west
+    position.Position(file: A, rank: Three) -> ray.a3_west
+    position.Position(file: A, rank: Two) -> ray.a2_west
+    position.Position(file: A, rank: One) -> ray.a1_west
+  }
+}
+
+fn look_up_south_ray_bb(origin_square: Position) -> Bitboard {
+  case origin_square {
+    position.Position(file: A, rank: Eight) -> ray.a8_south
+    position.Position(file: A, rank: Seven) -> ray.a7_south
+    position.Position(file: A, rank: Six) -> ray.a6_south
+    position.Position(file: A, rank: Five) -> ray.a5_south
+    position.Position(file: A, rank: Four) -> ray.a4_south
+    position.Position(file: A, rank: Three) -> ray.a3_south
+    position.Position(file: A, rank: Two) -> ray.a2_south
+    position.Position(file: A, rank: One) -> ray.a1_south
+    position.Position(file: B, rank: Eight) -> ray.b8_south
+    position.Position(file: B, rank: Seven) -> ray.b7_south
+    position.Position(file: B, rank: Six) -> ray.b6_south
+    position.Position(file: B, rank: Five) -> ray.b5_south
+    position.Position(file: B, rank: Four) -> ray.b4_south
+    position.Position(file: B, rank: Three) -> ray.b3_south
+    position.Position(file: B, rank: Two) -> ray.b2_south
+    position.Position(file: B, rank: One) -> ray.b1_south
+    position.Position(file: C, rank: Eight) -> ray.c8_south
+    position.Position(file: C, rank: Seven) -> ray.c7_south
+    position.Position(file: C, rank: Six) -> ray.c6_south
+    position.Position(file: C, rank: Five) -> ray.c5_south
+    position.Position(file: C, rank: Four) -> ray.c4_south
+    position.Position(file: C, rank: Three) -> ray.c3_south
+    position.Position(file: C, rank: Two) -> ray.c2_south
+    position.Position(file: C, rank: One) -> ray.c1_south
+    position.Position(file: D, rank: Eight) -> ray.d8_south
+    position.Position(file: D, rank: Seven) -> ray.d7_south
+    position.Position(file: D, rank: Six) -> ray.d6_south
+    position.Position(file: D, rank: Five) -> ray.d5_south
+    position.Position(file: D, rank: Four) -> ray.d4_south
+    position.Position(file: D, rank: Three) -> ray.d3_south
+    position.Position(file: D, rank: Two) -> ray.d2_south
+    position.Position(file: D, rank: One) -> ray.d1_south
+    position.Position(file: E, rank: Eight) -> ray.e8_south
+    position.Position(file: E, rank: Seven) -> ray.e7_south
+    position.Position(file: E, rank: Six) -> ray.e6_south
+    position.Position(file: E, rank: Five) -> ray.e5_south
+    position.Position(file: E, rank: Four) -> ray.e4_south
+    position.Position(file: E, rank: Three) -> ray.e3_south
+    position.Position(file: E, rank: Two) -> ray.e2_south
+    position.Position(file: E, rank: One) -> ray.e1_south
+    position.Position(file: F, rank: Eight) -> ray.f8_south
+    position.Position(file: F, rank: Seven) -> ray.f7_south
+    position.Position(file: F, rank: Six) -> ray.f6_south
+    position.Position(file: F, rank: Five) -> ray.f5_south
+    position.Position(file: F, rank: Four) -> ray.f4_south
+    position.Position(file: F, rank: Three) -> ray.f3_south
+    position.Position(file: F, rank: Two) -> ray.f2_south
+    position.Position(file: F, rank: One) -> ray.f1_south
+    position.Position(file: G, rank: Eight) -> ray.g8_south
+    position.Position(file: G, rank: Seven) -> ray.g7_south
+    position.Position(file: G, rank: Six) -> ray.g6_south
+    position.Position(file: G, rank: Five) -> ray.g5_south
+    position.Position(file: G, rank: Four) -> ray.g4_south
+    position.Position(file: G, rank: Three) -> ray.g3_south
+    position.Position(file: G, rank: Two) -> ray.g2_south
+    position.Position(file: G, rank: One) -> ray.g1_south
+    position.Position(file: H, rank: Eight) -> ray.h8_south
+    position.Position(file: H, rank: Seven) -> ray.h7_south
+    position.Position(file: H, rank: Six) -> ray.h6_south
+    position.Position(file: H, rank: Five) -> ray.h5_south
+    position.Position(file: H, rank: Four) -> ray.h4_south
+    position.Position(file: H, rank: Three) -> ray.h3_south
+    position.Position(file: H, rank: Two) -> ray.h2_south
+    position.Position(file: H, rank: One) -> ray.h1_south
+  }
 }
 
 fn look_up_south_west_ray_bb(origin_square: Position) -> Bitboard {
@@ -490,6 +766,147 @@ fn occupied_squares_black(board: BoardBB) -> Bitboard {
     list_of_all_piece_bitboards,
     bitboard.Bitboard(bitboard: 0),
     fn(collector, next) { bitboard.or(collector, next) },
+  )
+}
+
+fn generate_rook_move_list(color: Color, game_state: Game) -> List(Move) {
+  let rook_bitboard = case color {
+    White -> game_state.board.white_rook_bitboard
+    Black -> game_state.board.black_rook_bitboard
+  }
+
+  let rook_origin_squares = bitboard.get_positions(rook_bitboard)
+
+  list.fold(
+    rook_origin_squares,
+    [],
+    fn(collector, rook_origin_square) {
+      let south_mask_bb = look_up_south_ray_bb(rook_origin_square)
+      let east_mask_bb = look_up_east_ray_bb(rook_origin_square)
+      let north_mask_bb = look_up_north_ray_bb(rook_origin_square)
+      let west_mask_bb = look_up_west_ray_bb(rook_origin_square)
+
+      let occupied_squares_bb = occupied_squares(game_state.board)
+
+      let south_blockers_bb = bitboard.and(south_mask_bb, occupied_squares_bb)
+      let east_blockers_bb = bitboard.and(east_mask_bb, occupied_squares_bb)
+      let north_blockers_bb = bitboard.and(north_mask_bb, occupied_squares_bb)
+      let west_blockers_bb = bitboard.and(west_mask_bb, occupied_squares_bb)
+
+      let first_blocker_south =
+        position.from_int(bitboard.bitscan_backward(south_blockers_bb))
+      let first_blocker_east =
+        position.from_int(bitboard.bitscan_forward(east_blockers_bb))
+      let first_blocker_north =
+        position.from_int(bitboard.bitscan_forward(north_blockers_bb))
+      let first_blocker_west =
+        position.from_int(bitboard.bitscan_backward(west_blockers_bb))
+
+      let first_blocker_south_mask_bb = case first_blocker_south {
+        None -> bitboard.Bitboard(bitboard: 0)
+        Some(position) -> look_up_south_ray_bb(position)
+      }
+      let first_blocker_east_mask_bb = case first_blocker_east {
+        None -> bitboard.Bitboard(bitboard: 0)
+        Some(position) -> look_up_east_ray_bb(position)
+      }
+      let first_blocker_north_mask_bb = case first_blocker_north {
+        None -> bitboard.Bitboard(bitboard: 0)
+        Some(position) -> look_up_north_ray_bb(position)
+      }
+      let first_blocker_west_mask_bb = case first_blocker_west {
+        None -> bitboard.Bitboard(bitboard: 0)
+        Some(position) -> look_up_west_ray_bb(position)
+      }
+
+      //Here we create the rays of the bishop with only the first first blocker
+      //included. Next we need to remove the first blocker from the ray
+      //if its our own piece, and include it if its an enemy piece.
+      let south_ray_bb_with_blocker =
+        bitboard.exclusive_or(south_mask_bb, first_blocker_south_mask_bb)
+      let east_ray_bb_with_blocker =
+        bitboard.exclusive_or(east_mask_bb, first_blocker_east_mask_bb)
+      let north_ray_bb_with_blocker =
+        bitboard.exclusive_or(north_mask_bb, first_blocker_north_mask_bb)
+      let west_ray_bb_with_blocker =
+        bitboard.exclusive_or(west_mask_bb, first_blocker_west_mask_bb)
+
+      //Here we remove the first blocker from the ray if its our own piece
+      let south_ray_bb = case color {
+        White -> {
+          bitboard.and(
+            south_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_white(game_state.board)),
+          )
+        }
+        Black -> {
+          bitboard.and(
+            south_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_black(game_state.board)),
+          )
+        }
+      }
+      let east_ray_bb = case color {
+        White -> {
+          bitboard.and(
+            east_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_white(game_state.board)),
+          )
+        }
+        Black -> {
+          bitboard.and(
+            east_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_black(game_state.board)),
+          )
+        }
+      }
+      let north_ray_bb = case color {
+        White -> {
+          bitboard.and(
+            north_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_white(game_state.board)),
+          )
+        }
+        Black -> {
+          bitboard.and(
+            north_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_black(game_state.board)),
+          )
+        }
+      }
+      let west_ray_bb = case color {
+        White -> {
+          bitboard.and(
+            west_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_white(game_state.board)),
+          )
+        }
+        Black -> {
+          bitboard.and(
+            west_ray_bb_with_blocker,
+            bitboard.not(occupied_squares_black(game_state.board)),
+          )
+        }
+      }
+      let rook_moves =
+        list.fold(
+          [south_ray_bb, east_ray_bb, north_ray_bb, west_ray_bb],
+          [],
+          fn(collector, next) {
+            let rook_target_squares = bitboard.get_positions(next)
+
+            let moves =
+              list.map(
+                rook_target_squares,
+                fn(dest) -> Move {
+                  move.Move(from: rook_origin_square, to: dest)
+                },
+              )
+            list.append(collector, moves)
+          },
+        )
+      list.append(collector, rook_moves)
+    },
   )
 }
 

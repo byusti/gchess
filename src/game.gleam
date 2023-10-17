@@ -158,6 +158,7 @@ fn handle_all_legal_moves(
   client: Subject(List(Move)),
 ) -> actor.Next(Message, Game) {
   let legal_moves = generate_move_list(game_state, game_state.turn)
+  // king_status(game_state, color)
   process.send(client, legal_moves)
   actor.continue(game_state)
 }
@@ -172,11 +173,47 @@ fn generate_move_list(game_state: Game, color: Color) -> List(Move) {
     generate_king_move_list(color, game_state),
   ]
 
-  list.fold(
-    list_of_move_lists,
-    [],
-    fn(collector, next) { list.append(collector, next) },
-  )
+  let move_list =
+    list.fold(
+      list_of_move_lists,
+      [],
+      fn(collector, next) { list.append(collector, next) },
+    )
+
+  move_list
+}
+
+fn king_status(game_state: Game, color: Color) {
+  let king_bitboard = case color {
+    White -> game_state.board.white_king_bitboard
+    Black -> game_state.board.black_king_bitboard
+  }
+
+  let king_position = case bitboard.get_positions(king_bitboard) {
+    [position] -> position
+    _ -> panic("There should only be one king on the board")
+  }
+
+  let king_is_in_check = is_in_check(game_state, king_position, color)
+}
+
+fn is_in_check(game_state: Game, king_position: Position, color: Color) {
+  let enemy_color = case color {
+    White -> Black
+    Black -> White
+  }
+
+  let enemy_move_list = generate_move_list(game_state, enemy_color)
+  // let enemy_move_list =
+  //   list.filter(
+  //     enemy_move_list,
+  //     fn(move) {
+  //       case move {
+  //         move.SimpleMove(_, to) if position.are_the_same(to, ) -> todo
+  //       }
+  //     },
+  //   )
+  todo
 }
 
 fn look_up_east_ray_bb(origin_square: Position) -> Bitboard {
@@ -870,7 +907,7 @@ fn generate_king_move_list(color: Color, game_state: Game) -> List(Move) {
       let moves =
         list.map(
           knight_unblocked_target_squares,
-          fn(dest) -> Move { move.Move(from: origin, to: dest) },
+          fn(dest) -> Move { move.SimpleMove(from: origin, to: dest) },
         )
       list.append(collector, moves)
     },
@@ -1007,7 +1044,7 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
               list.map(
                 rook_target_squares,
                 fn(dest) -> Move {
-                  move.Move(from: queen_origin_square, to: dest)
+                  move.SimpleMove(from: queen_origin_square, to: dest)
                 },
               )
             list.append(collector, moves)
@@ -1181,7 +1218,7 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
                     list.map(
                       bishop_target_squares,
                       fn(dest) -> Move {
-                        move.Move(from: queen_origin_square, to: dest)
+                        move.SimpleMove(from: queen_origin_square, to: dest)
                       },
                     )
                   list.append(collector, moves)
@@ -1325,7 +1362,7 @@ fn generate_rook_move_list(color: Color, game_state: Game) -> List(Move) {
               list.map(
                 rook_target_squares,
                 fn(dest) -> Move {
-                  move.Move(from: rook_origin_square, to: dest)
+                  move.SimpleMove(from: rook_origin_square, to: dest)
                 },
               )
             list.append(collector, moves)
@@ -1487,7 +1524,7 @@ fn generate_bishop_move_list(color: Color, game_state: Game) -> List(Move) {
               list.map(
                 bishop_target_squares,
                 fn(dest) -> Move {
-                  move.Move(from: bishop_origin_square, to: dest)
+                  move.SimpleMove(from: bishop_origin_square, to: dest)
                 },
               )
             list.append(collector, moves)
@@ -1589,7 +1626,7 @@ fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
       let moves =
         list.map(
           knight_unblocked_target_squares,
-          fn(dest) -> Move { move.Move(from: origin, to: dest) },
+          fn(dest) -> Move { move.SimpleMove(from: origin, to: dest) },
         )
       list.append(collector, moves)
     },
@@ -1608,7 +1645,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
       non_capture_dest_list,
       fn(dest) -> Move {
         let origin = position.get_rear_position(dest, color)
-        move.Move(from: origin, to: dest)
+        move.SimpleMove(from: origin, to: dest)
       },
     )
 
@@ -1626,48 +1663,48 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
           White -> {
             case dest.file {
               position.A ->
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.A, rank: position.Two),
                   to: dest,
                 )
               position.B -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.B, rank: position.Two),
                   to: dest,
                 )
               }
               position.C -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.C, rank: position.Two),
                   to: dest,
                 )
               }
               position.D -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.D, rank: position.Two),
                   to: dest,
                 )
               }
               position.E -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.E, rank: position.Two),
                   to: dest,
                 )
               }
               position.F -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.F, rank: position.Two),
                   to: dest,
                 )
               }
               position.G -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.G, rank: position.Two),
                   to: dest,
                 )
               }
               position.H -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(file: position.H, rank: position.Two),
                   to: dest,
                 )
@@ -1678,7 +1715,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
           Black -> {
             case dest.file {
               position.A ->
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.A,
                     rank: position.Seven,
@@ -1686,7 +1723,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
                   to: dest,
                 )
               position.B -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.B,
                     rank: position.Seven,
@@ -1695,7 +1732,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
                 )
               }
               position.C -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.C,
                     rank: position.Seven,
@@ -1704,7 +1741,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
                 )
               }
               position.D -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.D,
                     rank: position.Seven,
@@ -1713,7 +1750,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
                 )
               }
               position.E -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.E,
                     rank: position.Seven,
@@ -1722,7 +1759,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
                 )
               }
               position.F -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.F,
                     rank: position.Seven,
@@ -1731,7 +1768,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
                 )
               }
               position.G -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.G,
                     rank: position.Seven,
@@ -1740,7 +1777,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
                 )
               }
               position.H -> {
-                move.Move(
+                move.SimpleMove(
                   from: position.Position(
                     file: position.H,
                     rank: position.Seven,
@@ -1938,11 +1975,11 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
           list.contains(pawn_capture_destination_list, west_attack)
         let moves = case [east_attack_in_dest_list, west_attack_in_dest_list] {
           [True, True] -> [
-            move.Move(from: position, to: east_attack),
-            move.Move(from: position, to: west_attack),
+            move.SimpleMove(from: position, to: east_attack),
+            move.SimpleMove(from: position, to: west_attack),
           ]
-          [True, False] -> [move.Move(from: position, to: east_attack)]
-          [False, True] -> [move.Move(from: position, to: west_attack)]
+          [True, False] -> [move.SimpleMove(from: position, to: east_attack)]
+          [False, True] -> [move.SimpleMove(from: position, to: west_attack)]
           [False, False] -> []
         }
         list.append(collector, moves)

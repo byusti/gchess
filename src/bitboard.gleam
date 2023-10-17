@@ -1,7 +1,7 @@
 import gleam/bitwise
 import position.{type Position}
-import move.{type Move}
 import gleam/option.{Some}
+import move.{type Move, SimpleMove}
 
 pub type Bitboard {
   Bitboard(bitboard: Int)
@@ -19,7 +19,7 @@ pub fn get_moves(bitboard: Bitboard, position: Position) -> List(Move) {
         _ -> {
           let assert Some(position_dest) = position.from_int(count)
           [
-            move.Move(position, position_dest),
+            SimpleMove(position, position_dest),
             ..get_moves_inner(shift_left(bitboard, 1), count - 1, position)
           ]
         }
@@ -42,7 +42,7 @@ pub fn get_moves_inner(
         _ -> {
           let assert Some(position_dest) = position.from_int(count)
           [
-            move.Move(position, position_dest),
+            SimpleMove(position, position_dest),
             ..get_moves_inner(shift_left(bitboard, 1), count - 1, position)
           ]
         }

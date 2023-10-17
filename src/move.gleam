@@ -1,7 +1,9 @@
 import position.{type Position}
+import piece.{type Piece}
 
 pub type Move {
-  Move(from: Position, to: Position)
+  SimpleMove(from: Position, to: Position)
+  CaptureMove(from: Position, to: Position, captured: Piece)
 }
 
 pub fn to_string(move: Move) -> String {

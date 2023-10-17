@@ -27,6 +27,10 @@ pub type Rank {
   Eight
 }
 
+pub fn are_the_same(position1: Position, position2: Position) -> Bool {
+  position1.file == position2.file && position1.rank == position2.rank
+}
+
 pub fn distance_between(position1: Position, position2: Position) -> Int {
   let pos1_as_int = to_int(position1)
   let pos2_as_int = to_int(position2)

@@ -16,7 +16,7 @@ pub const c1_south = bitboard.Bitboard(
 )
 
 pub const d1_south = bitboard.Bitboard(
-  bitboard: 0b00000000_00000000_00000000_00000000_00000001_00000000_00000000_00000000,
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 pub const e1_south = bitboard.Bitboard(
@@ -1095,7 +1095,7 @@ pub const h8_east = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-// NORTH WEST DIAGONAL MASKS
+// NORTH WEST MASKS
 // a1 - h1
 
 pub const a1_north_west = bitboard.Bitboard(

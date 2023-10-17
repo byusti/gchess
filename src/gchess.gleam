@@ -6,7 +6,6 @@ import move
 
 pub fn main() {
   let game_actor =
-    //this fen is not working
     game.new_game_from_fen(
       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     )

@@ -1,7 +1,5 @@
 import color.{type Color, Black, White}
-import gleam/io
-import gleam/int
-import gleam/option.{None, Option, Some}
+import gleam/option.{type Option, None, Some}
 
 pub type Position {
   Position(file: File, rank: Rank)

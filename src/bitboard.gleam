@@ -1,7 +1,7 @@
 import gleam/bitwise
 import position.{type Position}
 import move.{type Move}
-import gleam/option.{type Option, Some}
+import gleam/option.{Some}
 
 pub type Bitboard {
   Bitboard(bitboard: Int)

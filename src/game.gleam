@@ -126,6 +126,22 @@ const not_h_file = bitboard.Bitboard(
   bitboard: 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111,
 )
 
+const rank_2 = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
+)
+
+const rank_3 = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_11111111_00000000_00000000,
+)
+
+const rank_6 = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_11111111_00000000_00000000_00000000_00000000_00000000,
+)
+
+const rank_7 = bitboard.Bitboard(
+  bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
 fn handle_message(
   message: Message,
   game_state: Game,
@@ -1595,7 +1611,199 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
         move.Move(from: origin, to: dest)
       },
     )
-  list.append(capture_list, non_capture_move_list)
+
+  let initial_rank_double_move_list =
+    generate_pawn_starting_rank_double_move_bitboard(color, game_state)
+
+  let initial_rank_double_dest_list =
+    bitboard.get_positions(initial_rank_double_move_list)
+
+  let initial_rank_double_move_list =
+    list.map(
+      initial_rank_double_dest_list,
+      fn(dest) -> Move {
+        case color {
+          White -> {
+            case dest.file {
+              position.A ->
+                move.Move(
+                  from: position.Position(file: position.A, rank: position.Two),
+                  to: dest,
+                )
+              position.B -> {
+                move.Move(
+                  from: position.Position(file: position.B, rank: position.Two),
+                  to: dest,
+                )
+              }
+              position.C -> {
+                move.Move(
+                  from: position.Position(file: position.C, rank: position.Two),
+                  to: dest,
+                )
+              }
+              position.D -> {
+                move.Move(
+                  from: position.Position(file: position.D, rank: position.Two),
+                  to: dest,
+                )
+              }
+              position.E -> {
+                move.Move(
+                  from: position.Position(file: position.E, rank: position.Two),
+                  to: dest,
+                )
+              }
+              position.F -> {
+                move.Move(
+                  from: position.Position(file: position.F, rank: position.Two),
+                  to: dest,
+                )
+              }
+              position.G -> {
+                move.Move(
+                  from: position.Position(file: position.G, rank: position.Two),
+                  to: dest,
+                )
+              }
+              position.H -> {
+                move.Move(
+                  from: position.Position(file: position.H, rank: position.Two),
+                  to: dest,
+                )
+              }
+            }
+          }
+
+          Black -> {
+            case dest.file {
+              position.A ->
+                move.Move(
+                  from: position.Position(
+                    file: position.A,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              position.B -> {
+                move.Move(
+                  from: position.Position(
+                    file: position.B,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              }
+              position.C -> {
+                move.Move(
+                  from: position.Position(
+                    file: position.C,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              }
+              position.D -> {
+                move.Move(
+                  from: position.Position(
+                    file: position.D,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              }
+              position.E -> {
+                move.Move(
+                  from: position.Position(
+                    file: position.E,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              }
+              position.F -> {
+                move.Move(
+                  from: position.Position(
+                    file: position.F,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              }
+              position.G -> {
+                move.Move(
+                  from: position.Position(
+                    file: position.G,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              }
+              position.H -> {
+                move.Move(
+                  from: position.Position(
+                    file: position.H,
+                    rank: position.Seven,
+                  ),
+                  to: dest,
+                )
+              }
+            }
+          }
+        }
+      },
+    )
+
+  list.append(
+    list.append(capture_list, non_capture_move_list),
+    initial_rank_double_move_list,
+  )
+}
+
+fn generate_pawn_starting_rank_double_move_bitboard(
+  color: Color,
+  game_state: Game,
+) -> bitboard.Bitboard {
+  case color {
+    White -> {
+      let white_pawn_target_squares =
+        bitboard.and(game_state.board.white_pawns_bitboard, rank_2)
+
+      let white_pawn_target_squares =
+        bitboard.or(
+          bitboard.shift_left(white_pawn_target_squares, 16),
+          bitboard.shift_left(white_pawn_target_squares, 8),
+        )
+
+      let occupied_squares = occupied_squares(game_state.board)
+
+      let moves = bitboard.and(occupied_squares, white_pawn_target_squares)
+      let moves =
+        bitboard.or(bitboard.shift_left(bitboard.and(moves, rank_3), 8), moves)
+      let moves = bitboard.exclusive_or(moves, white_pawn_target_squares)
+      let moves = bitboard.and(moves, bitboard.not(rank_3))
+      moves
+    }
+    Black -> {
+      let black_pawn_target_squares =
+        bitboard.and(game_state.board.black_pawns_bitboard, rank_7)
+
+      let black_pawn_target_squares =
+        bitboard.or(
+          bitboard.shift_right(black_pawn_target_squares, 16),
+          bitboard.shift_right(black_pawn_target_squares, 8),
+        )
+
+      let occupied_squares = occupied_squares(game_state.board)
+
+      let moves = bitboard.and(occupied_squares, black_pawn_target_squares)
+      let moves =
+        bitboard.or(bitboard.shift_right(bitboard.and(moves, rank_6), 8), moves)
+      let moves = bitboard.exclusive_or(moves, black_pawn_target_squares)
+      let moves = bitboard.and(moves, bitboard.not(rank_6))
+      moves
+    }
+  }
 }
 
 fn generate_pawn_non_capture_move_bitboard(
@@ -1606,6 +1814,7 @@ fn generate_pawn_non_capture_move_bitboard(
     White -> {
       let white_pawn_target_squares =
         bitboard.shift_left(game_state.board.white_pawns_bitboard, 8)
+
       let list_of_enemy_piece_bitboards = [
         game_state.board.black_king_bitboard,
         game_state.board.black_queen_bitboard,
@@ -1632,6 +1841,7 @@ fn generate_pawn_non_capture_move_bitboard(
     Black -> {
       let black_pawn_target_squares =
         bitboard.shift_right(game_state.board.black_pawns_bitboard, 8)
+
       let list_of_enemy_piece_bitboards = [
         game_state.board.white_king_bitboard,
         game_state.board.white_queen_bitboard,

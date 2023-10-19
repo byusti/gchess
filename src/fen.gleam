@@ -110,7 +110,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             "" -> acc
             "K" -> {
               let new_white_king_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -134,7 +134,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "Q" -> {
               let new_white_queen_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -158,7 +158,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "R" -> {
               let new_white_rook_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -182,7 +182,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "B" -> {
               let new_white_bishop_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -206,7 +206,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "N" -> {
               let new_white_knight_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -230,7 +230,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "P" -> {
               let new_white_pawn_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -254,7 +254,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "k" -> {
               let new_black_king_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -278,7 +278,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "q" -> {
               let new_black_queen_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -302,7 +302,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "r" -> {
               let new_black_rook_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -326,7 +326,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "b" -> {
               let new_black_bishop_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -350,7 +350,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "n" -> {
               let new_black_knight_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))
@@ -374,7 +374,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "p" -> {
               let new_black_pawns_bitboard =
-                bitboard.from_position(Position(
+                boardbb.from_position(Position(
                   file: file_index,
                   rank: rank_index,
                 ))

@@ -189,7 +189,7 @@ fn king_status(game_state: Game, color: Color) {
     Black -> game_state.board.black_king_bitboard
   }
 
-  let king_position = case bitboard.get_positions(king_bitboard) {
+  let king_position = case boardbb.get_positions(king_bitboard) {
     [position] -> position
     _ -> panic("There should only be one king on the board")
   }
@@ -831,13 +831,13 @@ fn generate_king_move_list(color: Color, game_state: Game) -> List(Move) {
     Black -> game_state.board.black_king_bitboard
   }
 
-  let king_origin_squares = bitboard.get_positions(king_bitboard)
+  let king_origin_squares = boardbb.get_positions(king_bitboard)
 
   list.fold(
     king_origin_squares,
     [],
     fn(collector, origin) {
-      let king_bitboard = bitboard.from_position(origin)
+      let king_bitboard = boardbb.from_position(origin)
       let north_west_north_east_target_squares =
         bitboard.or(
           bitboard.and(bitboard.shift_left(king_bitboard, 9), not_a_file),
@@ -902,7 +902,7 @@ fn generate_king_move_list(color: Color, game_state: Game) -> List(Move) {
         bitboard.and(king_target_squares, bitboard.not(friendly_pieces))
 
       let knight_unblocked_target_squares =
-        bitboard.get_positions(king_unblocked_target_square_bb)
+        boardbb.get_positions(king_unblocked_target_square_bb)
 
       let moves =
         list.map(
@@ -920,7 +920,7 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
     Black -> game_state.board.black_queen_bitboard
   }
 
-  let queen_origin_squares = bitboard.get_positions(queen_bitboard)
+  let queen_origin_squares = boardbb.get_positions(queen_bitboard)
 
   list.fold(
     queen_origin_squares,
@@ -1038,7 +1038,7 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
           [south_ray_bb, east_ray_bb, north_ray_bb, west_ray_bb],
           [],
           fn(collector, next) {
-            let rook_target_squares = bitboard.get_positions(next)
+            let rook_target_squares = boardbb.get_positions(next)
 
             let moves =
               list.map(
@@ -1056,7 +1056,7 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
         Black -> game_state.board.black_queen_bitboard
       }
 
-      let queen_origin_squares = bitboard.get_positions(queen_bitboard)
+      let queen_origin_squares = boardbb.get_positions(queen_bitboard)
 
       let bishop_moves =
         list.fold(
@@ -1212,7 +1212,7 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
                 ],
                 [],
                 fn(collector, next) {
-                  let bishop_target_squares = bitboard.get_positions(next)
+                  let bishop_target_squares = boardbb.get_positions(next)
 
                   let moves =
                     list.map(
@@ -1238,7 +1238,7 @@ fn generate_rook_move_list(color: Color, game_state: Game) -> List(Move) {
     Black -> game_state.board.black_rook_bitboard
   }
 
-  let rook_origin_squares = bitboard.get_positions(rook_bitboard)
+  let rook_origin_squares = boardbb.get_positions(rook_bitboard)
 
   list.fold(
     rook_origin_squares,
@@ -1356,21 +1356,119 @@ fn generate_rook_move_list(color: Color, game_state: Game) -> List(Move) {
           [south_ray_bb, east_ray_bb, north_ray_bb, west_ray_bb],
           [],
           fn(collector, next) {
-            let rook_target_squares = bitboard.get_positions(next)
+            let rook_captures = case color {
+              White -> {
+                //TODO: should probably add a occupied_squares_by_color function
+                bitboard.and(next, occupied_squares_black(game_state.board))
+              }
+              Black -> {
+                bitboard.and(next, occupied_squares_white(game_state.board))
+              }
+            }
+            let rook_simple_moves = case color {
+              White -> {
+                bitboard.exclusive_or(next, rook_captures)
+              }
+              Black -> {
+                bitboard.exclusive_or(next, rook_captures)
+              }
+            }
 
-            let moves =
+            let simple_moves =
               list.map(
-                rook_target_squares,
+                boardbb.get_positions(rook_simple_moves),
                 fn(dest) -> Move {
                   move.SimpleMove(from: rook_origin_square, to: dest)
                 },
               )
-            list.append(collector, moves)
+
+            let captures =
+              list.map(
+                boardbb.get_positions(rook_captures),
+                fn(dest) -> Move {
+                  move.CaptureMove(
+                    from: rook_origin_square,
+                    to: dest,
+                    captured: {
+                      let assert Some(piece) =
+                        piece_at_position(game_state, dest)
+                      piece
+                    },
+                  )
+                },
+              )
+            let simple_moves = list.append(collector, simple_moves)
+            let all_moves = list.append(simple_moves, captures)
+            all_moves
           },
         )
       list.append(collector, rook_moves)
     },
   )
+}
+
+fn piece_at_position(
+  game_state: Game,
+  position: Position,
+) -> Option(piece.Piece) {
+  let position_bb_masked =
+    bitboard.and(
+      position.to_bitboard(position),
+      occupied_squares(game_state.board),
+    )
+
+  let position_white_king =
+    bitboard.and(position_bb_masked, game_state.board.white_king_bitboard)
+  let position_white_queen =
+    bitboard.and(position_bb_masked, game_state.board.white_queen_bitboard)
+  let position_white_rook =
+    bitboard.and(position_bb_masked, game_state.board.white_rook_bitboard)
+  let position_white_bishop =
+    bitboard.and(position_bb_masked, game_state.board.white_bishop_bitboard)
+  let position_white_knight =
+    bitboard.and(position_bb_masked, game_state.board.white_knight_bitboard)
+  let position_white_pawn =
+    bitboard.and(position_bb_masked, game_state.board.white_pawns_bitboard)
+  let position_black_king =
+    bitboard.and(position_bb_masked, game_state.board.black_king_bitboard)
+  let position_black_queen =
+    bitboard.and(position_bb_masked, game_state.board.black_queen_bitboard)
+  let position_black_rook =
+    bitboard.and(position_bb_masked, game_state.board.black_rook_bitboard)
+  let position_black_bishop =
+    bitboard.and(position_bb_masked, game_state.board.black_bishop_bitboard)
+  let position_black_knight =
+    bitboard.and(position_bb_masked, game_state.board.black_knight_bitboard)
+  let position_black_pawn =
+    bitboard.and(position_bb_masked, game_state.board.black_pawns_bitboard)
+
+  case position_bb_masked {
+    bitboard.Bitboard(bitboard: 0) -> option.None
+    _ if position_white_king.bitboard != 0 ->
+      option.Some(piece.Piece(White, King))
+    _ if position_white_queen.bitboard != 0 ->
+      option.Some(piece.Piece(White, Queen))
+    _ if position_white_rook.bitboard != 0 ->
+      option.Some(piece.Piece(White, Rook))
+    _ if position_white_bishop.bitboard != 0 ->
+      option.Some(piece.Piece(White, Bishop))
+    _ if position_white_knight.bitboard != 0 ->
+      option.Some(piece.Piece(White, Knight))
+    _ if position_white_pawn.bitboard != 0 ->
+      option.Some(piece.Piece(White, Pawn))
+    _ if position_black_king.bitboard != 0 ->
+      option.Some(piece.Piece(Black, King))
+    _ if position_black_queen.bitboard != 0 ->
+      option.Some(piece.Piece(Black, Queen))
+    _ if position_black_rook.bitboard != 0 ->
+      option.Some(piece.Piece(Black, Rook))
+    _ if position_black_bishop.bitboard != 0 ->
+      option.Some(piece.Piece(Black, Bishop))
+    _ if position_black_knight.bitboard != 0 ->
+      option.Some(piece.Piece(Black, Knight))
+    _ if position_black_pawn.bitboard != 0 ->
+      option.Some(piece.Piece(Black, Pawn))
+  }
 }
 
 fn generate_bishop_move_list(color: Color, game_state: Game) -> List(Move) {
@@ -1379,7 +1477,7 @@ fn generate_bishop_move_list(color: Color, game_state: Game) -> List(Move) {
     Black -> game_state.board.black_bishop_bitboard
   }
 
-  let bishop_origin_squares = bitboard.get_positions(bishop_bitboard)
+  let bishop_origin_squares = boardbb.get_positions(bishop_bitboard)
 
   list.fold(
     bishop_origin_squares,
@@ -1518,7 +1616,7 @@ fn generate_bishop_move_list(color: Color, game_state: Game) -> List(Move) {
           ],
           [],
           fn(collector, next) {
-            let bishop_target_squares = bitboard.get_positions(next)
+            let bishop_target_squares = boardbb.get_positions(next)
 
             let moves =
               list.map(
@@ -1541,13 +1639,13 @@ fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
     Black -> game_state.board.black_knight_bitboard
   }
 
-  let knight_origin_squares = bitboard.get_positions(knight_bitboard)
+  let knight_origin_squares = boardbb.get_positions(knight_bitboard)
 
   list.fold(
     knight_origin_squares,
     [],
     fn(collector, origin) {
-      let knight_bitboard = bitboard.from_position(origin)
+      let knight_bitboard = boardbb.from_position(origin)
       let north_target_squares =
         bitboard.or(
           bitboard.and(bitboard.shift_left(knight_bitboard, 17), not_a_file),
@@ -1621,7 +1719,7 @@ fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
         bitboard.and(knight_target_squares, bitboard.not(friendly_pieces))
 
       let knight_unblocked_target_squares =
-        bitboard.get_positions(knight_unblocked_target_square_bb)
+        boardbb.get_positions(knight_unblocked_target_square_bb)
 
       let moves =
         list.map(
@@ -1638,7 +1736,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
   let moves_no_captures =
     generate_pawn_non_capture_move_bitboard(color, game_state)
 
-  let non_capture_dest_list = bitboard.get_positions(moves_no_captures)
+  let non_capture_dest_list = boardbb.get_positions(moves_no_captures)
 
   let non_capture_move_list =
     list.map(
@@ -1653,7 +1751,7 @@ fn generate_pawn_move_list(color: Color, game_state: Game) -> List(Move) {
     generate_pawn_starting_rank_double_move_bitboard(color, game_state)
 
   let initial_rank_double_dest_list =
-    bitboard.get_positions(initial_rank_double_move_list)
+    boardbb.get_positions(initial_rank_double_move_list)
 
   let initial_rank_double_move_list =
     list.map(
@@ -1954,10 +2052,10 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
 
   let pawn_capture_origin_set = bitboard.or(east_origins, west_origins)
 
-  let pawn_capture_origin_list = bitboard.get_positions(pawn_capture_origin_set)
+  let pawn_capture_origin_list = boardbb.get_positions(pawn_capture_origin_set)
 
   let pawn_capture_destination_list =
-    bitboard.get_positions(pawn_capture_destination_set)
+    boardbb.get_positions(pawn_capture_destination_set)
 
   // we need to go through the list of origins and for each origin
   // if one or both of its attack squares are in the destination list,
@@ -2091,18 +2189,18 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
       #(position.Position(file: position.H, rank: position.Eight), None),
     ])
 
-  let white_king_positions = bitboard.get_positions(white_king_bitboard)
-  let white_queen_positions = bitboard.get_positions(white_queen_bitboard)
-  let white_rook_positions = bitboard.get_positions(white_rook_bitboard)
-  let white_bishop_positions = bitboard.get_positions(white_bishop_bitboard)
-  let white_knight_positions = bitboard.get_positions(white_knight_bitboard)
-  let white_pawns_positions = bitboard.get_positions(white_pawns_bitboard)
-  let black_king_positions = bitboard.get_positions(black_king_bitboard)
-  let black_queen_positions = bitboard.get_positions(black_queen_bitboard)
-  let black_rook_positions = bitboard.get_positions(black_rook_bitboard)
-  let black_bishop_positions = bitboard.get_positions(black_bishop_bitboard)
-  let black_knight_positions = bitboard.get_positions(black_knight_bitboard)
-  let black_pawns_positions = bitboard.get_positions(black_pawns_bitboard)
+  let white_king_positions = boardbb.get_positions(white_king_bitboard)
+  let white_queen_positions = boardbb.get_positions(white_queen_bitboard)
+  let white_rook_positions = boardbb.get_positions(white_rook_bitboard)
+  let white_bishop_positions = boardbb.get_positions(white_bishop_bitboard)
+  let white_knight_positions = boardbb.get_positions(white_knight_bitboard)
+  let white_pawns_positions = boardbb.get_positions(white_pawns_bitboard)
+  let black_king_positions = boardbb.get_positions(black_king_bitboard)
+  let black_queen_positions = boardbb.get_positions(black_queen_bitboard)
+  let black_rook_positions = boardbb.get_positions(black_rook_bitboard)
+  let black_bishop_positions = boardbb.get_positions(black_bishop_bitboard)
+  let black_knight_positions = boardbb.get_positions(black_knight_bitboard)
+  let black_pawns_positions = boardbb.get_positions(black_pawns_bitboard)
 
   let board_map =
     list.fold(

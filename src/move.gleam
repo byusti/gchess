@@ -9,5 +9,9 @@ pub type Move {
 pub fn to_string(move: Move) -> String {
   let from = position.to_string(move.from)
   let to = position.to_string(move.to)
-  from <> " -> " <> to
+  let captured = case move {
+    SimpleMove(_, _) -> ""
+    CaptureMove(_, _, captured) -> " capturing " <> piece.to_string(captured)
+  }
+  from <> " -> " <> to <> captured
 }

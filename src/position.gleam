@@ -1,5 +1,6 @@
 import color.{type Color, Black, White}
 import gleam/option.{type Option, None, Some}
+import bitboard.{type Bitboard}
 
 pub type Position {
   Position(file: File, rank: Rank)
@@ -36,6 +37,12 @@ pub fn distance_between(position1: Position, position2: Position) -> Int {
   let pos2_as_int = to_int(position2)
   let distance = pos1_as_int - pos2_as_int
   distance
+}
+
+pub fn to_bitboard(position: Position) -> Bitboard {
+  let pos_as_int = to_int(position)
+  let bitboard = bitboard.shift_left(bitboard.Bitboard(bitboard: 1), pos_as_int)
+  bitboard
 }
 
 pub fn to_int(position: Position) -> Int {

@@ -1,4 +1,4 @@
-import bitboard.{type Bitboard}
+import bitboard
 
 //SOUTH RAY MASKS
 // a1 - h1

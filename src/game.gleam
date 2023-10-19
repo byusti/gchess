@@ -901,15 +901,52 @@ fn generate_king_move_list(color: Color, game_state: Game) -> List(Move) {
       let king_unblocked_target_square_bb =
         bitboard.and(king_target_squares, bitboard.not(friendly_pieces))
 
-      let knight_unblocked_target_squares =
-        boardbb.get_positions(king_unblocked_target_square_bb)
+      let captures = case color {
+        White -> {
+          //TODO: should probably add a occupied_squares_by_color function
+          bitboard.and(
+            king_unblocked_target_square_bb,
+            occupied_squares_black(game_state.board),
+          )
+        }
+        Black -> {
+          bitboard.and(
+            king_unblocked_target_square_bb,
+            occupied_squares_white(game_state.board),
+          )
+        }
+      }
+      let simple_moves = case color {
+        White -> {
+          bitboard.exclusive_or(king_unblocked_target_square_bb, captures)
+        }
+        Black -> {
+          bitboard.exclusive_or(king_unblocked_target_square_bb, captures)
+        }
+      }
 
-      let moves =
+      let simple_moves =
         list.map(
-          knight_unblocked_target_squares,
+          boardbb.get_positions(simple_moves),
           fn(dest) -> Move { move.SimpleMove(from: origin, to: dest) },
         )
-      list.append(collector, moves)
+
+      let captures =
+        list.map(
+          boardbb.get_positions(captures),
+          fn(dest) -> Move {
+            move.CaptureMove(
+              from: origin,
+              to: dest,
+              captured: {
+                let assert Some(piece) = piece_at_position(game_state, dest)
+                piece
+              },
+            )
+          },
+        )
+      let all_moves = list.append(simple_moves, captures)
+      list.append(collector, all_moves)
     },
   )
 }
@@ -1038,25 +1075,52 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
           [south_ray_bb, east_ray_bb, north_ray_bb, west_ray_bb],
           [],
           fn(collector, next) {
-            let rook_target_squares = boardbb.get_positions(next)
+            let captures = case color {
+              White -> {
+                //TODO: should probably add a occupied_squares_by_color function
+                bitboard.and(next, occupied_squares_black(game_state.board))
+              }
+              Black -> {
+                bitboard.and(next, occupied_squares_white(game_state.board))
+              }
+            }
+            let rook_simple_moves = case color {
+              White -> {
+                bitboard.exclusive_or(next, captures)
+              }
+              Black -> {
+                bitboard.exclusive_or(next, captures)
+              }
+            }
 
-            let moves =
+            let simple_moves =
               list.map(
-                rook_target_squares,
+                boardbb.get_positions(rook_simple_moves),
                 fn(dest) -> Move {
                   move.SimpleMove(from: queen_origin_square, to: dest)
                 },
               )
-            list.append(collector, moves)
+
+            let captures =
+              list.map(
+                boardbb.get_positions(captures),
+                fn(dest) -> Move {
+                  move.CaptureMove(
+                    from: queen_origin_square,
+                    to: dest,
+                    captured: {
+                      let assert Some(piece) =
+                        piece_at_position(game_state, dest)
+                      piece
+                    },
+                  )
+                },
+              )
+            let simple_moves = list.append(collector, simple_moves)
+            let all_moves = list.append(simple_moves, captures)
+            all_moves
           },
         )
-
-      let queen_bitboard = case color {
-        White -> game_state.board.white_queen_bitboard
-        Black -> game_state.board.black_queen_bitboard
-      }
-
-      let queen_origin_squares = boardbb.get_positions(queen_bitboard)
 
       let bishop_moves =
         list.fold(
@@ -1212,16 +1276,56 @@ fn generate_queen_move_list(color: Color, game_state: Game) -> List(Move) {
                 ],
                 [],
                 fn(collector, next) {
-                  let bishop_target_squares = boardbb.get_positions(next)
+                  let captures = case color {
+                    White -> {
+                      //TODO: should probably add a occupied_squares_by_color function
+                      bitboard.and(
+                        next,
+                        occupied_squares_black(game_state.board),
+                      )
+                    }
+                    Black -> {
+                      bitboard.and(
+                        next,
+                        occupied_squares_white(game_state.board),
+                      )
+                    }
+                  }
+                  let rook_simple_moves = case color {
+                    White -> {
+                      bitboard.exclusive_or(next, captures)
+                    }
+                    Black -> {
+                      bitboard.exclusive_or(next, captures)
+                    }
+                  }
 
-                  let moves =
+                  let simple_moves =
                     list.map(
-                      bishop_target_squares,
+                      boardbb.get_positions(rook_simple_moves),
                       fn(dest) -> Move {
                         move.SimpleMove(from: queen_origin_square, to: dest)
                       },
                     )
-                  list.append(collector, moves)
+
+                  let captures =
+                    list.map(
+                      boardbb.get_positions(captures),
+                      fn(dest) -> Move {
+                        move.CaptureMove(
+                          from: queen_origin_square,
+                          to: dest,
+                          captured: {
+                            let assert Some(piece) =
+                              piece_at_position(game_state, dest)
+                            piece
+                          },
+                        )
+                      },
+                    )
+                  let simple_moves = list.append(collector, simple_moves)
+                  let all_moves = list.append(simple_moves, captures)
+                  all_moves
                 },
               )
             list.append(collector, bishop_moves)
@@ -1616,16 +1720,50 @@ fn generate_bishop_move_list(color: Color, game_state: Game) -> List(Move) {
           ],
           [],
           fn(collector, next) {
-            let bishop_target_squares = boardbb.get_positions(next)
+            let captures = case color {
+              White -> {
+                //TODO: should probably add a occupied_squares_by_color function
+                bitboard.and(next, occupied_squares_black(game_state.board))
+              }
+              Black -> {
+                bitboard.and(next, occupied_squares_white(game_state.board))
+              }
+            }
+            let rook_simple_moves = case color {
+              White -> {
+                bitboard.exclusive_or(next, captures)
+              }
+              Black -> {
+                bitboard.exclusive_or(next, captures)
+              }
+            }
 
-            let moves =
+            let simple_moves =
               list.map(
-                bishop_target_squares,
+                boardbb.get_positions(rook_simple_moves),
                 fn(dest) -> Move {
                   move.SimpleMove(from: bishop_origin_square, to: dest)
                 },
               )
-            list.append(collector, moves)
+
+            let captures =
+              list.map(
+                boardbb.get_positions(captures),
+                fn(dest) -> Move {
+                  move.CaptureMove(
+                    from: bishop_origin_square,
+                    to: dest,
+                    captured: {
+                      let assert Some(piece) =
+                        piece_at_position(game_state, dest)
+                      piece
+                    },
+                  )
+                },
+              )
+            let simple_moves = list.append(collector, simple_moves)
+            let all_moves = list.append(simple_moves, captures)
+            all_moves
           },
         )
       list.append(collector, bishop_moves)
@@ -1718,15 +1856,52 @@ fn generate_knight_move_list(color: Color, game_state: Game) -> List(Move) {
       let knight_unblocked_target_square_bb =
         bitboard.and(knight_target_squares, bitboard.not(friendly_pieces))
 
-      let knight_unblocked_target_squares =
-        boardbb.get_positions(knight_unblocked_target_square_bb)
+      let captures = case color {
+        White -> {
+          //TODO: should probably add a occupied_squares_by_color function
+          bitboard.and(
+            knight_unblocked_target_square_bb,
+            occupied_squares_black(game_state.board),
+          )
+        }
+        Black -> {
+          bitboard.and(
+            knight_unblocked_target_square_bb,
+            occupied_squares_white(game_state.board),
+          )
+        }
+      }
+      let simple_moves = case color {
+        White -> {
+          bitboard.exclusive_or(knight_unblocked_target_square_bb, captures)
+        }
+        Black -> {
+          bitboard.exclusive_or(knight_unblocked_target_square_bb, captures)
+        }
+      }
 
-      let moves =
+      let simple_moves =
         list.map(
-          knight_unblocked_target_squares,
+          boardbb.get_positions(simple_moves),
           fn(dest) -> Move { move.SimpleMove(from: origin, to: dest) },
         )
-      list.append(collector, moves)
+
+      let captures =
+        list.map(
+          boardbb.get_positions(captures),
+          fn(dest) -> Move {
+            move.CaptureMove(
+              from: origin,
+              to: dest,
+              captured: {
+                let assert Some(piece) = piece_at_position(game_state, dest)
+                piece
+              },
+            )
+          },
+        )
+      let all_moves = list.append(simple_moves, captures)
+      list.append(collector, all_moves)
     },
   )
 }
@@ -2073,11 +2248,47 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
           list.contains(pawn_capture_destination_list, west_attack)
         let moves = case [east_attack_in_dest_list, west_attack_in_dest_list] {
           [True, True] -> [
-            move.SimpleMove(from: position, to: east_attack),
-            move.SimpleMove(from: position, to: west_attack),
+            move.CaptureMove(
+              from: position,
+              to: east_attack,
+              captured: {
+                let assert Some(piece) =
+                  piece_at_position(game_state, east_attack)
+                piece
+              },
+            ),
+            move.CaptureMove(
+              from: position,
+              to: west_attack,
+              captured: {
+                let assert Some(piece) =
+                  piece_at_position(game_state, west_attack)
+                piece
+              },
+            ),
           ]
-          [True, False] -> [move.SimpleMove(from: position, to: east_attack)]
-          [False, True] -> [move.SimpleMove(from: position, to: west_attack)]
+          [True, False] -> [
+            move.CaptureMove(
+              from: position,
+              to: east_attack,
+              captured: {
+                let assert Some(piece) =
+                  piece_at_position(game_state, east_attack)
+                piece
+              },
+            ),
+          ]
+          [False, True] -> [
+            move.CaptureMove(
+              from: position,
+              to: west_attack,
+              captured: {
+                let assert Some(piece) =
+                  piece_at_position(game_state, west_attack)
+                piece
+              },
+            ),
+          ]
           [False, False] -> []
         }
         list.append(collector, moves)

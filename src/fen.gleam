@@ -1,4 +1,4 @@
-import boardbb.{type BoardBB}
+import board.{type BoardBB}
 import color.{type Color, Black, White}
 import position.{type File, type Rank, Position}
 import gleam/string
@@ -79,7 +79,7 @@ pub fn parse_board(board_string: String) -> BoardBB {
   let list_of_ranks_as_strings = string.split(board_string, "/")
 
   let accumulator =
-    boardbb.BoardBB(
+    board.BoardBB(
       black_king_bitboard: Bitboard(0),
       black_queen_bitboard: Bitboard(0),
       black_rook_bitboard: Bitboard(0),
@@ -110,11 +110,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             "" -> acc
             "K" -> {
               let new_white_king_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -134,11 +131,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "Q" -> {
               let new_white_queen_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -158,11 +152,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "R" -> {
               let new_white_rook_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -182,11 +173,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "B" -> {
               let new_white_bishop_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -206,11 +194,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "N" -> {
               let new_white_knight_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -230,11 +215,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "P" -> {
               let new_white_pawn_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -254,11 +236,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "k" -> {
               let new_black_king_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: bitboard.or(
                   acc.black_king_bitboard,
                   new_black_king_bitboard,
@@ -278,11 +257,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "q" -> {
               let new_black_queen_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: bitboard.or(
                   acc.black_queen_bitboard,
@@ -302,11 +278,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "r" -> {
               let new_black_rook_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: bitboard.or(
@@ -326,11 +299,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "b" -> {
               let new_black_bishop_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -350,11 +320,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "n" -> {
               let new_black_knight_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,
@@ -374,11 +341,8 @@ pub fn parse_board(board_string: String) -> BoardBB {
             }
             "p" -> {
               let new_black_pawns_bitboard =
-                boardbb.from_position(Position(
-                  file: file_index,
-                  rank: rank_index,
-                ))
-              boardbb.BoardBB(
+                board.from_position(Position(file: file_index, rank: rank_index))
+              board.BoardBB(
                 black_king_bitboard: acc.black_king_bitboard,
                 black_queen_bitboard: acc.black_queen_bitboard,
                 black_rook_bitboard: acc.black_rook_bitboard,

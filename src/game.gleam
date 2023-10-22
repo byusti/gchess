@@ -5,6 +5,7 @@ import gleam/io
 import gleam/list
 import gleam/int
 import gleam/map
+import gleam/bool
 import gleam/result
 import bitboard.{type Bitboard}
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
@@ -32,6 +33,10 @@ pub type Game {
     history: List(Move),
     status: Status,
     ply: Int,
+    white_king_castle: Bool,
+    white_queen_castle: Bool,
+    black_king_castle: Bool,
+    black_queen_castle: Bool,
   )
 }
 
@@ -110,6 +115,14 @@ const positions_in_printing_order = [
   position.Position(file: position.H, rank: position.One),
 ]
 
+const a_file = bitboard.Bitboard(
+  bitboard: 0b00000001_00000001_00000001_00000001_00000001_00000001_00000001_00000001,
+)
+
+const h_file = bitboard.Bitboard(
+  bitboard: 0b10000000_10000000_10000000_10000000_10000000_10000000_10000000_10000000,
+)
+
 const not_a_file = bitboard.Bitboard(
   bitboard: 0b11111110_11111110_11111110_11111110_11111110_11111110_11111110_11111110,
 )
@@ -126,6 +139,10 @@ const not_h_file = bitboard.Bitboard(
   bitboard: 0b01111111_01111111_01111111_01111111_01111111_01111111_01111111_01111111,
 )
 
+const rank_1 = bitboard.Bitboard(
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_11111111,
+)
+
 const rank_2 = bitboard.Bitboard(
   bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
 )
@@ -140,6 +157,10 @@ const rank_6 = bitboard.Bitboard(
 
 const rank_7 = bitboard.Bitboard(
   bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
+)
+
+const rank_8 = bitboard.Bitboard(
+  bitboard: 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 fn handle_message(
@@ -170,6 +191,7 @@ fn generate_pseudo_legal_move_list(game_state: Game, color: Color) -> List(Move)
     generate_bishop_pseudo_legal_move_list(color, game_state),
     generate_queen_pseudo_legal_move_list(color, game_state),
     generate_king_pseudo_legal_move_list(color, game_state),
+    generate_castling_pseudo_legal_move_list(color, game_state),
   ]
 
   //generate_castle_move_list(color, game_state),
@@ -825,6 +847,177 @@ fn occupied_squares_black(board: BoardBB) -> Bitboard {
     bitboard.Bitboard(bitboard: 0),
     fn(collector, next) { bitboard.or(collector, next) },
   )
+}
+
+fn generate_castling_pseudo_legal_move_list(
+  color: Color,
+  game_state: Game,
+) -> List(Move) {
+  let king_bitboard = case color {
+    White -> game_state.board.white_king_bitboard
+    Black -> game_state.board.black_king_bitboard
+  }
+
+  let [king_position] = board.get_positions(king_bitboard)
+
+  let king_position_flag = case king_position {
+    position.Position(position.E, position.One) if color == White -> True
+    position.Position(position.E, position.Eight) if color == Black -> True
+    _ -> False
+  }
+
+  let rook_bitboard = case color {
+    White -> game_state.board.white_rook_bitboard
+    Black -> game_state.board.black_rook_bitboard
+  }
+
+  let queenside_rook_flag = case color {
+    White ->
+      case bitboard.and(bitboard.and(rook_bitboard, a_file), rank_1) {
+        bitboard.Bitboard(bitboard: 0) -> False
+        _ -> True
+      }
+    Black ->
+      case bitboard.and(bitboard.and(rook_bitboard, a_file), rank_8) {
+        bitboard.Bitboard(bitboard: 0) -> False
+        _ -> True
+      }
+  }
+
+  let kingside_rook_flag = case color {
+    White ->
+      case bitboard.and(bitboard.and(rook_bitboard, h_file), rank_1) {
+        bitboard.Bitboard(bitboard: 0) -> False
+        _ -> True
+      }
+    Black ->
+      case bitboard.and(bitboard.and(rook_bitboard, h_file), rank_8) {
+        bitboard.Bitboard(bitboard: 0) -> False
+        _ -> True
+      }
+  }
+
+  //check if there are no pieces between the king and the rook
+  let queenside_clear_flag = case color {
+    White ->
+      case
+        bitboard.and(
+          bitboard.Bitboard(
+            bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110,
+          ),
+          occupied_squares(game_state.board),
+        )
+      {
+        bitboard.Bitboard(bitboard: 0) -> True
+        _ -> False
+      }
+    Black ->
+      case
+        bitboard.and(
+          bitboard.Bitboard(
+            bitboard: 0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+          ),
+          occupied_squares(game_state.board),
+        )
+      {
+        bitboard.Bitboard(bitboard: 0) -> True
+        _ -> False
+      }
+  }
+
+  let kingside_clear_flag = case color {
+    White ->
+      case
+        bitboard.and(
+          bitboard.Bitboard(
+            bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000,
+          ),
+          occupied_squares(game_state.board),
+        )
+      {
+        bitboard.Bitboard(bitboard: 0) -> True
+        _ -> False
+      }
+    Black ->
+      case
+        bitboard.and(
+          bitboard.Bitboard(
+            bitboard: 0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+          ),
+          occupied_squares(game_state.board),
+        )
+      {
+        bitboard.Bitboard(bitboard: 0) -> True
+        _ -> False
+      }
+  }
+
+  //check if king still has castling rights on each side
+  let queenside_castle = case color {
+    White -> game_state.white_queen_castle
+    Black -> game_state.black_queen_castle
+  }
+
+  let kingside_castle = case color {
+    White -> game_state.white_king_castle
+    Black -> game_state.black_king_castle
+  }
+
+  let castling_moves =
+    list.append(
+      case
+        [
+          queenside_castle,
+          queenside_rook_flag,
+          queenside_clear_flag,
+          king_position_flag,
+        ]
+      {
+        [True, True, True, True] ->
+          case color {
+            White -> [
+              move.Castle(
+                from: king_position,
+                to: position.Position(position.C, position.One),
+              ),
+            ]
+            Black -> [
+              move.Castle(
+                from: king_position,
+                to: position.Position(position.C, position.Eight),
+              ),
+            ]
+          }
+        _ -> []
+      },
+      case
+        [
+          kingside_castle,
+          kingside_rook_flag,
+          kingside_clear_flag,
+          king_position_flag,
+        ]
+      {
+        [True, True, True, True] ->
+          case color {
+            White -> [
+              move.Castle(
+                from: king_position,
+                to: position.Position(position.G, position.One),
+              ),
+            ]
+            Black -> [
+              move.Castle(
+                from: king_position,
+                to: position.Position(position.G, position.Eight),
+              ),
+            ]
+          }
+        _ -> []
+      },
+    )
+
+  castling_moves
 }
 
 fn generate_king_pseudo_legal_move_list(
@@ -2797,6 +2990,10 @@ pub fn new_game_from_fen(fen_string: String) {
       history: [],
       status: status,
       ply: ply,
+      white_king_castle: fen.castling.white_kingside,
+      white_queen_castle: fen.castling.white_queenside,
+      black_king_castle: fen.castling.black_kingside,
+      black_queen_castle: fen.castling.black_queenside,
     )
   let assert Ok(actor) = actor.start(game_state, handle_message)
   actor
@@ -2888,6 +3085,9 @@ pub fn new_game() {
   let ply = 0
 
   let assert Ok(actor) =
-    actor.start(Game(board, turn, history, status, ply), handle_message)
+    actor.start(
+      Game(board, turn, history, status, ply, True, True, True, True),
+      handle_message,
+    )
   actor
 }

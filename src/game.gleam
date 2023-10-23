@@ -5,7 +5,6 @@ import gleam/io
 import gleam/list
 import gleam/int
 import gleam/map
-import gleam/bool
 import gleam/result
 import bitboard.{type Bitboard}
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}

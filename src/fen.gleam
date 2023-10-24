@@ -15,10 +15,6 @@ pub type CastlingStatus {
   )
 }
 
-pub type EnPassant {
-  EnPassant(file: File, rank: Rank)
-}
-
 pub type HalfMove =
   Int
 
@@ -30,7 +26,7 @@ pub type Fen {
     board: BoardBB,
     turn: Color,
     castling: CastlingStatus,
-    en_passant: Option(EnPassant),
+    en_passant: Option(Position),
     halfmove: HalfMove,
     fullmove: FullMove,
   )
@@ -443,7 +439,7 @@ fn parse_castling(castling_string: String) -> CastlingStatus {
   }
 }
 
-fn parse_en_passant(en_passant_string: String) -> Option(EnPassant) {
+fn parse_en_passant(en_passant_string: String) -> Option(Position) {
   case en_passant_string {
     "-" -> None
     _ -> {
@@ -455,7 +451,7 @@ fn parse_en_passant(en_passant_string: String) -> Option(EnPassant) {
       let [file_string, rank_string] = en_passant_parts
       let file = parse_file(file_string)
       let rank = parse_rank(rank_string)
-      Some(EnPassant(file: file, rank: rank))
+      Some(Position(file: file, rank: rank))
     }
   }
 }

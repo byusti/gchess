@@ -17,9 +17,15 @@ pub fn to_string(move: Move) -> String {
   let from = position.to_string(move.from)
   let to = position.to_string(move.to)
   let captured = case move {
-    Normal(_, _, option.None, _) -> ""
-    Normal(_, _, option.Some(captured), _) ->
+    Normal(_, _, option.None, option.None) -> ""
+    Normal(_, _, option.None, option.Some(promotion)) ->
+      " promoting to " <> piece.to_string(promotion)
+    Normal(_, _, option.Some(captured), option.None) ->
       " capturing " <> piece.to_string(captured)
+    Normal(_, _, option.Some(captured), option.Some(promotion)) ->
+      " capturing " <> piece.to_string(captured) <> " and promoting to " <> piece.to_string(
+        promotion,
+      )
     Castle(_, _) -> ""
     EnPassant(_, _) -> ""
   }

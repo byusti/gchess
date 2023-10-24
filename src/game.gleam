@@ -36,6 +36,7 @@ pub type Game {
     white_queen_castle: Bool,
     black_king_castle: Bool,
     black_queen_castle: Bool,
+    en_passant: Option(Position),
   )
 }
 
@@ -191,10 +192,8 @@ fn generate_pseudo_legal_move_list(game_state: Game, color: Color) -> List(Move)
     generate_queen_pseudo_legal_move_list(color, game_state),
     generate_king_pseudo_legal_move_list(color, game_state),
     generate_castling_pseudo_legal_move_list(color, game_state),
+    generate_en_passant_pseudo_legal_move_list(color, game_state),
   ]
-
-  //generate_castle_move_list(color, game_state),
-  //generate_en_passant_move_list(color, game_state),
 
   let move_list =
     list.fold(
@@ -205,39 +204,6 @@ fn generate_pseudo_legal_move_list(game_state: Game, color: Color) -> List(Move)
 
   move_list
 }
-
-// fn king_check_status(game_state: Game, color: Color) {
-//   let king_bitboard = case color {
-//     White -> game_state.board.white_king_bitboard
-//     Black -> game_state.board.black_king_bitboard
-//   }
-
-//   let king_position = case board.get_positions(king_bitboard) {
-//     [position] -> position
-//     _ -> panic("There should only be one king on the board")
-//   }
-
-//   let enemy_color = case color {
-//     White -> Black
-//     Black -> White
-//   }
-
-//   let enemy_move_list = generate_move_list(game_state, enemy_color)
-
-//   let attacked_king = piece.Piece(color: color, kind: King)
-
-//   let enemy_check_list =
-//     list.filter(
-//       enemy_move_list,
-//       fn(move) {
-//         case move {
-//           move.Normal(_, _, Some(king), _) if king == attacked_king -> True
-//           _ -> False
-//         }
-//       },
-//     )
-//   todo
-// }
 
 fn look_up_east_ray_bb(origin_square: Position) -> Bitboard {
   case origin_square {
@@ -846,6 +812,65 @@ fn occupied_squares_black(board: BoardBB) -> Bitboard {
     bitboard.Bitboard(bitboard: 0),
     fn(collector, next) { bitboard.or(collector, next) },
   )
+}
+
+fn pawn_squares(color: Color, board: BoardBB) -> Bitboard {
+  case color {
+    White -> board.white_pawns_bitboard
+    Black -> board.black_pawns_bitboard
+  }
+}
+
+fn generate_en_passant_pseudo_legal_move_list(
+  color: Color,
+  game_state: Game,
+) -> List(Move) {
+  case game_state.en_passant {
+    None -> []
+    Some(ep_position) -> {
+      let ep_bitboard = position.to_bitboard(ep_position)
+      let pawn_bitboard = pawn_squares(color, game_state.board)
+
+      let ep_attacker_bitboard = case color {
+        White -> {
+          let west_east_attacker_bb =
+            bitboard.and(
+              bitboard.and(bitboard.shift_right(ep_bitboard, 7), pawn_bitboard),
+              not_a_file,
+            )
+          let east_west_attacker_bb =
+            bitboard.and(
+              bitboard.and(bitboard.shift_right(ep_bitboard, 9), pawn_bitboard),
+              not_h_file,
+            )
+          bitboard.or(west_east_attacker_bb, east_west_attacker_bb)
+        }
+        Black -> {
+          let west_east_attacker_bb =
+            bitboard.and(
+              bitboard.and(bitboard.shift_left(ep_bitboard, 7), pawn_bitboard),
+              not_h_file,
+            )
+          let east_west_attacker_bb =
+            bitboard.and(
+              bitboard.and(bitboard.shift_left(ep_bitboard, 9), pawn_bitboard),
+              not_a_file,
+            )
+          bitboard.or(west_east_attacker_bb, east_west_attacker_bb)
+        }
+      }
+
+      let ep_attacker_positions = board.get_positions(ep_attacker_bitboard)
+
+      let ep_moves =
+        list.map(
+          ep_attacker_positions,
+          fn(position) { move.EnPassant(from: position, to: ep_position) },
+        )
+
+      ep_moves
+    }
+  }
 }
 
 fn generate_castling_pseudo_legal_move_list(
@@ -2156,11 +2181,80 @@ fn generate_pawn_pseudo_legal_move_list(
   let non_capture_dest_list = board.get_positions(moves_no_captures)
 
   let non_capture_move_list =
-    list.map(
+    list.fold(
       non_capture_dest_list,
-      fn(dest) -> Move {
+      [],
+      fn(acc, dest) -> List(Move) {
         let origin = position.get_rear_position(dest, color)
-        move.Normal(from: origin, to: dest, captured: None, promotion: None)
+        let moves = case dest {
+          position.Position(file: _, rank: position.Eight) if color == White -> {
+            [
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Queen)),
+              ),
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Rook)),
+              ),
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Bishop)),
+              ),
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Knight)),
+              ),
+            ]
+          }
+          position.Position(file: _, rank: position.One) if color == Black -> {
+            [
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Queen)),
+              ),
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Rook)),
+              ),
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Bishop)),
+              ),
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: Some(piece.Piece(color, Knight)),
+              ),
+            ]
+          }
+          _ -> {
+            [
+              move.Normal(
+                from: origin,
+                to: dest,
+                captured: None,
+                promotion: None,
+              ),
+            ]
+          }
+        }
+        list.append(acc, moves)
       },
     )
 
@@ -2475,14 +2569,17 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
       let east_origins =
         bitboard.and(
           bitboard.shift_right(pawn_capture_destination_set, 9),
-          not_a_file,
+          not_h_file,
         )
       let west_origins =
         bitboard.and(
           bitboard.shift_right(pawn_capture_destination_set, 7),
-          not_h_file,
+          not_a_file,
         )
-      [east_origins, west_origins]
+      [
+        bitboard.and(east_origins, game_state.board.white_pawns_bitboard),
+        bitboard.and(west_origins, game_state.board.white_pawns_bitboard),
+      ]
     }
     Black -> {
       let east_origins =
@@ -2495,7 +2592,10 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
           bitboard.shift_left(pawn_capture_destination_set, 7),
           not_h_file,
         )
-      [east_origins, west_origins]
+      [
+        bitboard.and(east_origins, game_state.board.black_pawns_bitboard),
+        bitboard.and(west_origins, game_state.board.black_pawns_bitboard),
+      ]
     }
   }
 
@@ -2514,62 +2614,220 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
       pawn_capture_origin_list,
       [],
       fn(collector, position) -> List(Move) {
-        let east_attack = position.get_position(position, 1, 1)
-        let west_attack = position.get_position(position, 1, -1)
-        let east_attack_in_dest_list =
-          list.contains(pawn_capture_destination_list, east_attack)
-        let west_attack_in_dest_list =
-          list.contains(pawn_capture_destination_list, west_attack)
-        let moves = case [east_attack_in_dest_list, west_attack_in_dest_list] {
-          [True, True] -> [
-            move.Normal(
-              from: position,
-              to: east_attack,
-              captured: {
-                let assert Some(piece) =
-                  piece_at_position(game_state, east_attack)
-                Some(piece)
-              },
-              promotion: None,
-            ),
-            move.Normal(
-              from: position,
-              to: west_attack,
-              captured: {
-                let assert Some(piece) =
-                  piece_at_position(game_state, west_attack)
-                Some(piece)
-              },
-              promotion: None,
-            ),
-          ]
-          [True, False] -> [
-            move.Normal(
-              from: position,
-              to: east_attack,
-              captured: {
-                let assert Some(piece) =
-                  piece_at_position(game_state, east_attack)
-                Some(piece)
-              },
-              promotion: None,
-            ),
-          ]
-          [False, True] -> [
-            move.Normal(
-              from: position,
-              to: west_attack,
-              captured: {
-                let assert Some(piece) =
-                  piece_at_position(game_state, west_attack)
-                Some(piece)
-              },
-              promotion: None,
-            ),
-          ]
-          [False, False] -> []
+        let east_attack = case color {
+          White ->
+            board.get_positions(bitboard.and(
+              bitboard.shift_left(position.to_bitboard(position), 9),
+              not_a_file,
+            ))
+
+          Black ->
+            board.get_positions(bitboard.and(
+              bitboard.shift_right(position.to_bitboard(position), 7),
+              not_a_file,
+            ))
         }
-        list.append(collector, moves)
+
+        let east_moves = case east_attack {
+          [] -> []
+          [east_attack] -> {
+            let east_attack_in_dest_list =
+              list.contains(pawn_capture_destination_list, east_attack)
+
+            let east_moves = case east_attack_in_dest_list {
+              False -> []
+              True -> {
+                let east_moves = case east_attack {
+                  position.Position(file: _, rank: position.Eight) if color == White -> [
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Queen)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Rook)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Bishop)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Knight)),
+                    ),
+                  ]
+                  position.Position(file: _, rank: position.One) if color == Black -> [
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Queen)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Rook)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Bishop)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Knight)),
+                    ),
+                  ]
+                  _ -> [
+                    move.Normal(
+                      from: position,
+                      to: east_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, east_attack)
+                        Some(piece)
+                      },
+                      promotion: None,
+                    ),
+                  ]
+                }
+                east_moves
+              }
+            }
+            east_moves
+          }
+        }
+        let west_attack = case color {
+          White ->
+            board.get_positions(bitboard.and(
+              bitboard.shift_left(position.to_bitboard(position), 7),
+              not_h_file,
+            ))
+
+          Black ->
+            board.get_positions(bitboard.and(
+              bitboard.shift_right(position.to_bitboard(position), 9),
+              not_h_file,
+            ))
+        }
+
+        let west_moves = case west_attack {
+          [] -> []
+          [west_attack] -> {
+            let west_attack_in_dest_list =
+              list.contains(pawn_capture_destination_list, west_attack)
+
+            let west_moves = case west_attack_in_dest_list {
+              False -> []
+              True -> {
+                let west_moves = case west_attack {
+                  position.Position(file: _, rank: position.Eight) -> [
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Queen)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Rook)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Bishop)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Knight)),
+                    ),
+                  ]
+                  _ -> [
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: None,
+                    ),
+                  ]
+                }
+                west_moves
+              }
+            }
+            west_moves
+          }
+        }
+
+        list.append(list.append(collector, east_moves), west_moves)
       },
     )
   pawn_capture_move_list
@@ -2993,6 +3251,7 @@ pub fn new_game_from_fen(fen_string: String) {
       white_queen_castle: fen.castling.white_queenside,
       black_king_castle: fen.castling.black_kingside,
       black_queen_castle: fen.castling.black_queenside,
+      en_passant: fen.en_passant,
     )
   let assert Ok(actor) = actor.start(game_state, handle_message)
   actor
@@ -3085,7 +3344,7 @@ pub fn new_game() {
 
   let assert Ok(actor) =
     actor.start(
-      Game(board, turn, history, status, ply, True, True, True, True),
+      Game(board, turn, history, status, ply, True, True, True, True, None),
       handle_message,
     )
   actor

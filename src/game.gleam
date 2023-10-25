@@ -189,7 +189,8 @@ fn handle_all_legal_moves(
     |> list.filter(fn(move) {
       let new_game_state = apply_move(game_state, move)
       case move {
-        move.Normal(from: _, to: _, captured: _, promotion: _) -> {
+        move.Normal(from: _, to: _, captured: _, promotion: _)
+        | move.EnPassant(from: _, to: _) -> {
           !is_king_in_check(new_game_state, game_state.turn)
         }
         _ -> True
@@ -2893,16 +2894,37 @@ fn generate_pawn_non_capture_move_bitboard(
 }
 
 fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move) {
-  let pawn_attack_set =
-    generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
-  let list_of_enemy_piece_bitboards = [
-    game_state.board.black_king_bitboard,
-    game_state.board.black_queen_bitboard,
-    game_state.board.black_rook_bitboard,
-    game_state.board.black_bishop_bitboard,
-    game_state.board.black_knight_bitboard,
-    game_state.board.black_pawns_bitboard,
-  ]
+  let pawn_attack_set = case color {
+    White -> {
+      generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
+    }
+    Black -> {
+      generate_pawn_attack_set(game_state.board.black_pawns_bitboard, color)
+    }
+  }
+  generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
+  let list_of_enemy_piece_bitboards = case color {
+    White -> {
+      [
+        game_state.board.black_king_bitboard,
+        game_state.board.black_queen_bitboard,
+        game_state.board.black_rook_bitboard,
+        game_state.board.black_bishop_bitboard,
+        game_state.board.black_knight_bitboard,
+        game_state.board.black_pawns_bitboard,
+      ]
+    }
+    Black -> {
+      [
+        game_state.board.white_king_bitboard,
+        game_state.board.white_queen_bitboard,
+        game_state.board.white_rook_bitboard,
+        game_state.board.white_bishop_bitboard,
+        game_state.board.white_knight_bitboard,
+        game_state.board.white_pawns_bitboard,
+      ]
+    }
+  }
   let enemy_pieces =
     list.fold(
       list_of_enemy_piece_bitboards,
@@ -2929,15 +2951,15 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
       ]
     }
     Black -> {
-      let east_origins =
-        bitboard.and(
-          bitboard.shift_left(pawn_capture_destination_set, 9),
-          not_a_file,
-        )
       let west_origins =
         bitboard.and(
-          bitboard.shift_left(pawn_capture_destination_set, 7),
+          bitboard.shift_left(pawn_capture_destination_set, 9),
           not_h_file,
+        )
+      let east_origins =
+        bitboard.and(
+          bitboard.shift_left(pawn_capture_destination_set, 7),
+          not_a_file,
         )
       [
         bitboard.and(east_origins, game_state.board.black_pawns_bitboard),

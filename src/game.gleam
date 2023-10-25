@@ -42,6 +42,7 @@ pub type Game {
 
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
+  ApplyMove(reply_with: Subject(Game), move: Move)
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
@@ -169,6 +170,11 @@ fn handle_message(
 ) -> actor.Next(Message, Game) {
   case message {
     AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
+    ApplyMove(client, move) -> {
+      let new_game_state = apply_move(game_state, move)
+      process.send(client, new_game_state)
+      actor.continue(new_game_state)
+    }
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game_state, client)
   }

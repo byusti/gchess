@@ -186,10 +186,17 @@ fn handle_all_legal_moves(
 ) -> actor.Next(Message, Game) {
   let legal_moves = {
     generate_pseudo_legal_move_list(game_state, game_state.turn)
+    |> list.filter(fn(move) {
+      let new_game_state = apply_move(game_state, move)
+      case move {
+        move.Normal(from: _, to: _, captured: _, promotion: _) -> {
+          !is_king_in_check(new_game_state, game_state.turn)
+        }
+        _ -> True
+      }
+    })
   }
-  // |> list.filter(fn(move) { todo })
-  // let new_game_state = apply_move(game_state, move)
-  // !is_in_check(new_game_state, game_state.turn)
+
   process.send(client, legal_moves)
   actor.continue(game_state)
 }
@@ -201,7 +208,7 @@ fn apply_move(game_state: Game, move: Move) -> Game {
         board.get_piece_at_position(game_state.board, from)
       let new_game_state = case piece {
         None -> game_state
-        Some(piece) -> {
+        Some(_) -> {
           Game(
             ..game_state,
             board: board.remove_piece_at_position(game_state.board, to),

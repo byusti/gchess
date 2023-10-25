@@ -1,8 +1,7 @@
 import bitboard.{type Bitboard, and, new_bitboard, shift_left}
 import position.{type Position}
-import move.{type Move, Normal}
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
-import color.{type Color, Black, White}
+import color.{Black, White}
 import gleam/option.{None, Some}
 
 pub type BoardBB {

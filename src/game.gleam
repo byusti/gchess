@@ -169,14 +169,110 @@ fn handle_message(
   game_state: Game,
 ) -> actor.Next(Message, Game) {
   case message {
-    AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
+    AllLegalMoves(client) -> {
+      handle_all_legal_moves(game_state, client)
+    }
     ApplyMove(client, move) -> {
-      let new_game_state = apply_move(game_state, move)
-      process.send(client, new_game_state)
-      actor.continue(new_game_state)
+      // This could be way more efficient if we just kept track of the legal moves
+      // or if we had a way to generate legal moves from a given position
+      let legal_moves = {
+        generate_pseudo_legal_move_list(game_state, game_state.turn)
+        |> list.filter(fn(move) { is_move_legal(game_state, move) })
+      }
+
+      case list.contains(legal_moves, move) {
+        True -> {
+          let new_game_state = apply_move(game_state, move)
+          process.send(client, new_game_state)
+          actor.continue(new_game_state)
+        }
+        False -> {
+          process.send(client, game_state)
+          actor.continue(game_state)
+        }
+      }
     }
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game_state, client)
+  }
+}
+
+fn is_move_legal(game_state: Game, move: Move) -> Bool {
+  let new_game_state = apply_move(game_state, move)
+  case move {
+    move.Normal(from: _, to: _, captured: _, promotion: _)
+    | move.EnPassant(from: _, to: _) -> {
+      !is_king_in_check(new_game_state, game_state.turn)
+    }
+    move.Castle(from: from, to: to) -> {
+      //First determine if the king is in check,
+      //If so then the king cannot castle
+      case is_king_in_check(new_game_state, game_state.turn) {
+        True -> False
+        False -> {
+          // Determine if king is attacked at destination square of castling
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              board: board.set_piece_at_position(
+                new_game_state.board,
+                to,
+                piece.Piece(color: game_state.turn, kind: King),
+              ),
+            )
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              board: board.remove_piece_at_position(new_game_state.board, from),
+            )
+
+          case is_king_in_check(new_game_state, game_state.turn) {
+            True -> False
+            False -> {
+              //Then determine if the king is attacked while traversing the castling squares
+              //Example: If the king is on E1 and castling to G1, then we need to check if
+              //the king is attacked while traversing F1 and G1
+              let king_castling_target_square = case to {
+                position.Position(file: G, rank: One) ->
+                  position.Position(file: F, rank: One)
+                position.Position(file: G, rank: Eight) ->
+                  position.Position(file: F, rank: Eight)
+                position.Position(file: C, rank: One) ->
+                  position.Position(file: D, rank: One)
+                position.Position(file: C, rank: Eight) ->
+                  position.Position(file: D, rank: Eight)
+                _ -> panic("Invalid castle move")
+              }
+
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  board: board.set_piece_at_position(
+                    new_game_state.board,
+                    king_castling_target_square,
+                    piece.Piece(color: game_state.turn, kind: King),
+                  ),
+                )
+
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  board: board.remove_piece_at_position(
+                    new_game_state.board,
+                    to,
+                  ),
+                )
+
+              case is_king_in_check(new_game_state, game_state.turn) {
+                True -> False
+                False -> True
+              }
+            }
+          }
+        }
+      }
+    }
+    _ -> True
   }
 }
 
@@ -186,93 +282,17 @@ fn handle_all_legal_moves(
 ) -> actor.Next(Message, Game) {
   let legal_moves = {
     generate_pseudo_legal_move_list(game_state, game_state.turn)
-    |> list.filter(fn(move) {
-      let new_game_state = apply_move(game_state, move)
-      case move {
-        move.Normal(from: _, to: _, captured: _, promotion: _)
-        | move.EnPassant(from: _, to: _) -> {
-          !is_king_in_check(new_game_state, game_state.turn)
-        }
-        move.Castle(from: from, to: to) -> {
-          //First determine if the king is in check,
-          //If so then the king cannot castle
-          case is_king_in_check(new_game_state, game_state.turn) {
-            True -> False
-            False -> {
-              // Determine if king is attacked at destination square of castling
-              let new_game_state =
-                Game(
-                  ..new_game_state,
-                  board: board.set_piece_at_position(
-                    new_game_state.board,
-                    to,
-                    piece.Piece(color: game_state.turn, kind: King),
-                  ),
-                )
-              let new_game_state =
-                Game(
-                  ..new_game_state,
-                  board: board.remove_piece_at_position(
-                    new_game_state.board,
-                    from,
-                  ),
-                )
-
-              case is_king_in_check(new_game_state, game_state.turn) {
-                True -> False
-                False -> {
-                  //Then determine if the king is attacked while traversing the castling squares
-                  //Example: If the king is on E1 and castling to G1, then we need to check if
-                  //the king is attacked while traversing F1 and G1
-                  let king_castling_target_square = case to {
-                    position.Position(file: G, rank: One) ->
-                      position.Position(file: F, rank: One)
-                    position.Position(file: G, rank: Eight) ->
-                      position.Position(file: F, rank: Eight)
-                    position.Position(file: C, rank: One) ->
-                      position.Position(file: D, rank: One)
-                    position.Position(file: C, rank: Eight) ->
-                      position.Position(file: D, rank: Eight)
-                    _ -> panic("Invalid castle move")
-                  }
-
-                  let new_game_state =
-                    Game(
-                      ..new_game_state,
-                      board: board.set_piece_at_position(
-                        new_game_state.board,
-                        king_castling_target_square,
-                        piece.Piece(color: game_state.turn, kind: King),
-                      ),
-                    )
-
-                  let new_game_state =
-                    Game(
-                      ..new_game_state,
-                      board: board.remove_piece_at_position(
-                        new_game_state.board,
-                        to,
-                      ),
-                    )
-
-                  case is_king_in_check(new_game_state, game_state.turn) {
-                    True -> False
-                    False -> True
-                  }
-                }
-              }
-            }
-          }
-        }
-        _ -> True
-      }
-    })
+    |> list.filter(fn(move) { is_move_legal(game_state, move) })
   }
 
   process.send(client, legal_moves)
   actor.continue(game_state)
 }
 
+// Apply move to the board. This function does not check if the move
+// is possible, it just attempts to apply a move to the board.
+// If the move is not possible, then the board will be in an invalid state.
+// This function is used for check detection and applying legal moves
 fn apply_move(game_state: Game, move: Move) -> Game {
   case move {
     move.Normal(from: from, to: to, captured: piece, promotion: _) -> {

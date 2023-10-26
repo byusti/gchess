@@ -1,24 +1,8 @@
 # gchess
+<!-- [![Package Version](https://img.shields.io/hexpm/v/gchess)](https://hex.pm/packages/gchess) -->
 
-[![Package Version](https://img.shields.io/hexpm/v/gchess)](https://hex.pm/packages/gchess)
-[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gchess/)
+<!--[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gchess/) -->
 
-A Gleam project
+Chess Library
 
-## Quick start
 
-```sh
-gleam run   # Run the project
-gleam test  # Run the tests
-gleam shell # Run an Erlang shell
-```
-
-## Installation
-
-If available on Hex this package can be added to your Gleam project:
-
-```sh
-gleam add gchess
-```
-
-and its documentation can be found at <https://hexdocs.pm/gchess>.

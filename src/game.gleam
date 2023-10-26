@@ -193,6 +193,77 @@ fn handle_all_legal_moves(
         | move.EnPassant(from: _, to: _) -> {
           !is_king_in_check(new_game_state, game_state.turn)
         }
+        move.Castle(from: from, to: to) -> {
+          //First determine if the king is in check,
+          //If so then the king cannot castle
+          case is_king_in_check(new_game_state, game_state.turn) {
+            True -> False
+            False -> {
+              // Determine if king is attacked at destination square of castling
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  board: board.set_piece_at_position(
+                    new_game_state.board,
+                    to,
+                    piece.Piece(color: game_state.turn, kind: King),
+                  ),
+                )
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  board: board.remove_piece_at_position(
+                    new_game_state.board,
+                    from,
+                  ),
+                )
+
+              case is_king_in_check(new_game_state, game_state.turn) {
+                True -> False
+                False -> {
+                  //Then determine if the king is attacked while traversing the castling squares
+                  //Example: If the king is on E1 and castling to G1, then we need to check if
+                  //the king is attacked while traversing F1 and G1
+                  let king_castling_target_square = case to {
+                    position.Position(file: G, rank: One) ->
+                      position.Position(file: F, rank: One)
+                    position.Position(file: G, rank: Eight) ->
+                      position.Position(file: F, rank: Eight)
+                    position.Position(file: C, rank: One) ->
+                      position.Position(file: D, rank: One)
+                    position.Position(file: C, rank: Eight) ->
+                      position.Position(file: D, rank: Eight)
+                    _ -> panic("Invalid castle move")
+                  }
+
+                  let new_game_state =
+                    Game(
+                      ..new_game_state,
+                      board: board.set_piece_at_position(
+                        new_game_state.board,
+                        king_castling_target_square,
+                        piece.Piece(color: game_state.turn, kind: King),
+                      ),
+                    )
+
+                  let new_game_state =
+                    Game(
+                      ..new_game_state,
+                      board: board.remove_piece_at_position(
+                        new_game_state.board,
+                        to,
+                      ),
+                    )
+
+                  case is_king_in_check(new_game_state, game_state.turn) {
+                    True -> False
+                    False -> True
+                  }
+                }
+              }
+            }
+          }
+        }
         _ -> True
       }
     })
@@ -1660,6 +1731,8 @@ fn generate_queen_pseudo_legal_move_list(
                 bitboard.and(next, occupied_squares_white(game_state.board))
               }
             }
+
+            // TODO: fix this abomination
             let rook_simple_moves = case color {
               White -> {
                 bitboard.exclusive_or(next, captures)

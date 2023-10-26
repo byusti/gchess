@@ -1349,7 +1349,7 @@ pub const c8_north_west = bitboard.Bitboard(
 )
 
 pub const d8_north_west = bitboard.Bitboard(
-  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000010_00000000,
+  bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
 pub const e8_north_west = bitboard.Bitboard(

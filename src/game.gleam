@@ -3,6 +3,7 @@ import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option, None, Some}
 import gleam/io
 import gleam/list
+import gleam/string.{length}
 import gleam/int
 import gleam/map
 import gleam/result
@@ -43,6 +44,7 @@ pub type Game {
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
   ApplyMove(reply_with: Subject(Game), move: Move)
+  ApplyMoveUCI(reply_with: Subject(Game), move: String)
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
@@ -169,36 +171,149 @@ fn handle_message(
   game_state: Game,
 ) -> actor.Next(Message, Game) {
   case message {
-    AllLegalMoves(client) -> {
-      handle_all_legal_moves(game_state, client)
-    }
-    ApplyMove(client, move) -> {
-      // This could be way more efficient if we just kept track of the legal moves
+    AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
+    ApplyMove(client, move) -> handle_apply_move(game_state, client, move)
+    ApplyMoveUCI(client, move) ->
+      handle_apply_move_uci(game_state, client, move)
+    Shutdown -> actor.Stop(process.Normal)
+    PrintBoard(client) -> handle_print_board(game_state, client)
+  }
+}
+
+fn handle_apply_move_uci(game_state: Game, client: Subject(Game), move: String) {
+  case length(move) {
+    4 | 5 -> {
+      let move_chars = string.to_graphemes(move)
+      let from_file = case list.first(move_chars) {
+        Ok("a") -> A
+        Ok("b") -> B
+        Ok("c") -> C
+        Ok("d") -> D
+        Ok("e") -> E
+        Ok("f") -> F
+        Ok("g") -> G
+        Ok("h") -> H
+        _ -> panic("Invalid move")
+      }
+      let assert Ok(move_chars) = list.rest(move_chars)
+      let from_rank = case list.first(move_chars) {
+        Ok("1") -> One
+        Ok("2") -> Two
+        Ok("3") -> Three
+        Ok("4") -> Four
+        Ok("5") -> Five
+        Ok("6") -> Six
+        Ok("7") -> Seven
+        Ok("8") -> Eight
+        _ -> panic("Invalid move")
+      }
+      let assert Ok(move_chars) = list.rest(move_chars)
+      let to_file = case list.first(move_chars) {
+        Ok("a") -> A
+        Ok("b") -> B
+        Ok("c") -> C
+        Ok("d") -> D
+        Ok("e") -> E
+        Ok("f") -> F
+        Ok("g") -> G
+        Ok("h") -> H
+        _ -> panic("Invalid move")
+      }
+      let assert Ok(move_chars) = list.rest(move_chars)
+      let to_rank = case list.first(move_chars) {
+        Ok("1") -> One
+        Ok("2") -> Two
+        Ok("3") -> Three
+        Ok("4") -> Four
+        Ok("5") -> Five
+        Ok("6") -> Six
+        Ok("7") -> Seven
+        Ok("8") -> Eight
+        _ -> panic("Invalid move")
+      }
+
+      let promo = case list.length(move_chars) {
+        5 -> {
+          let assert Ok(move_chars) = list.rest(move_chars)
+          case list.first(move_chars) {
+            Ok("q") -> Some(Queen)
+            Ok("r") -> Some(Rook)
+            Ok("b") -> Some(Bishop)
+            Ok("n") -> Some(Knight)
+            _ -> panic("Invalid move")
+          }
+        }
+        _ -> None
+      }
+
+      // TODO: This could be way more efficient if we just kept track of the legal moves
       // or if we had a way to generate legal moves from a given position
       let legal_moves = {
         generate_pseudo_legal_move_list(game_state, game_state.turn)
         |> list.filter(fn(move) { is_move_legal(game_state, move) })
       }
 
-      case list.contains(legal_moves, move) {
-        True -> {
-          let new_game_state = apply_move(game_state, move)
-          process.send(client, new_game_state)
-          actor.continue(new_game_state)
-        }
-        False -> {
-          process.send(client, game_state)
-          actor.continue(game_state)
-        }
-      }
+      let assert Ok(move) =
+        list.find(
+          legal_moves,
+          fn(legal_move) {
+            case legal_move {
+              move.Normal(
+                from: from,
+                to: to,
+                captured: _,
+                promotion: Some(promotion),
+              ) -> {
+                case promo {
+                  Some(promo) ->
+                    from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == promotion.kind
+                  None -> False
+                }
+              }
+              move.Normal(from: from, to: to, captured: _, promotion: None) -> {
+                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == None
+              }
+              move.Castle(from: from, to: to) -> {
+                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
+              }
+              move.EnPassant(from: from, to: to) -> {
+                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
+              }
+              _ -> panic("Invalid move")
+            }
+          },
+        )
+      let new_game_state = force_apply_move(game_state, move)
+      process.send(client, new_game_state)
+      actor.continue(new_game_state)
     }
-    Shutdown -> actor.Stop(process.Normal)
-    PrintBoard(client) -> handle_print_board(game_state, client)
+    _ -> panic("Invalid move")
+  }
+}
+
+fn handle_apply_move(game_state: Game, client: Subject(Game), move: Move) {
+  // TODO: This could be way more efficient if we just kept track of the legal moves
+  // or if we had a way to generate legal moves from a given position
+  let legal_moves = {
+    generate_pseudo_legal_move_list(game_state, game_state.turn)
+    |> list.filter(fn(move) { is_move_legal(game_state, move) })
+  }
+
+  case list.contains(legal_moves, move) {
+    True -> {
+      let new_game_state = force_apply_move(game_state, move)
+      process.send(client, new_game_state)
+      actor.continue(new_game_state)
+    }
+    False -> {
+      process.send(client, game_state)
+      actor.continue(game_state)
+    }
   }
 }
 
 fn is_move_legal(game_state: Game, move: Move) -> Bool {
-  let new_game_state = apply_move(game_state, move)
+  let new_game_state = force_apply_move(game_state, move)
   case move {
     move.Normal(from: _, to: _, captured: _, promotion: _)
     | move.EnPassant(from: _, to: _) -> {
@@ -293,7 +408,7 @@ fn handle_all_legal_moves(
 // is possible, it just attempts to apply a move to the board.
 // If the move is not possible, then the board will be in an invalid state.
 // This function is used for check detection and applying legal moves
-fn apply_move(game_state: Game, move: Move) -> Game {
+fn force_apply_move(game_state: Game, move: Move) -> Game {
   case move {
     move.Normal(from: from, to: to, captured: piece, promotion: _) -> {
       let assert Some(moving_piece) =
@@ -3520,6 +3635,22 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
     )
 
   board_map
+}
+
+pub fn print_board(game_actor: Subject(Message)) {
+  process.call(game_actor, PrintBoard, 100)
+}
+
+pub fn apply_move(game_actor: Subject(Message), move: Move) {
+  process.call(game_actor, ApplyMove(_, move), 100)
+}
+
+pub fn apply_move_uci(game_actor: Subject(Message), move_uci: String) {
+  process.call(game_actor, ApplyMoveUCI(_, move_uci), 100)
+}
+
+pub fn all_legal_moves(game_actor: Subject(Message)) {
+  process.call(game_actor, AllLegalMoves, 100)
 }
 
 pub fn print_board_from_fen(fen: String) {

@@ -29,4 +29,7 @@ get all legal moves\
 make a move\
 make a move using uci notation\
 print game board to console\
-print fen as board to console
+print fen as board to console\
+
+## TODO
+My goal is to match the feature set of [binbo](https://github.com/DOBRO/binbo).

@@ -4,7 +4,7 @@
 <!--[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gchess/) -->
 ## Intro
 
-A chess library for Gleam and Erlang.
+A chess library for Gleam.
 
 ```
   let game_actor =

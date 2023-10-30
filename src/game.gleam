@@ -191,118 +191,6 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
       process.send(client, game_state)
       actor.continue(game_state)
     }
-    [_move] -> {
-      let white_king_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
-        )
-
-      let white_queen_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
-        )
-
-      let white_rook_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001,
-        )
-
-      let white_bishop_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100,
-        )
-
-      let white_knight_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010,
-        )
-
-      let white_pawns_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
-        )
-
-      let black_king_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-        )
-
-      let black_queen_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-        )
-
-      let black_rook_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-        )
-
-      let black_bishop_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-        )
-
-      let black_knight_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-        )
-
-      let black_pawns_bitboard =
-        bitboard.Bitboard(
-          bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
-        )
-
-      let board =
-        board.BoardBB(
-          black_king_bitboard: black_king_bitboard,
-          black_queen_bitboard: black_queen_bitboard,
-          black_rook_bitboard: black_rook_bitboard,
-          black_bishop_bitboard: black_bishop_bitboard,
-          black_knight_bitboard: black_knight_bitboard,
-          black_pawns_bitboard: black_pawns_bitboard,
-          white_king_bitboard: white_king_bitboard,
-          white_queen_bitboard: white_queen_bitboard,
-          white_rook_bitboard: white_rook_bitboard,
-          white_bishop_bitboard: white_bishop_bitboard,
-          white_knight_bitboard: white_knight_bitboard,
-          white_pawns_bitboard: white_pawns_bitboard,
-        )
-
-      let turn = White
-
-      let history = []
-
-      let status = InProgress
-
-      let ply = 0
-
-      let white_kingside_castle = Yes
-
-      let white_queenside_castle = Yes
-
-      let black_kingside_castle = Yes
-
-      let black_queenside_castle = Yes
-
-      let en_passant = None
-
-      let new_game_state =
-        Game(
-          board: board,
-          turn: turn,
-          history: history,
-          status: status,
-          ply: ply,
-          white_kingside_castle: white_kingside_castle,
-          white_queenside_castle: white_queenside_castle,
-          black_kingside_castle: black_kingside_castle,
-          black_queenside_castle: black_queenside_castle,
-          en_passant: en_passant,
-        )
-
-      process.send(client, new_game_state)
-      actor.continue(new_game_state)
-    }
     [move, ..rest] -> {
       case move {
         move.Normal(
@@ -954,6 +842,10 @@ fn is_move_legal(game_state: Game, move: Move) -> Bool {
         True -> False
         False -> {
           // Determine if king is attacked at destination square of castling
+          // I realized that after calling this function, it seems the old
+          // location of the king is clear, so I assume there must be some
+          // king of logic somewhere that guarantees that there is only ever one king
+          // on the board at a time
           let new_game_state =
             Game(
               ..new_game_state,
@@ -963,10 +855,6 @@ fn is_move_legal(game_state: Game, move: Move) -> Bool {
                 piece.Piece(color: game_state.turn, kind: King),
               ),
             )
-
-          let assert Some(new_board) =
-            board.remove_piece_at_position(new_game_state.board, from)
-          let new_game_state = Game(..new_game_state, board: new_board)
 
           case is_king_in_check(new_game_state, game_state.turn) {
             True -> False

@@ -32,4 +32,4 @@ print game board to console\
 print fen as board to console\
 
 ## TODO
-My goal is to match the feature set of [binbo](https://github.com/DOBRO/binbo).
+My goal is to match the interface of [binbo](https://github.com/DOBRO/binbo).

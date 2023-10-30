@@ -26,8 +26,8 @@ pub fn to_string(move: Move) -> String {
       " capturing " <> piece.to_string(captured) <> " and promoting to " <> piece.to_string(
         promotion,
       )
-    Castle(_, _) -> ""
-    EnPassant(_, _) -> ""
+    Castle(_, _) -> " castling"
+    EnPassant(_, _) -> " en passant"
   }
   from <> " -> " <> to <> captured
 }

@@ -455,6 +455,7 @@ fn parse_castling(castling_string: String) -> CastlingStatus {
             "Q" -> Nil
             "k" -> Nil
             "q" -> Nil
+            "-" -> Nil
             _ -> panic as "Invalid castling string"
           }
         },

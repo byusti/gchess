@@ -208,6 +208,13 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
             Some(piece) -> piece
           }
 
+          let new_turn = {
+            case game_state.turn {
+              White -> Black
+              Black -> White
+            }
+          }
+
           let new_game_state = case captured_piece {
             None -> {
               let new_board = case promo_piece {
@@ -222,7 +229,7 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
                   board.set_piece_at_position(
                     game_state.board,
                     from,
-                    piece.Piece(color: game_state.turn, kind: Pawn),
+                    piece.Piece(color: new_turn, kind: Pawn),
                   )
                 }
               }
@@ -245,7 +252,7 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
                   board.set_piece_at_position(
                     game_state.board,
                     from,
-                    piece.Piece(color: game_state.turn, kind: Pawn),
+                    piece.Piece(color: new_turn, kind: Pawn),
                   )
                 }
               }
@@ -306,13 +313,6 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
                 True -> Yes
                 False -> No(ply)
               }
-            }
-          }
-
-          let new_turn = {
-            case game_state.turn {
-              White -> Black
-              Black -> White
             }
           }
 
@@ -388,13 +388,19 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
           actor.continue(new_game_state)
         }
         move.Castle(from: from, to: to) -> {
+          let new_turn = {
+            case game_state.turn {
+              White -> Black
+              Black -> White
+            }
+          }
           let new_game_state =
             Game(
               ..game_state,
               board: board.set_piece_at_position(
                 game_state.board,
                 from,
-                piece.Piece(color: game_state.turn, kind: King),
+                piece.Piece(color: new_turn, kind: King),
               ),
             )
           let rook_castling_target_square = case to {
@@ -408,15 +414,17 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
               position.Position(file: D, rank: Eight)
             _ -> panic("Invalid castle move")
           }
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              board: board.set_piece_at_position(
-                new_game_state.board,
-                rook_castling_target_square,
-                piece.Piece(color: game_state.turn, kind: Rook),
-              ),
+
+          let new_board = case
+            board.remove_piece_at_position(
+              new_game_state.board,
+              rook_castling_target_square,
             )
+          {
+            Some(board) -> board
+            None -> panic("Invalid move")
+          }
+          let new_game_state = Game(..new_game_state, board: new_board)
 
           let assert Some(new_board) =
             board.remove_piece_at_position(new_game_state.board, to)
@@ -440,7 +448,7 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
               board: board.set_piece_at_position(
                 new_game_state.board,
                 rook_castling_origin_square,
-                piece.Piece(color: game_state.turn, kind: Rook),
+                piece.Piece(color: new_turn, kind: Rook),
               ),
             )
 
@@ -491,13 +499,6 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
                 True -> Yes
                 False -> No(ply)
               }
-            }
-          }
-
-          let new_turn = {
-            case game_state.turn {
-              White -> Black
-              Black -> White
             }
           }
 
@@ -591,7 +592,7 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
             )
 
           let new_game_state = case game_state.turn {
-            White -> {
+            Black -> {
               Game(
                 ..new_game_state,
                 board: board.set_piece_at_position(
@@ -601,7 +602,7 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
                 ),
               )
             }
-            Black -> {
+            White -> {
               Game(
                 ..new_game_state,
                 board: board.set_piece_at_position(
@@ -920,7 +921,7 @@ fn handle_all_legal_moves(
 // This function is used for check detection and applying legal moves
 fn force_apply_move(game_state: Game, move: Move) -> Game {
   case move {
-    move.Normal(from: from, to: to, captured: piece, promotion: _) -> {
+    move.Normal(from: from, to: to, captured: piece, promotion: promo_piece) -> {
       let assert Some(moving_piece) =
         board.get_piece_at_position(game_state.board, from)
       let new_game_state = case piece {
@@ -931,15 +932,28 @@ fn force_apply_move(game_state: Game, move: Move) -> Game {
           Game(..game_state, board: new_board)
         }
       }
-      let new_game_state =
-        Game(
-          ..new_game_state,
-          board: board.set_piece_at_position(
-            new_game_state.board,
-            to,
-            moving_piece,
-          ),
-        )
+
+      let new_game_state = case promo_piece {
+        None ->
+          Game(
+            ..new_game_state,
+            board: board.set_piece_at_position(
+              new_game_state.board,
+              to,
+              moving_piece,
+            ),
+          )
+        Some(promo_piece) -> {
+          Game(
+            ..new_game_state,
+            board: board.set_piece_at_position(
+              new_game_state.board,
+              to,
+              promo_piece,
+            ),
+          )
+        }
+      }
 
       let assert Some(new_board) =
         board.remove_piece_at_position(new_game_state.board, from)
@@ -1219,6 +1233,13 @@ fn force_apply_move(game_state: Game, move: Move) -> Game {
         }
       }
       let new_game_state = Game(..new_game_state, board: new_board)
+
+      let new_history = [move, ..game_state.history]
+
+      let new_ply = new_game_state.ply + 1
+
+      let new_game_state =
+        Game(..new_game_state, history: new_history, ply: new_ply)
       new_game_state
     }
   }
@@ -3846,7 +3867,49 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
               False -> []
               True -> {
                 let west_moves = case west_attack {
-                  position.Position(file: _, rank: position.Eight) -> [
+                  position.Position(file: _, rank: position.Eight) if color == White -> [
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Queen)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Rook)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Bishop)),
+                    ),
+                    move.Normal(
+                      from: position,
+                      to: west_attack,
+                      captured: {
+                        let assert Some(piece) =
+                          piece_at_position(game_state, west_attack)
+                        Some(piece)
+                      },
+                      promotion: Some(piece.Piece(color, Knight)),
+                    ),
+                  ]
+                  position.Position(file: _, rank: position.One) if color == Black -> [
                     move.Normal(
                       from: position,
                       to: west_attack,
@@ -3901,7 +3964,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                     ),
                   ]
                 }
-                west_moves
+                east_moves
               }
             }
             west_moves

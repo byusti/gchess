@@ -10,39 +10,15 @@ pub fn main() {
   let game_actor = game.new_game()
   // let pawn_g2_to_g4 =
   //   move.Normal(
-  //     from: position.Position(file: position.G, rank: position.Two),
-  //     to: position.Position(file: position.G, rank: position.Four),
+  //     from: position.Position(file: position.H, rank: position.Two),
+  //     to: position.Position(file: position.H, rank: position.Four),
   //     captured: None,
   //     promotion: None,
   //   )
 
   // let pawn_g7_to_g5 =
   //   move.Normal(
-  //     from: position.Position(file: position.G, rank: position.Seven),
-  //     to: position.Position(file: position.G, rank: position.Five),
-  //     captured: None,
-  //     promotion: None,
-  //   )
-
-  // let pawn_f2_to_f4 =
-  //   move.Normal(
-  //     from: position.Position(file: position.F, rank: position.Two),
-  //     to: position.Position(file: position.F, rank: position.Four),
-  //     captured: None,
-  //     promotion: None,
-  //   )
-
-  // let pawn_f7_to_f6 =
-  //   move.Normal(
   //     from: position.Position(file: position.F, rank: position.Seven),
-  //     to: position.Position(file: position.F, rank: position.Six),
-  //     captured: None,
-  //     promotion: None,
-  //   )
-
-  // let pawn_f4_to_f5 =
-  //   move.Normal(
-  //     from: position.Position(file: position.F, rank: position.Four),
   //     to: position.Position(file: position.F, rank: position.Five),
   //     captured: None,
   //     promotion: None,
@@ -69,9 +45,15 @@ fn perft(game_actor, depth) {
           moves,
           0,
           fn(nodes, move) {
+            io.println("applying move")
+            io.println(move.to_string(move))
             game.apply_move(game_actor, move)
+            game.print_board(game_actor)
             let nodes = nodes + perft(game_actor, depth - 1)
+            io.println("undoing move")
+            io.println(move.to_string(move))
             game.undo_move(game_actor)
+            game.print_board(game_actor)
             nodes
           },
         )

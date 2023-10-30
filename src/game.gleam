@@ -310,14 +310,6 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
             board.get_piece_at_position(game_state.board, to)
           {
             None -> {
-              list.each(
-                game_state.history,
-                fn(move) {
-                  move.to_string(move)
-                  |> io.println
-                },
-              )
-              print_board_from_game_state(game_state)
               panic("Invalid move")
             }
             Some(piece) -> piece
@@ -334,6 +326,7 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
 
               let assert Some(new_board) =
                 board.remove_piece_at_position(new_board, to)
+
               Game(..game_state, board: new_board)
             }
             Some(piece) -> {
@@ -343,6 +336,9 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
                   from,
                   moving_piece,
                 )
+
+              let assert Some(new_board) =
+                board.remove_piece_at_position(new_board, to)
 
               let new_board = board.set_piece_at_position(new_board, to, piece)
 
@@ -411,89 +407,50 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
 
           let new_en_passant = case rest {
             [] -> None
-            [move] -> {
-              let moving_piece = case move {
-                move.Normal(from: _, to: to, captured: _, promotion: _) -> {
-                  case board.get_piece_at_position(new_game_state.board, to) {
+            [move] | [move, ..] -> {
+              case move {
+                move.Normal(
+                  from: position.Position(file: _, rank: Two),
+                  to: position.Position(file: file, rank: Four),
+                  captured: None,
+                  promotion: None,
+                ) if game_state.turn == White -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Four),
+                    )
+                  {
                     Some(piece) -> piece
                     None -> panic("Invalid move")
                   }
-                }
-                _ -> panic("Invalid move")
-              }
-              case moving_piece {
-                piece.Piece(color: _, kind: Pawn) -> {
-                  case game_state.turn {
-                    White -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Two),
-                          to: position.Position(file: _, rank: Four),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Three))
-                        }
-                        _ -> None
-                      }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Three))
                     }
-                    Black -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Seven),
-                          to: position.Position(file: _, rank: Five),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Six))
-                        }
-                        _ -> None
-                      }
-                    }
+                    _ -> None
                   }
                 }
-                _ -> None
-              }
-            }
-            [move, ..] -> {
-              let moving_piece = case move {
-                move.Normal(from: _, to: to, captured: _, promotion: _) -> {
-                  case board.get_piece_at_position(new_game_state.board, to) {
+                move.Normal(
+                  from: position.Position(file: _, rank: Seven),
+                  to: position.Position(file: file, rank: Five),
+                  captured: None,
+                  promotion: None,
+                ) if game_state.turn == Black -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Five),
+                    )
+                  {
                     Some(piece) -> piece
                     None -> panic("Invalid move")
                   }
-                }
-                _ -> panic("Invalid move")
-              }
-              case moving_piece {
-                piece.Piece(color: _, kind: Pawn) -> {
-                  case game_state.turn {
-                    White -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Two),
-                          to: position.Position(file: _, rank: Four),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Three))
-                        }
-                        _ -> None
-                      }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Six))
                     }
-                    Black -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Seven),
-                          to: position.Position(file: _, rank: Five),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Six))
-                        }
-                        _ -> None
-                      }
-                    }
+                    _ -> None
                   }
                 }
                 _ -> None
@@ -635,89 +592,50 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
 
           let new_en_passant = case rest {
             [] -> None
-            [move] -> {
-              let moving_piece = case move {
-                move.Normal(from: _, to: to, captured: _, promotion: _) -> {
-                  case board.get_piece_at_position(new_game_state.board, to) {
+            [move] | [move, ..] -> {
+              case move {
+                move.Normal(
+                  from: position.Position(file: _, rank: Two),
+                  to: position.Position(file: file, rank: Four),
+                  captured: None,
+                  promotion: None,
+                ) if game_state.turn == White -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Four),
+                    )
+                  {
                     Some(piece) -> piece
                     None -> panic("Invalid move")
                   }
-                }
-                _ -> panic("Invalid move")
-              }
-              case moving_piece {
-                piece.Piece(color: _, kind: Pawn) -> {
-                  case game_state.turn {
-                    White -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Two),
-                          to: position.Position(file: _, rank: Four),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Three))
-                        }
-                        _ -> None
-                      }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Three))
                     }
-                    Black -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Seven),
-                          to: position.Position(file: _, rank: Five),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Six))
-                        }
-                        _ -> None
-                      }
-                    }
+                    _ -> None
                   }
                 }
-                _ -> None
-              }
-            }
-            [move, ..] -> {
-              let moving_piece = case move {
-                move.Normal(from: _, to: to, captured: _, promotion: _) -> {
-                  case board.get_piece_at_position(new_game_state.board, to) {
+                move.Normal(
+                  from: position.Position(file: _, rank: Seven),
+                  to: position.Position(file: file, rank: Five),
+                  captured: None,
+                  promotion: None,
+                ) if game_state.turn == Black -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Five),
+                    )
+                  {
                     Some(piece) -> piece
                     None -> panic("Invalid move")
                   }
-                }
-                _ -> panic("Invalid move")
-              }
-              case moving_piece {
-                piece.Piece(color: _, kind: Pawn) -> {
-                  case game_state.turn {
-                    White -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Two),
-                          to: position.Position(file: _, rank: Four),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Three))
-                        }
-                        _ -> None
-                      }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Six))
                     }
-                    Black -> {
-                      case move {
-                        move.Normal(
-                          from: position.Position(file: _, rank: Seven),
-                          to: position.Position(file: _, rank: Five),
-                          captured: None,
-                          promotion: None,
-                        ) -> {
-                          Some(position.Position(file: to.file, rank: Six))
-                        }
-                        _ -> None
-                      }
-                    }
+                    _ -> None
                   }
                 }
                 _ -> None
@@ -1376,11 +1294,17 @@ fn force_apply_move(game_state: Game, move: Move) -> Game {
         _ -> panic("Invalid en passant move")
       }
 
-      let assert Some(new_board) =
+      let new_board = case
         board.remove_piece_at_position(
           new_game_state.board,
           captured_pawn_square,
         )
+      {
+        Some(new_board) -> new_board
+        None -> {
+          panic("Invalid en passant move")
+        }
+      }
       let new_game_state = Game(..new_game_state, board: new_board)
       new_game_state
     }

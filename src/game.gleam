@@ -305,7 +305,12 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
     }
     [move, ..rest] -> {
       case move {
-        move.Normal(from: from, to: to, captured: captured_piece, promotion: _) -> {
+        move.Normal(
+          from: from,
+          to: to,
+          captured: captured_piece,
+          promotion: promo_piece,
+        ) -> {
           let moving_piece = case
             board.get_piece_at_position(game_state.board, to)
           {
@@ -317,12 +322,22 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
 
           let new_game_state = case captured_piece {
             None -> {
-              let new_board =
-                board.set_piece_at_position(
-                  game_state.board,
-                  from,
-                  moving_piece,
-                )
+              let new_board = case promo_piece {
+                None -> {
+                  board.set_piece_at_position(
+                    game_state.board,
+                    from,
+                    moving_piece,
+                  )
+                }
+                Some(_) -> {
+                  board.set_piece_at_position(
+                    game_state.board,
+                    from,
+                    piece.Piece(color: game_state.turn, kind: Pawn),
+                  )
+                }
+              }
 
               let assert Some(new_board) =
                 board.remove_piece_at_position(new_board, to)
@@ -330,12 +345,22 @@ fn handle_undo_move(game_state: Game, client: Subject(Game)) {
               Game(..game_state, board: new_board)
             }
             Some(piece) -> {
-              let new_board =
-                board.set_piece_at_position(
-                  game_state.board,
-                  from,
-                  moving_piece,
-                )
+              let new_board = case promo_piece {
+                None -> {
+                  board.set_piece_at_position(
+                    game_state.board,
+                    from,
+                    moving_piece,
+                  )
+                }
+                Some(_) -> {
+                  board.set_piece_at_position(
+                    game_state.board,
+                    from,
+                    piece.Piece(color: game_state.turn, kind: Pawn),
+                  )
+                }
+              }
 
               let assert Some(new_board) =
                 board.remove_piece_at_position(new_board, to)

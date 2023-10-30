@@ -29,7 +29,7 @@ pub fn main() {
   // let moves = game.all_legal_moves(game_actor)
   // list.each(moves, fn(move) { io.println(move.to_string(move)) })
   game.print_board(game_actor)
-  perft(game_actor, 3)
+  perft(game_actor, 4)
   |> int.to_string()
   |> io.println
 }
@@ -39,7 +39,6 @@ fn perft(game_actor, depth) {
     0 -> 1
     _ -> {
       let moves = game.all_legal_moves(game_actor)
-      let seed = 0
       let nodes =
         list.fold(
           moves,

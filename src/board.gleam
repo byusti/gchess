@@ -21,93 +21,133 @@ pub type BoardBB {
   )
 }
 
-pub fn remove_piece_at_position(board: BoardBB, position: Position) -> BoardBB {
+pub fn remove_piece_at_position(
+  board: BoardBB,
+  position: Position,
+) -> option.Option(BoardBB) {
   let bitboard = bitboard.not(from_position(position))
 
   let new_board = case get_piece_at_position(board, position) {
-    None -> board
+    None -> None
     Some(piece.Piece(color: color, kind: kind)) if color == White && kind == King -> {
-      BoardBB(
-        ..board,
-        white_king_bitboard: bitboard.and(bitboard, board.white_king_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          white_king_bitboard: bitboard.and(bitboard, board.white_king_bitboard),
+        ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Queen -> {
-      BoardBB(
-        ..board,
-        white_queen_bitboard: bitboard.and(bitboard, board.white_queen_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          white_queen_bitboard: bitboard.and(
+            bitboard,
+            board.white_queen_bitboard,
+          ),
+        ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Rook -> {
-      BoardBB(
-        ..board,
-        white_rook_bitboard: bitboard.and(bitboard, board.white_rook_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          white_rook_bitboard: bitboard.and(bitboard, board.white_rook_bitboard),
+        ),
       )
     }
+
     Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Bishop -> {
-      BoardBB(
-        ..board,
-        white_bishop_bitboard: bitboard.and(
-          bitboard,
-          board.white_bishop_bitboard,
+      Some(
+        BoardBB(
+          ..board,
+          white_bishop_bitboard: bitboard.and(
+            bitboard,
+            board.white_bishop_bitboard,
+          ),
         ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Knight -> {
-      BoardBB(
-        ..board,
-        white_knight_bitboard: bitboard.and(
-          bitboard,
-          board.white_knight_bitboard,
+      Some(
+        BoardBB(
+          ..board,
+          white_knight_bitboard: bitboard.and(
+            bitboard,
+            board.white_knight_bitboard,
+          ),
         ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Pawn -> {
-      BoardBB(
-        ..board,
-        white_pawns_bitboard: bitboard.and(bitboard, board.white_pawns_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          white_pawns_bitboard: bitboard.and(
+            bitboard,
+            board.white_pawns_bitboard,
+          ),
+        ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == King -> {
-      BoardBB(
-        ..board,
-        black_king_bitboard: bitboard.and(bitboard, board.black_king_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          black_king_bitboard: bitboard.and(bitboard, board.black_king_bitboard),
+        ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Queen -> {
-      BoardBB(
-        ..board,
-        black_queen_bitboard: bitboard.and(bitboard, board.black_queen_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          black_queen_bitboard: bitboard.and(
+            bitboard,
+            board.black_queen_bitboard,
+          ),
+        ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Rook -> {
-      BoardBB(
-        ..board,
-        black_rook_bitboard: bitboard.and(bitboard, board.black_rook_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          black_rook_bitboard: bitboard.and(bitboard, board.black_rook_bitboard),
+        ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Bishop -> {
-      BoardBB(
-        ..board,
-        black_bishop_bitboard: bitboard.and(
-          bitboard,
-          board.black_bishop_bitboard,
+      Some(
+        BoardBB(
+          ..board,
+          black_bishop_bitboard: bitboard.and(
+            bitboard,
+            board.black_bishop_bitboard,
+          ),
         ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Knight -> {
-      BoardBB(
-        ..board,
-        black_knight_bitboard: bitboard.and(
-          bitboard,
-          board.black_knight_bitboard,
+      Some(
+        BoardBB(
+          ..board,
+          black_knight_bitboard: bitboard.and(
+            bitboard,
+            board.black_knight_bitboard,
+          ),
         ),
       )
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Pawn -> {
-      BoardBB(
-        ..board,
-        black_pawns_bitboard: bitboard.and(bitboard, board.black_pawns_bitboard),
+      Some(
+        BoardBB(
+          ..board,
+          black_pawns_bitboard: bitboard.and(
+            bitboard,
+            board.black_pawns_bitboard,
+          ),
+        ),
       )
     }
     _ -> {

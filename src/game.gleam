@@ -3964,7 +3964,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                     ),
                   ]
                 }
-                east_moves
+                west_moves
               }
             }
             west_moves

@@ -8,7 +8,9 @@ import gleam/option.{None}
 
 pub fn main() {
   let game_actor =
-    game.new_game_from_fen("n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1")
+    game.new_game_from_fen(
+      "rnbq1k1r/pp1Pbppp/2pP2PP/5R2/2B2R2/8/2P1NnP1/1NBQK3 w - - 1 8",
+    )
   // let pawn_g2_to_g4 =
   //   move.Normal(
   //     from: position.Position(file: position.H, rank: position.Two),
@@ -30,7 +32,7 @@ pub fn main() {
   // let moves = game.all_legal_moves(game_actor)
   // list.each(moves, fn(move) { io.println(move.to_string(move)) })
   game.print_board(game_actor)
-  perft(game_actor, 1)
+  perft(game_actor, 2)
   |> int.to_string()
   |> io.println
 }
@@ -46,15 +48,15 @@ fn perft(game_actor, depth) {
           moves,
           0,
           fn(nodes, move) {
-            io.println("applying move")
+            // io.println("applying move")
             io.println(move.to_string(move))
             game.apply_move(game_actor, move)
-            game.print_board(game_actor)
+            // game.print_board(game_actor)
             let nodes = nodes + perft(game_actor, depth - 1)
-            io.println("undoing move")
-            io.println(move.to_string(move))
+            // io.println("undoing move")
+            // io.println(move.to_string(move))
             game.undo_move(game_actor)
-            game.print_board(game_actor)
+            // game.print_board(game_actor)
             nodes
           },
         )

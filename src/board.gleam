@@ -3,8 +3,6 @@ import position.{type Position}
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
 import color.{Black, White}
 import gleam/option.{None, Some}
-import gleam/io
-import gleam/int
 
 pub type BoardBB {
   BoardBB(

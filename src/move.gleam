@@ -29,5 +29,5 @@ pub fn to_string(move: Move) -> String {
     Castle(_, _) -> " castling"
     EnPassant(_, _) -> " en passant"
   }
-  from <> " -> " <> to <> captured
+  from <> "" <> to <> captured
 }

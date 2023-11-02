@@ -3,8 +3,10 @@ import color.{type Color, Black, White}
 import position.{type File, type Position, type Rank}
 import gleam/string
 import gleam/list
+import gleam/int
 import gleam/option.{type Option, None, Some}
 import bitboard.{Bitboard}
+import piece
 
 pub type CastlingStatus {
   CastlingStatus(
@@ -30,6 +32,236 @@ pub type Fen {
     halfmove: HalfMove,
     fullmove: FullMove,
   )
+}
+
+const positions_in_fen_order = [
+  position.Position(file: position.A, rank: position.Eight),
+  position.Position(file: position.B, rank: position.Eight),
+  position.Position(file: position.C, rank: position.Eight),
+  position.Position(file: position.D, rank: position.Eight),
+  position.Position(file: position.E, rank: position.Eight),
+  position.Position(file: position.F, rank: position.Eight),
+  position.Position(file: position.G, rank: position.Eight),
+  position.Position(file: position.H, rank: position.Eight),
+  position.Position(file: position.A, rank: position.Seven),
+  position.Position(file: position.B, rank: position.Seven),
+  position.Position(file: position.C, rank: position.Seven),
+  position.Position(file: position.D, rank: position.Seven),
+  position.Position(file: position.E, rank: position.Seven),
+  position.Position(file: position.F, rank: position.Seven),
+  position.Position(file: position.G, rank: position.Seven),
+  position.Position(file: position.H, rank: position.Seven),
+  position.Position(file: position.A, rank: position.Six),
+  position.Position(file: position.B, rank: position.Six),
+  position.Position(file: position.C, rank: position.Six),
+  position.Position(file: position.D, rank: position.Six),
+  position.Position(file: position.E, rank: position.Six),
+  position.Position(file: position.F, rank: position.Six),
+  position.Position(file: position.G, rank: position.Six),
+  position.Position(file: position.H, rank: position.Six),
+  position.Position(file: position.A, rank: position.Five),
+  position.Position(file: position.B, rank: position.Five),
+  position.Position(file: position.C, rank: position.Five),
+  position.Position(file: position.D, rank: position.Five),
+  position.Position(file: position.E, rank: position.Five),
+  position.Position(file: position.F, rank: position.Five),
+  position.Position(file: position.G, rank: position.Five),
+  position.Position(file: position.H, rank: position.Five),
+  position.Position(file: position.A, rank: position.Four),
+  position.Position(file: position.B, rank: position.Four),
+  position.Position(file: position.C, rank: position.Four),
+  position.Position(file: position.D, rank: position.Four),
+  position.Position(file: position.E, rank: position.Four),
+  position.Position(file: position.F, rank: position.Four),
+  position.Position(file: position.G, rank: position.Four),
+  position.Position(file: position.H, rank: position.Four),
+  position.Position(file: position.A, rank: position.Three),
+  position.Position(file: position.B, rank: position.Three),
+  position.Position(file: position.C, rank: position.Three),
+  position.Position(file: position.D, rank: position.Three),
+  position.Position(file: position.E, rank: position.Three),
+  position.Position(file: position.F, rank: position.Three),
+  position.Position(file: position.G, rank: position.Three),
+  position.Position(file: position.H, rank: position.Three),
+  position.Position(file: position.A, rank: position.Two),
+  position.Position(file: position.B, rank: position.Two),
+  position.Position(file: position.C, rank: position.Two),
+  position.Position(file: position.D, rank: position.Two),
+  position.Position(file: position.E, rank: position.Two),
+  position.Position(file: position.F, rank: position.Two),
+  position.Position(file: position.G, rank: position.Two),
+  position.Position(file: position.H, rank: position.Two),
+  position.Position(file: position.A, rank: position.One),
+  position.Position(file: position.B, rank: position.One),
+  position.Position(file: position.C, rank: position.One),
+  position.Position(file: position.D, rank: position.One),
+  position.Position(file: position.E, rank: position.One),
+  position.Position(file: position.F, rank: position.One),
+  position.Position(file: position.G, rank: position.One),
+  position.Position(file: position.H, rank: position.One),
+]
+
+pub fn to_board(fen: String) -> BoardBB {
+  let fen_string_parts = string.split(fen, " ")
+  let parsed_board = case list.length(fen_string_parts) == 6 {
+    False -> panic as "Invalid FEN string"
+    True -> {
+      let [board_string, ..] = fen_string_parts
+      let parsed_board = parse_board(board_string)
+      parsed_board
+    }
+  }
+  parsed_board
+}
+
+fn board_to_fen_string(board: BoardBB) -> String {
+  let board_string =
+    list.fold(
+      positions_in_fen_order,
+      "",
+      fn(acc, pos) {
+        let piece = board.get_piece_at_position(board, pos)
+        let acc = case piece {
+          None -> {
+            let last_char = string.last(acc)
+            case last_char {
+              Error(Nil) | Ok("/") -> string.append(acc, "1")
+              Ok("1") -> {
+                string.append(string.drop_right(acc, 1), "2")
+              }
+              Ok("2") -> {
+                string.append(string.drop_right(acc, 1), "3")
+              }
+              Ok("3") -> {
+                string.append(string.drop_right(acc, 1), "4")
+              }
+              Ok("4") -> {
+                string.append(string.drop_right(acc, 1), "5")
+              }
+              Ok("5") -> {
+                string.append(string.drop_right(acc, 1), "6")
+              }
+              Ok("6") -> {
+                string.append(string.drop_right(acc, 1), "7")
+              }
+              Ok("7") -> {
+                string.append(string.drop_right(acc, 1), "8")
+              }
+              Ok("8") -> panic("Unable to encode BoardBB to FEN string")
+              Ok(_) -> {
+                string.append(acc, "1")
+              }
+            }
+          }
+          Some(piece) -> {
+            let piece_string = piece_to_fen_string(piece)
+            string.append(acc, piece_string)
+          }
+        }
+        let acc = case pos {
+          position.Position(file: position.H, rank: position.One) -> acc
+          position.Position(file: position.H, rank: _) -> {
+            string.append(acc, "/")
+          }
+          _ -> acc
+        }
+        acc
+      },
+    )
+
+  board_string
+}
+
+fn piece_to_fen_string(piece: piece.Piece) -> String {
+  case piece {
+    piece.Piece(color: White, kind: piece.King) -> "K"
+    piece.Piece(color: White, kind: piece.Queen) -> "Q"
+    piece.Piece(color: White, kind: piece.Rook) -> "R"
+    piece.Piece(color: White, kind: piece.Bishop) -> "B"
+    piece.Piece(color: White, kind: piece.Knight) -> "N"
+    piece.Piece(color: White, kind: piece.Pawn) -> "P"
+    piece.Piece(color: Black, kind: piece.King) -> "k"
+    piece.Piece(color: Black, kind: piece.Queen) -> "q"
+    piece.Piece(color: Black, kind: piece.Rook) -> "r"
+    piece.Piece(color: Black, kind: piece.Bishop) -> "b"
+    piece.Piece(color: Black, kind: piece.Knight) -> "n"
+    piece.Piece(color: Black, kind: piece.Pawn) -> "p"
+  }
+}
+
+fn turn_to_fen_string(turn: Color) -> String {
+  case turn {
+    White -> "w"
+    Black -> "b"
+  }
+}
+
+fn castling_to_fen_string(castling: CastlingStatus) -> String {
+  let white_kingside_castling = case castling.white_kingside {
+    True -> "K"
+    False -> ""
+  }
+  let white_queenside_castling = case castling.white_queenside {
+    True -> "Q"
+    False -> ""
+  }
+  let black_kingside_castling = case castling.black_kingside {
+    True -> "k"
+    False -> ""
+  }
+  let black_queenside_castling = case castling.black_queenside {
+    True -> "q"
+    False -> ""
+  }
+  let castling_string =
+    string.join(
+      [
+        white_kingside_castling,
+        white_queenside_castling,
+        black_kingside_castling,
+        black_queenside_castling,
+      ],
+      "",
+    )
+  case castling_string {
+    "" -> "-"
+    _ -> castling_string
+  }
+}
+
+fn en_passant_to_fen_string(en_passant: Option(Position)) -> String {
+  case en_passant {
+    None -> "-"
+    Some(pos) -> {
+      let file_string = position.file_to_string(pos.file)
+      let rank_string = position.rank_to_string(pos.rank)
+      string.join([file_string, rank_string], "")
+    }
+  }
+}
+
+pub fn to_string(fen: Fen) -> String {
+  let board_string = board_to_fen_string(fen.board)
+  let turn_string = turn_to_fen_string(fen.turn)
+  let castling_string = castling_to_fen_string(fen.castling)
+  let en_passant_string = en_passant_to_fen_string(fen.en_passant)
+  let halfmove_string = int.to_string(fen.halfmove)
+  let fullmove_string = int.to_string(fen.fullmove)
+
+  let fen_string =
+    string.join(
+      [
+        board_string,
+        turn_string,
+        castling_string,
+        en_passant_string,
+        halfmove_string,
+        fullmove_string,
+      ],
+      " ",
+    )
+
+  fen_string
 }
 
 pub fn from_string(fen: String) -> Fen {

@@ -47,6 +47,7 @@ pub type Message {
   ApplyMove(reply_with: Subject(Game), move: Move)
   ApplyMoveUCI(reply_with: Subject(Game), move: String)
   UndoMove(reply_with: Subject(Game))
+  GetFen(reply_with: Subject(String))
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
@@ -180,9 +181,36 @@ fn handle_message(
     UndoMove(client) -> {
       handle_undo_move(game_state, client)
     }
+    GetFen(client) -> {
+      process.send(client, to_fen(game_state))
+      actor.continue(game_state)
+    }
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game_state, client)
   }
+}
+
+fn to_fen(game_state: Game) -> String {
+  let game_fen =
+    fen.Fen(
+      board: game_state.board,
+      turn: game_state.turn,
+      en_passant: game_state.en_passant,
+      castling: fen.CastlingStatus(
+        white_kingside: castle_rights.to_bool(game_state.white_kingside_castle),
+        white_queenside: castle_rights.to_bool(
+          game_state.white_queenside_castle,
+        ),
+        black_kingside: castle_rights.to_bool(game_state.black_kingside_castle),
+        black_queenside: castle_rights.to_bool(
+          game_state.black_queenside_castle,
+        ),
+      ),
+      fullmove: game_state.ply / 2 + 1,
+      halfmove: 0,
+    )
+  //TODO: we dont track this yet
+  fen.to_string(game_fen)
 }
 
 fn handle_undo_move(game_state: Game, client: Subject(Game)) {
@@ -4176,6 +4204,10 @@ pub fn undo_move(game_actor: Subject(Message)) {
 
 pub fn all_legal_moves(game_actor: Subject(Message)) {
   process.call(game_actor, AllLegalMoves, 1000)
+}
+
+pub fn get_fen(game_actor: Subject(Message)) {
+  process.call(game_actor, GetFen, 1000)
 }
 
 pub fn print_board_from_fen(fen: String) {

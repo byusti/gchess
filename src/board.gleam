@@ -3,6 +3,8 @@ import position.{type Position}
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
 import color.{Black, White}
 import gleam/option.{None, Some}
+import gleam/list
+import gleam/set
 
 pub type BoardBB {
   BoardBB(
@@ -313,6 +315,36 @@ pub fn get_piece_at_position(board: BoardBB, position: Position) {
     }
   }
   piece
+}
+
+pub fn get_all_positions(board: BoardBB) -> List(Position) {
+  let list_of_bitboards = [
+    board.black_king_bitboard,
+    board.black_queen_bitboard,
+    board.black_rook_bitboard,
+    board.black_bishop_bitboard,
+    board.black_knight_bitboard,
+    board.black_pawns_bitboard,
+    board.white_king_bitboard,
+    board.white_queen_bitboard,
+    board.white_rook_bitboard,
+    board.white_bishop_bitboard,
+    board.white_knight_bitboard,
+    board.white_pawns_bitboard,
+  ]
+
+  let positions =
+    list.fold(
+      list_of_bitboards,
+      set.new(),
+      fn(acc, bitboard) {
+        let positions = get_positions(bitboard)
+        let positions = set.from_list(positions)
+        set.union(acc, positions)
+      },
+    )
+
+  set.to_list(positions)
 }
 
 pub fn get_positions(bitboard: Bitboard) -> List(Position) {

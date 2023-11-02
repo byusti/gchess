@@ -30,6 +30,7 @@ make a move\
 make a move using uci notation\
 print game board to console\
 print fen as board to console\
+get fen
 
 ## TODO
 My goal is to match the interface of [binbo](https://github.com/DOBRO/binbo).

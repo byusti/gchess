@@ -2,7 +2,8 @@ import game
 import gleam/io
 import gleam/list
 import move
-import gleam/int
+
+// import gleam/int
 
 pub fn main() {
   let game_actor =

@@ -21,9 +21,23 @@ import fen
 import ray
 import castle_rights.{type CastleRights, No, Yes}
 
-pub type Status {
-  Checkmate
+pub type DrawReason {
   Stalemate
+  FiftyMoveRule
+  ThreefoldRepetition
+  InsufficientMaterial
+  Manual
+}
+
+pub type WinReason {
+  Checkmate
+  Resignation
+  Timeout
+}
+
+pub type Status {
+  Draw(reason: DrawReason)
+  Win(winner: Color, reason: String)
   InProgress
 }
 
@@ -32,8 +46,9 @@ pub type Game {
     board: BoardBB,
     turn: Color,
     history: List(Move),
-    status: Status,
+    status: Option(Status),
     ply: Int,
+    fifty_move_rule: Int,
     white_kingside_castle: CastleRights,
     white_queenside_castle: CastleRights,
     black_kingside_castle: CastleRights,
@@ -808,7 +823,7 @@ fn handle_apply_move_uci(game_state: Game, client: Subject(Game), move: String) 
             }
           },
         )
-      let new_game_state = force_apply_move(game_state, move)
+      let new_game_state = apply_move_unchecked(game_state, move)
       process.send(client, new_game_state)
       actor.continue(new_game_state)
     }
@@ -826,7 +841,7 @@ fn handle_apply_move(game_state: Game, client: Subject(Game), move: Move) {
 
   case list.contains(legal_moves, move) {
     True -> {
-      let new_game_state = force_apply_move(game_state, move)
+      let new_game_state = apply_move_unchecked(game_state, move)
       process.send(client, new_game_state)
       actor.continue(new_game_state)
     }
@@ -838,7 +853,7 @@ fn handle_apply_move(game_state: Game, client: Subject(Game), move: Move) {
 }
 
 fn is_move_legal(game_state: Game, move: Move) -> Bool {
-  let new_game_state = force_apply_move(game_state, move)
+  let new_game_state = apply_move_unchecked(game_state, move)
   case move {
     move.Normal(from: _, to: _, captured: _, promotion: _)
     | move.EnPassant(from: _, to: _) -> {
@@ -923,16 +938,20 @@ fn handle_all_legal_moves(
   actor.continue(game_state)
 }
 
-// Apply move to the board. This function does not check if the move
-// is possible, it just attempts to apply a move to the board.
-// If the move is not possible, then the board will be in an invalid state.
+// Apply move to the board. This function is not concerned with whether 
+// the move is possible, it just attempts to apply a move to the board.
 // This function is used for check detection and applying legal moves
-fn force_apply_move(game_state: Game, move: Move) -> Game {
+fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
   case move {
-    move.Normal(from: from, to: to, captured: piece, promotion: promo_piece) -> {
+    move.Normal(
+      from: from,
+      to: to,
+      captured: captured_piece,
+      promotion: promo_piece,
+    ) -> {
       let assert Some(moving_piece) =
         board.get_piece_at_position(game_state.board, from)
-      let new_game_state = case piece {
+      let new_game_state = case captured_piece {
         None -> game_state
         Some(_) -> {
           let assert Some(new_board) =
@@ -1065,12 +1084,34 @@ fn force_apply_move(game_state: Game, move: Move) -> Game {
         _ -> None
       }
 
+      let new_fifty_move_rule = case captured_piece {
+        None ->
+          case moving_piece {
+            piece.Piece(color: _, kind: piece.Pawn) -> 0
+            _ -> game_state.fifty_move_rule + 1
+          }
+        Some(_) -> 0
+      }
+
+      let new_status = case game_state.status {
+        None -> None
+        Some(InProgress) -> {
+          case new_fifty_move_rule / 2 + 1 {
+            50 -> Some(Draw(FiftyMoveRule))
+            _ -> game_state.status
+          }
+        }
+        Some(_) -> game_state.status
+      }
+
       let new_game_state =
         Game(
           ..new_game_state,
           turn: new_turn,
           history: new_history,
           ply: new_ply,
+          status: new_status,
+          fifty_move_rule: new_fifty_move_rule,
           white_kingside_castle: new_white_king_castle,
           white_queenside_castle: new_white_queen_castle,
           black_kingside_castle: new_black_king_castle,
@@ -1165,12 +1206,27 @@ fn force_apply_move(game_state: Game, move: Move) -> Game {
 
       let new_history = [move, ..game_state.history]
 
+      let new_fifty_move_rule = game_state.fifty_move_rule + 1
+
+      let new_status = case game_state.status {
+        None -> None
+        Some(InProgress) -> {
+          case new_fifty_move_rule / 2 + 1 {
+            50 -> Some(Draw(FiftyMoveRule))
+            _ -> game_state.status
+          }
+        }
+        Some(_) -> game_state.status
+      }
+
       let new_game_state =
         Game(
           ..new_game_state,
           turn: new_turn,
           history: new_history,
           ply: new_ply,
+          status: new_status,
+          fifty_move_rule: new_fifty_move_rule,
           white_kingside_castle: new_white_king_castle,
           white_queenside_castle: new_white_queen_castle,
           black_kingside_castle: new_black_king_castle,
@@ -1246,8 +1302,27 @@ fn force_apply_move(game_state: Game, move: Move) -> Game {
 
       let new_ply = new_game_state.ply + 1
 
+      let new_fifty_move_rule = 0
+
+      let new_status = case game_state.status {
+        None -> None
+        Some(InProgress) -> {
+          case new_fifty_move_rule / 2 + 1 {
+            50 -> Some(Draw(FiftyMoveRule))
+            _ -> game_state.status
+          }
+        }
+        Some(_) -> game_state.status
+      }
+
       let new_game_state =
-        Game(..new_game_state, history: new_history, ply: new_ply)
+        Game(
+          ..new_game_state,
+          history: new_history,
+          ply: new_ply,
+          status: new_status,
+          fifty_move_rule: new_fifty_move_rule,
+        )
       new_game_state
     }
   }
@@ -4415,7 +4490,8 @@ pub fn new_game_from_fen(fen_string: String) {
       board: fen.board,
       turn: fen.turn,
       history: [],
-      status: status,
+      status: Some(status),
+      fifty_move_rule: 0,
       ply: ply,
       white_kingside_castle: white_kingside_castle,
       white_queenside_castle: white_queenside_castle,
@@ -4514,7 +4590,19 @@ pub fn new_game() {
 
   let assert Ok(actor) =
     actor.start(
-      Game(board, turn, history, status, ply, Yes, Yes, Yes, Yes, None),
+      Game(
+        board: board,
+        turn: turn,
+        history: history,
+        status: Some(status),
+        fifty_move_rule: 0,
+        ply: ply,
+        white_kingside_castle: Yes,
+        white_queenside_castle: Yes,
+        black_kingside_castle: Yes,
+        black_queenside_castle: Yes,
+        en_passant: None,
+      ),
       handle_message,
     )
   actor

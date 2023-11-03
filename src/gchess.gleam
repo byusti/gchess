@@ -6,12 +6,18 @@ import move
 pub fn main() {
   let game_actor =
     game_server.from_fen(
-      "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+      "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     )
+
+  game_server.print_board(game_actor)
 
   game_server.all_legal_moves(game_actor)
   |> list.map(move.to_string)
   |> list.each(io.println)
+
+  game_server.apply_move_uci(game_actor, "e2e4")
+
+  game_server.print_board(game_actor)
 }
 
 fn perft(game_actor, depth) {

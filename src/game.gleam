@@ -1,5 +1,3 @@
-import gleam/otp/actor
-import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option, None, Some}
 import gleam/io
 import gleam/list
@@ -55,16 +53,6 @@ pub type Game {
     black_queenside_castle: CastleRights,
     en_passant: Option(Position),
   )
-}
-
-pub type Message {
-  AllLegalMoves(reply_with: Subject(List(Move)))
-  ApplyMove(reply_with: Subject(Game), move: Move)
-  ApplyMoveUCI(reply_with: Subject(Game), move: String)
-  UndoMove(reply_with: Subject(Game))
-  GetFen(reply_with: Subject(String))
-  Shutdown
-  PrintBoard(reply_with: Subject(Nil))
 }
 
 // Hard coded list of all positions in the order they will be printed
@@ -184,685 +172,36 @@ const rank_8 = bitboard.Bitboard(
   bitboard: 0b11111111_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
 )
 
-fn handle_message(
-  message: Message,
-  game_state: Game,
-) -> actor.Next(Message, Game) {
-  case message {
-    AllLegalMoves(client) -> handle_all_legal_moves(game_state, client)
-    ApplyMove(client, move) -> handle_apply_move(game_state, client, move)
-    ApplyMoveUCI(client, move) ->
-      handle_apply_move_uci(game_state, client, move)
-    UndoMove(client) -> {
-      handle_undo_move(game_state, client)
-    }
-    GetFen(client) -> {
-      process.send(client, to_fen(game_state))
-      actor.continue(game_state)
-    }
-    Shutdown -> actor.Stop(process.Normal)
-    PrintBoard(client) -> handle_print_board(game_state, client)
-  }
-}
-
-fn to_fen(game_state: Game) -> String {
+pub fn to_fen(game: Game) -> String {
   let game_fen =
     fen.Fen(
-      board: game_state.board,
-      turn: game_state.turn,
-      en_passant: game_state.en_passant,
+      board: game.board,
+      turn: game.turn,
+      en_passant: game.en_passant,
       castling: fen.CastlingStatus(
-        white_kingside: castle_rights.to_bool(game_state.white_kingside_castle),
-        white_queenside: castle_rights.to_bool(
-          game_state.white_queenside_castle,
-        ),
-        black_kingside: castle_rights.to_bool(game_state.black_kingside_castle),
-        black_queenside: castle_rights.to_bool(
-          game_state.black_queenside_castle,
-        ),
+        white_kingside: castle_rights.to_bool(game.white_kingside_castle),
+        white_queenside: castle_rights.to_bool(game.white_queenside_castle),
+        black_kingside: castle_rights.to_bool(game.black_kingside_castle),
+        black_queenside: castle_rights.to_bool(game.black_queenside_castle),
       ),
-      fullmove: game_state.ply / 2 + 1,
+      fullmove: game.ply / 2 + 1,
       halfmove: 0,
     )
   //TODO: we dont track this yet
   fen.to_string(game_fen)
 }
 
-fn handle_undo_move(game_state: Game, client: Subject(Game)) {
-  case game_state.history {
-    [] -> {
-      process.send(client, game_state)
-      actor.continue(game_state)
-    }
-    [move, ..rest] -> {
-      case move {
-        move.Normal(
-          from: from,
-          to: to,
-          captured: captured_piece,
-          promotion: promo_piece,
-        ) -> {
-          let moving_piece = case
-            board.get_piece_at_position(game_state.board, to)
-          {
-            None -> {
-              panic("Invalid move")
-            }
-            Some(piece) -> piece
-          }
-
-          let moving_piece = case promo_piece {
-            None -> moving_piece
-            Some(_) -> piece.Piece(color: moving_piece.color, kind: Pawn)
-          }
-
-          let new_turn = {
-            case game_state.turn {
-              White -> Black
-              Black -> White
-            }
-          }
-
-          let new_game_state = case captured_piece {
-            None -> {
-              let assert Some(new_board) =
-                board.remove_piece_at_position(game_state.board, to)
-
-              Game(..game_state, board: new_board)
-            }
-            Some(piece) -> {
-              let assert Some(new_board) =
-                board.remove_piece_at_position(game_state.board, to)
-
-              let new_board = board.set_piece_at_position(new_board, to, piece)
-
-              Game(..game_state, board: new_board)
-            }
-          }
-
-          let new_board =
-            board.set_piece_at_position(
-              new_game_state.board,
-              from,
-              moving_piece,
-            )
-
-          let new_game_state = Game(..new_game_state, board: new_board)
-
-          let new_ply = game_state.ply - 1
-
-          let new_white_kingside_castle = case
-            game_state.white_kingside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_white_queenside_castle = case
-            game_state.white_queenside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_kingside_castle = case
-            game_state.black_kingside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_queenside_castle = case
-            game_state.black_queenside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_history = rest
-
-          let new_en_passant = case rest {
-            [] -> None
-            [move] | [move, ..] -> {
-              case move {
-                move.Normal(
-                  from: position.Position(file: _, rank: Two),
-                  to: position.Position(file: file, rank: Four),
-                  captured: None,
-                  promotion: None,
-                ) if game_state.turn == White -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
-                      new_game_state.board,
-                      position.Position(file: file, rank: Four),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Three))
-                    }
-                    _ -> None
-                  }
-                }
-                move.Normal(
-                  from: position.Position(file: _, rank: Seven),
-                  to: position.Position(file: file, rank: Five),
-                  captured: None,
-                  promotion: None,
-                ) if game_state.turn == Black -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
-                      new_game_state.board,
-                      position.Position(file: file, rank: Five),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Six))
-                    }
-                    _ -> None
-                  }
-                }
-                _ -> None
-              }
-            }
-          }
-
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              turn: new_turn,
-              history: new_history,
-              ply: new_ply,
-              white_kingside_castle: new_white_kingside_castle,
-              white_queenside_castle: new_white_queenside_castle,
-              black_kingside_castle: new_black_kingside_castle,
-              black_queenside_castle: new_black_queenside_castle,
-              en_passant: new_en_passant,
-            )
-
-          process.send(client, new_game_state)
-          actor.continue(new_game_state)
-        }
-        move.Castle(from: from, to: to) -> {
-          let new_turn = {
-            case game_state.turn {
-              White -> Black
-              Black -> White
-            }
-          }
-          let new_game_state =
-            Game(
-              ..game_state,
-              board: board.set_piece_at_position(
-                game_state.board,
-                from,
-                piece.Piece(color: new_turn, kind: King),
-              ),
-            )
-          let rook_castling_target_square = case to {
-            position.Position(file: G, rank: One) ->
-              position.Position(file: F, rank: One)
-            position.Position(file: G, rank: Eight) ->
-              position.Position(file: F, rank: Eight)
-            position.Position(file: C, rank: One) ->
-              position.Position(file: D, rank: One)
-            position.Position(file: C, rank: Eight) ->
-              position.Position(file: D, rank: Eight)
-            _ -> panic("Invalid castle move")
-          }
-
-          let new_board = case
-            board.remove_piece_at_position(
-              new_game_state.board,
-              rook_castling_target_square,
-            )
-          {
-            Some(board) -> board
-            None -> panic("Invalid move")
-          }
-          let new_game_state = Game(..new_game_state, board: new_board)
-
-          let assert Some(new_board) =
-            board.remove_piece_at_position(new_game_state.board, to)
-          let new_game_state = Game(..new_game_state, board: new_board)
-
-          let rook_castling_origin_square = case to {
-            position.Position(file: G, rank: One) ->
-              position.Position(file: H, rank: One)
-            position.Position(file: G, rank: Eight) ->
-              position.Position(file: H, rank: Eight)
-            position.Position(file: C, rank: One) ->
-              position.Position(file: A, rank: One)
-            position.Position(file: C, rank: Eight) ->
-              position.Position(file: A, rank: Eight)
-            _ -> panic("Invalid castle move")
-          }
-
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              board: board.set_piece_at_position(
-                new_game_state.board,
-                rook_castling_origin_square,
-                piece.Piece(color: new_turn, kind: Rook),
-              ),
-            )
-
-          let new_ply = game_state.ply - 1
-
-          let new_white_kingside_castle = case
-            game_state.white_kingside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_white_queenside_castle = case
-            game_state.white_queenside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_kingside_castle = case
-            game_state.black_kingside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_queenside_castle = case
-            game_state.black_queenside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_history = rest
-
-          let new_en_passant = case rest {
-            [] -> None
-            [move] | [move, ..] -> {
-              case move {
-                move.Normal(
-                  from: position.Position(file: _, rank: Two),
-                  to: position.Position(file: file, rank: Four),
-                  captured: None,
-                  promotion: None,
-                ) if game_state.turn == White -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
-                      new_game_state.board,
-                      position.Position(file: file, rank: Four),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Three))
-                    }
-                    _ -> None
-                  }
-                }
-                move.Normal(
-                  from: position.Position(file: _, rank: Seven),
-                  to: position.Position(file: file, rank: Five),
-                  captured: None,
-                  promotion: None,
-                ) if game_state.turn == Black -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
-                      new_game_state.board,
-                      position.Position(file: file, rank: Five),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Six))
-                    }
-                    _ -> None
-                  }
-                }
-                _ -> None
-              }
-            }
-          }
-
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              turn: new_turn,
-              history: new_history,
-              ply: new_ply,
-              white_kingside_castle: new_white_kingside_castle,
-              white_queenside_castle: new_white_queenside_castle,
-              black_kingside_castle: new_black_kingside_castle,
-              black_queenside_castle: new_black_queenside_castle,
-              en_passant: new_en_passant,
-            )
-
-          process.send(client, new_game_state)
-          actor.continue(new_game_state)
-        }
-
-        move.EnPassant(from: from, to: to) -> {
-          let assert Some(moving_piece) =
-            board.get_piece_at_position(game_state.board, to)
-
-          let assert Some(new_board) =
-            board.remove_piece_at_position(game_state.board, to)
-          let new_game_state = Game(..game_state, board: new_board)
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              board: board.set_piece_at_position(
-                new_game_state.board,
-                from,
-                moving_piece,
-              ),
-            )
-
-          let new_game_state = case game_state.turn {
-            Black -> {
-              Game(
-                ..new_game_state,
-                board: board.set_piece_at_position(
-                  new_game_state.board,
-                  position.Position(file: to.file, rank: Four),
-                  piece.Piece(color: White, kind: Pawn),
-                ),
-              )
-            }
-            White -> {
-              Game(
-                ..new_game_state,
-                board: board.set_piece_at_position(
-                  new_game_state.board,
-                  position.Position(file: to.file, rank: Five),
-                  piece.Piece(color: Black, kind: Pawn),
-                ),
-              )
-            }
-          }
-
-          let new_ply = game_state.ply - 1
-
-          let new_white_kingside_castle = case
-            game_state.white_kingside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_white_queenside_castle = case
-            game_state.white_queenside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_kingside_castle = case
-            game_state.black_kingside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_queenside_castle = case
-            game_state.black_queenside_castle
-          {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game_state.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_turn = {
-            case game_state.turn {
-              White -> Black
-              Black -> White
-            }
-          }
-
-          let new_history = rest
-
-          let new_en_passant = to
-
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              turn: new_turn,
-              history: new_history,
-              ply: new_ply,
-              white_kingside_castle: new_white_kingside_castle,
-              white_queenside_castle: new_white_queenside_castle,
-              black_kingside_castle: new_black_kingside_castle,
-              black_queenside_castle: new_black_queenside_castle,
-              en_passant: Some(new_en_passant),
-            )
-
-          process.send(client, new_game_state)
-
-          actor.continue(new_game_state)
-        }
-      }
-    }
-  }
-}
-
-fn handle_apply_move_uci(game_state: Game, client: Subject(Game), move: String) {
-  case length(move) {
-    4 | 5 -> {
-      let move_chars = string.to_graphemes(move)
-      let from_file = case list.first(move_chars) {
-        Ok("a") -> A
-        Ok("b") -> B
-        Ok("c") -> C
-        Ok("d") -> D
-        Ok("e") -> E
-        Ok("f") -> F
-        Ok("g") -> G
-        Ok("h") -> H
-        _ -> panic("Invalid move")
-      }
-      let assert Ok(move_chars) = list.rest(move_chars)
-      let from_rank = case list.first(move_chars) {
-        Ok("1") -> One
-        Ok("2") -> Two
-        Ok("3") -> Three
-        Ok("4") -> Four
-        Ok("5") -> Five
-        Ok("6") -> Six
-        Ok("7") -> Seven
-        Ok("8") -> Eight
-        _ -> panic("Invalid move")
-      }
-      let assert Ok(move_chars) = list.rest(move_chars)
-      let to_file = case list.first(move_chars) {
-        Ok("a") -> A
-        Ok("b") -> B
-        Ok("c") -> C
-        Ok("d") -> D
-        Ok("e") -> E
-        Ok("f") -> F
-        Ok("g") -> G
-        Ok("h") -> H
-        _ -> panic("Invalid move")
-      }
-      let assert Ok(move_chars) = list.rest(move_chars)
-      let to_rank = case list.first(move_chars) {
-        Ok("1") -> One
-        Ok("2") -> Two
-        Ok("3") -> Three
-        Ok("4") -> Four
-        Ok("5") -> Five
-        Ok("6") -> Six
-        Ok("7") -> Seven
-        Ok("8") -> Eight
-        _ -> panic("Invalid move")
-      }
-
-      let promo = case list.length(move_chars) {
-        5 -> {
-          let assert Ok(move_chars) = list.rest(move_chars)
-          case list.first(move_chars) {
-            Ok("q") -> Some(Queen)
-            Ok("r") -> Some(Rook)
-            Ok("b") -> Some(Bishop)
-            Ok("n") -> Some(Knight)
-            _ -> panic("Invalid move")
-          }
-        }
-        _ -> None
-      }
-
-      // TODO: This could be way more efficient if we just kept track of the legal moves
-      // or if we had a way to generate legal moves from a given position
-      let legal_moves = {
-        generate_pseudo_legal_move_list(game_state, game_state.turn)
-        |> list.filter(fn(move) { is_move_legal(game_state, move) })
-      }
-
-      let assert Ok(move) =
-        list.find(
-          legal_moves,
-          fn(legal_move) {
-            case legal_move {
-              move.Normal(
-                from: from,
-                to: to,
-                captured: _,
-                promotion: Some(promotion),
-              ) -> {
-                case promo {
-                  Some(promo) ->
-                    from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == promotion.kind
-                  None -> False
-                }
-              }
-              move.Normal(from: from, to: to, captured: _, promotion: None) -> {
-                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == None
-              }
-              move.Castle(from: from, to: to) -> {
-                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
-              }
-              move.EnPassant(from: from, to: to) -> {
-                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
-              }
-              _ -> panic("Invalid move")
-            }
-          },
-        )
-      let new_game_state = apply_move_unchecked(game_state, move)
-      process.send(client, new_game_state)
-      actor.continue(new_game_state)
-    }
-    _ -> panic("Invalid move")
-  }
-}
-
-fn handle_apply_move(game_state: Game, client: Subject(Game), move: Move) {
-  // TODO: This could be way more efficient if we just kept track of the legal moves
-  // or if we had a way to generate legal moves from a given position
-  let legal_moves = {
-    generate_pseudo_legal_move_list(game_state, game_state.turn)
-    |> list.filter(fn(move) { is_move_legal(game_state, move) })
-  }
-
-  case list.contains(legal_moves, move) {
-    True -> {
-      let new_game_state = apply_move_unchecked(game_state, move)
-      process.send(client, new_game_state)
-      actor.continue(new_game_state)
-    }
-    False -> {
-      process.send(client, game_state)
-      actor.continue(game_state)
-    }
-  }
-}
-
-fn is_move_legal(game_state: Game, move: Move) -> Bool {
-  let new_game_state = apply_move_unchecked(game_state, move)
+fn is_move_legal(game: Game, move: Move) -> Bool {
+  let new_game_state = apply_move_unchecked(game, move)
   case move {
     move.Normal(from: _, to: _, captured: _, promotion: _)
     | move.EnPassant(from: _, to: _) -> {
-      !is_king_in_check(new_game_state, game_state.turn)
+      !is_king_in_check(new_game_state, game.turn)
     }
     move.Castle(from: _from, to: to) -> {
       //First determine if the king is in check,
       //If so then the king cannot castle
-      case is_king_in_check(game_state, game_state.turn) {
+      case is_king_in_check(game, game.turn) {
         True -> False
         False -> {
           // Determine if king is attacked at destination square of castling
@@ -876,11 +215,11 @@ fn is_move_legal(game_state: Game, move: Move) -> Bool {
               board: board.set_piece_at_position(
                 new_game_state.board,
                 to,
-                piece.Piece(color: game_state.turn, kind: King),
+                piece.Piece(color: game.turn, kind: King),
               ),
             )
 
-          case is_king_in_check(new_game_state, game_state.turn) {
+          case is_king_in_check(new_game_state, game.turn) {
             True -> False
             False -> {
               //Then determine if the king is attacked while traversing the castling squares
@@ -904,7 +243,7 @@ fn is_move_legal(game_state: Game, move: Move) -> Bool {
                   board: board.set_piece_at_position(
                     new_game_state.board,
                     king_castling_target_square,
-                    piece.Piece(color: game_state.turn, kind: King),
+                    piece.Piece(color: game.turn, kind: King),
                   ),
                 )
 
@@ -912,7 +251,7 @@ fn is_move_legal(game_state: Game, move: Move) -> Bool {
                 board.remove_piece_at_position(new_game_state.board, to)
               let new_game_state = Game(..new_game_state, board: new_board)
 
-              case is_king_in_check(new_game_state, game_state.turn) {
+              case is_king_in_check(new_game_state, game.turn) {
                 True -> False
                 False -> True
               }
@@ -925,23 +264,10 @@ fn is_move_legal(game_state: Game, move: Move) -> Bool {
   }
 }
 
-fn handle_all_legal_moves(
-  game_state: Game,
-  client: Subject(List(Move)),
-) -> actor.Next(Message, Game) {
-  let legal_moves = {
-    generate_pseudo_legal_move_list(game_state, game_state.turn)
-    |> list.filter(fn(move) { is_move_legal(game_state, move) })
-  }
-
-  process.send(client, legal_moves)
-  actor.continue(game_state)
-}
-
 // Apply move to the board. This function is not concerned with whether 
 // the move is possible, it just attempts to apply a move to the board.
 // This function is used for check detection and applying legal moves
-fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
+fn apply_move_unchecked(game: Game, move: Move) -> Game {
   case move {
     move.Normal(
       from: from,
@@ -950,13 +276,13 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
       promotion: promo_piece,
     ) -> {
       let assert Some(moving_piece) =
-        board.get_piece_at_position(game_state.board, from)
+        board.get_piece_at_position(game.board, from)
       let new_game_state = case captured_piece {
-        None -> game_state
+        None -> game
         Some(_) -> {
           let assert Some(new_board) =
-            board.remove_piece_at_position(game_state.board, to)
-          Game(..game_state, board: new_board)
+            board.remove_piece_at_position(game.board, to)
+          Game(..game, board: new_board)
         }
       }
 
@@ -987,9 +313,9 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
       let new_game_state = Game(..new_game_state, board: new_board)
 
       let new_ply = new_game_state.ply + 1
-      let new_white_king_castle = case game_state.turn {
+      let new_white_king_castle = case game.turn {
         White -> {
-          case game_state.white_kingside_castle {
+          case game.white_kingside_castle {
             Yes ->
               case from {
                 position.Position(file: E, rank: One) -> No(new_ply)
@@ -999,11 +325,11 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
             No(some_ply) -> No(some_ply)
           }
         }
-        Black -> game_state.white_kingside_castle
+        Black -> game.white_kingside_castle
       }
-      let new_white_queen_castle = case game_state.turn {
+      let new_white_queen_castle = case game.turn {
         White -> {
-          case game_state.white_queenside_castle {
+          case game.white_queenside_castle {
             Yes ->
               case from {
                 position.Position(file: E, rank: One) -> No(new_ply)
@@ -1013,12 +339,12 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
             No(some_ply) -> No(some_ply)
           }
         }
-        Black -> game_state.white_queenside_castle
+        Black -> game.white_queenside_castle
       }
-      let new_black_king_castle = case game_state.turn {
-        White -> game_state.black_kingside_castle
+      let new_black_king_castle = case game.turn {
+        White -> game.black_kingside_castle
         Black -> {
-          case game_state.black_kingside_castle {
+          case game.black_kingside_castle {
             Yes ->
               case from {
                 position.Position(file: E, rank: Eight) -> No(new_ply)
@@ -1029,10 +355,10 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
           }
         }
       }
-      let new_black_queen_castle = case game_state.turn {
-        White -> game_state.black_queenside_castle
+      let new_black_queen_castle = case game.turn {
+        White -> game.black_queenside_castle
         Black -> {
-          case game_state.black_queenside_castle {
+          case game.black_queenside_castle {
             Yes ->
               case from {
                 position.Position(file: E, rank: Eight) -> No(new_ply)
@@ -1044,13 +370,13 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
         }
       }
       let new_turn = {
-        case game_state.turn {
+        case game.turn {
           White -> Black
           Black -> White
         }
       }
 
-      let new_history = [move, ..game_state.history]
+      let new_history = [move, ..game.history]
 
       let new_en_passant = case moving_piece {
         piece.Piece(color: color, kind: piece.Pawn) -> {
@@ -1088,20 +414,20 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
         None ->
           case moving_piece {
             piece.Piece(color: _, kind: piece.Pawn) -> 0
-            _ -> game_state.fifty_move_rule + 1
+            _ -> game.fifty_move_rule + 1
           }
         Some(_) -> 0
       }
 
-      let new_status = case game_state.status {
+      let new_status = case game.status {
         None -> None
         Some(InProgress) -> {
           case new_fifty_move_rule / 2 + 1 {
             50 -> Some(Draw(FiftyMoveRule))
-            _ -> game_state.status
+            _ -> game.status
           }
         }
-        Some(_) -> game_state.status
+        Some(_) -> game.status
       }
 
       let new_game_state =
@@ -1123,11 +449,11 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
     move.Castle(from: from, to: to) -> {
       let new_game_state =
         Game(
-          ..game_state,
+          ..game,
           board: board.set_piece_at_position(
-            game_state.board,
+            game.board,
             to,
-            piece.Piece(color: game_state.turn, kind: King),
+            piece.Piece(color: game.turn, kind: King),
           ),
         )
       let rook_castling_target_square = case to {
@@ -1147,7 +473,7 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
           board: board.set_piece_at_position(
             new_game_state.board,
             rook_castling_target_square,
-            piece.Piece(color: game_state.turn, kind: Rook),
+            piece.Piece(color: game.turn, kind: Rook),
           ),
         )
 
@@ -1182,41 +508,41 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
         new_white_queen_castle,
         new_black_king_castle,
         new_black_queen_castle,
-      ] = case game_state.turn {
+      ] = case game.turn {
         White -> [
           No(new_ply),
           No(new_ply),
-          game_state.black_kingside_castle,
-          game_state.black_queenside_castle,
+          game.black_kingside_castle,
+          game.black_queenside_castle,
         ]
         Black -> [
-          game_state.white_kingside_castle,
-          game_state.white_queenside_castle,
+          game.white_kingside_castle,
+          game.white_queenside_castle,
           No(new_ply),
           No(new_ply),
         ]
       }
 
       let new_turn = {
-        case game_state.turn {
+        case game.turn {
           White -> Black
           Black -> White
         }
       }
 
-      let new_history = [move, ..game_state.history]
+      let new_history = [move, ..game.history]
 
-      let new_fifty_move_rule = game_state.fifty_move_rule + 1
+      let new_fifty_move_rule = game.fifty_move_rule + 1
 
-      let new_status = case game_state.status {
+      let new_status = case game.status {
         None -> None
         Some(InProgress) -> {
           case new_fifty_move_rule / 2 + 1 {
             50 -> Some(Draw(FiftyMoveRule))
-            _ -> game_state.status
+            _ -> game.status
           }
         }
-        Some(_) -> game_state.status
+        Some(_) -> game.status
       }
 
       let new_game_state =
@@ -1237,11 +563,11 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
     move.EnPassant(from: from, to: to) -> {
       let new_game_state =
         Game(
-          ..game_state,
+          ..game,
           board: board.set_piece_at_position(
-            game_state.board,
+            game.board,
             to,
-            piece.Piece(color: game_state.turn, kind: Pawn),
+            piece.Piece(color: game.turn, kind: Pawn),
           ),
         )
 
@@ -1298,21 +624,21 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
       }
       let new_game_state = Game(..new_game_state, board: new_board)
 
-      let new_history = [move, ..game_state.history]
+      let new_history = [move, ..game.history]
 
       let new_ply = new_game_state.ply + 1
 
       let new_fifty_move_rule = 0
 
-      let new_status = case game_state.status {
+      let new_status = case game.status {
         None -> None
         Some(InProgress) -> {
           case new_fifty_move_rule / 2 + 1 {
             50 -> Some(Draw(FiftyMoveRule))
-            _ -> game_state.status
+            _ -> game.status
           }
         }
-        Some(_) -> game_state.status
+        Some(_) -> game.status
       }
 
       let new_game_state =
@@ -1328,7 +654,7 @@ fn apply_move_unchecked(game_state: Game, move: Move) -> Game {
   }
 }
 
-fn is_king_in_check(game_state: Game, color: Color) -> Bool {
+fn is_king_in_check(game: Game, color: Color) -> Bool {
   let enemy_color = {
     case color {
       White -> Black
@@ -1336,7 +662,7 @@ fn is_king_in_check(game_state: Game, color: Color) -> Bool {
     }
   }
   let enemy_move_list = {
-    generate_pseudo_legal_move_list(game_state, enemy_color)
+    generate_pseudo_legal_move_list(game, enemy_color)
   }
   let enemy_move_list = {
     enemy_move_list
@@ -1351,16 +677,16 @@ fn is_king_in_check(game_state: Game, color: Color) -> Bool {
   list.length(enemy_move_list) > 0
 }
 
-fn generate_pseudo_legal_move_list(game_state: Game, color: Color) -> List(Move) {
+fn generate_pseudo_legal_move_list(game: Game, color: Color) -> List(Move) {
   let list_of_move_lists = [
-    generate_rook_pseudo_legal_move_list(color, game_state),
-    generate_pawn_pseudo_legal_move_list(color, game_state),
-    generate_knight_pseudo_legal_move_list(color, game_state),
-    generate_bishop_pseudo_legal_move_list(color, game_state),
-    generate_queen_pseudo_legal_move_list(color, game_state),
-    generate_king_pseudo_legal_move_list(color, game_state),
-    generate_castling_pseudo_legal_move_list(color, game_state),
-    generate_en_passant_pseudo_legal_move_list(color, game_state),
+    generate_rook_pseudo_legal_move_list(color, game),
+    generate_pawn_pseudo_legal_move_list(color, game),
+    generate_knight_pseudo_legal_move_list(color, game),
+    generate_bishop_pseudo_legal_move_list(color, game),
+    generate_queen_pseudo_legal_move_list(color, game),
+    generate_king_pseudo_legal_move_list(color, game),
+    generate_castling_pseudo_legal_move_list(color, game),
+    generate_en_passant_pseudo_legal_move_list(color, game),
   ]
 
   let move_list =
@@ -1991,13 +1317,13 @@ fn pawn_squares(color: Color, board: BoardBB) -> Bitboard {
 
 fn generate_en_passant_pseudo_legal_move_list(
   color: Color,
-  game_state: Game,
+  game: Game,
 ) -> List(Move) {
-  case game_state.en_passant {
+  case game.en_passant {
     None -> []
     Some(ep_position) -> {
       let ep_bitboard = position.to_bitboard(ep_position)
-      let pawn_bitboard = pawn_squares(color, game_state.board)
+      let pawn_bitboard = pawn_squares(color, game.board)
 
       let ep_attacker_bitboard = case color {
         White -> {
@@ -2043,11 +1369,11 @@ fn generate_en_passant_pseudo_legal_move_list(
 
 fn generate_castling_pseudo_legal_move_list(
   color: Color,
-  game_state: Game,
+  game: Game,
 ) -> List(Move) {
   let king_bitboard = case color {
-    White -> game_state.board.white_king_bitboard
-    Black -> game_state.board.black_king_bitboard
+    White -> game.board.white_king_bitboard
+    Black -> game.board.black_king_bitboard
   }
 
   let [king_position] = case board.get_positions(king_bitboard) {
@@ -2067,8 +1393,8 @@ fn generate_castling_pseudo_legal_move_list(
   }
 
   let rook_bitboard = case color {
-    White -> game_state.board.white_rook_bitboard
-    Black -> game_state.board.black_rook_bitboard
+    White -> game.board.white_rook_bitboard
+    Black -> game.board.black_rook_bitboard
   }
 
   let queenside_rook_flag = case color {
@@ -2105,7 +1431,7 @@ fn generate_castling_pseudo_legal_move_list(
           bitboard.Bitboard(
             bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110,
           ),
-          occupied_squares(game_state.board),
+          occupied_squares(game.board),
         )
       {
         bitboard.Bitboard(bitboard: 0) -> True
@@ -2117,7 +1443,7 @@ fn generate_castling_pseudo_legal_move_list(
           bitboard.Bitboard(
             bitboard: 0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
           ),
-          occupied_squares(game_state.board),
+          occupied_squares(game.board),
         )
       {
         bitboard.Bitboard(bitboard: 0) -> True
@@ -2132,7 +1458,7 @@ fn generate_castling_pseudo_legal_move_list(
           bitboard.Bitboard(
             bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000,
           ),
-          occupied_squares(game_state.board),
+          occupied_squares(game.board),
         )
       {
         bitboard.Bitboard(bitboard: 0) -> True
@@ -2144,7 +1470,7 @@ fn generate_castling_pseudo_legal_move_list(
           bitboard.Bitboard(
             bitboard: 0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
           ),
-          occupied_squares(game_state.board),
+          occupied_squares(game.board),
         )
       {
         bitboard.Bitboard(bitboard: 0) -> True
@@ -2154,13 +1480,13 @@ fn generate_castling_pseudo_legal_move_list(
 
   //check if king still has castling rights on each side
   let queenside_castle = case color {
-    White -> game_state.white_queenside_castle
-    Black -> game_state.black_queenside_castle
+    White -> game.white_queenside_castle
+    Black -> game.black_queenside_castle
   }
 
   let kingside_castle = case color {
-    White -> game_state.white_kingside_castle
-    Black -> game_state.black_kingside_castle
+    White -> game.white_kingside_castle
+    Black -> game.black_kingside_castle
   }
 
   let castling_moves =
@@ -2206,13 +1532,10 @@ fn generate_castling_pseudo_legal_move_list(
   castling_moves
 }
 
-fn generate_king_pseudo_legal_move_list(
-  color: Color,
-  game_state: Game,
-) -> List(Move) {
+fn generate_king_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) {
   let king_bitboard = case color {
-    White -> game_state.board.white_king_bitboard
-    Black -> game_state.board.black_king_bitboard
+    White -> game.board.white_king_bitboard
+    Black -> game.board.black_king_bitboard
   }
 
   let king_origin_squares = board.get_positions(king_bitboard)
@@ -2257,20 +1580,20 @@ fn generate_king_pseudo_legal_move_list(
 
       let list_of_friendly_piece_bitboards = case color {
         White -> [
-          game_state.board.white_king_bitboard,
-          game_state.board.white_queen_bitboard,
-          game_state.board.white_rook_bitboard,
-          game_state.board.white_bishop_bitboard,
-          game_state.board.white_knight_bitboard,
-          game_state.board.white_pawns_bitboard,
+          game.board.white_king_bitboard,
+          game.board.white_queen_bitboard,
+          game.board.white_rook_bitboard,
+          game.board.white_bishop_bitboard,
+          game.board.white_knight_bitboard,
+          game.board.white_pawns_bitboard,
         ]
         Black -> [
-          game_state.board.black_king_bitboard,
-          game_state.board.black_queen_bitboard,
-          game_state.board.black_rook_bitboard,
-          game_state.board.black_bishop_bitboard,
-          game_state.board.black_knight_bitboard,
-          game_state.board.black_pawns_bitboard,
+          game.board.black_king_bitboard,
+          game.board.black_queen_bitboard,
+          game.board.black_rook_bitboard,
+          game.board.black_bishop_bitboard,
+          game.board.black_knight_bitboard,
+          game.board.black_pawns_bitboard,
         ]
       }
 
@@ -2290,13 +1613,13 @@ fn generate_king_pseudo_legal_move_list(
           //TODO: should probably add a occupied_squares_by_color function
           bitboard.and(
             king_unblocked_target_square_bb,
-            occupied_squares_black(game_state.board),
+            occupied_squares_black(game.board),
           )
         }
         Black -> {
           bitboard.and(
             king_unblocked_target_square_bb,
-            occupied_squares_white(game_state.board),
+            occupied_squares_white(game.board),
           )
         }
       }
@@ -2325,7 +1648,7 @@ fn generate_king_pseudo_legal_move_list(
               from: origin,
               to: dest,
               captured: {
-                let assert Some(piece) = piece_at_position(game_state, dest)
+                let assert Some(piece) = piece_at_position(game, dest)
                 Some(piece)
               },
               promotion: None,
@@ -2338,13 +1661,10 @@ fn generate_king_pseudo_legal_move_list(
   )
 }
 
-fn generate_queen_pseudo_legal_move_list(
-  color: Color,
-  game_state: Game,
-) -> List(Move) {
+fn generate_queen_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) {
   let queen_bitboard = case color {
-    White -> game_state.board.white_queen_bitboard
-    Black -> game_state.board.black_queen_bitboard
+    White -> game.board.white_queen_bitboard
+    Black -> game.board.black_queen_bitboard
   }
 
   let queen_origin_squares = board.get_positions(queen_bitboard)
@@ -2358,7 +1678,7 @@ fn generate_queen_pseudo_legal_move_list(
       let north_mask_bb = look_up_north_ray_bb(queen_origin_square)
       let west_mask_bb = look_up_west_ray_bb(queen_origin_square)
 
-      let occupied_squares_bb = occupied_squares(game_state.board)
+      let occupied_squares_bb = occupied_squares(game.board)
 
       let south_blockers_bb = bitboard.and(south_mask_bb, occupied_squares_bb)
       let east_blockers_bb = bitboard.and(east_mask_bb, occupied_squares_bb)
@@ -2408,13 +1728,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             south_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             south_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2422,13 +1742,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2436,13 +1756,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             north_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             north_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2450,13 +1770,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2468,10 +1788,10 @@ fn generate_queen_pseudo_legal_move_list(
             let captures = case color {
               White -> {
                 //TODO: should probably add a occupied_squares_by_color function
-                bitboard.and(next, occupied_squares_black(game_state.board))
+                bitboard.and(next, occupied_squares_black(game.board))
               }
               Black -> {
-                bitboard.and(next, occupied_squares_white(game_state.board))
+                bitboard.and(next, occupied_squares_white(game.board))
               }
             }
 
@@ -2506,8 +1826,7 @@ fn generate_queen_pseudo_legal_move_list(
                     from: queen_origin_square,
                     to: dest,
                     captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game_state, dest)
+                      let assert Some(piece) = piece_at_position(game, dest)
                       Some(piece)
                     },
                     promotion: None,
@@ -2525,7 +1844,7 @@ fn generate_queen_pseudo_legal_move_list(
       let north_east_mask_bb = look_up_north_east_ray_bb(queen_origin_square)
       let north_west_mask_bb = look_up_north_west_ray_bb(queen_origin_square)
 
-      let occupied_squares_bb = occupied_squares(game_state.board)
+      let occupied_squares_bb = occupied_squares(game.board)
 
       let south_west_blockers_bb =
         bitboard.and(south_west_mask_bb, occupied_squares_bb)
@@ -2591,13 +1910,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             south_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             south_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2605,13 +1924,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             south_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             south_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2619,13 +1938,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             north_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             north_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2633,13 +1952,13 @@ fn generate_queen_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             north_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             north_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2656,10 +1975,10 @@ fn generate_queen_pseudo_legal_move_list(
             let captures = case color {
               White -> {
                 //TODO: should probably add a occupied_squares_by_color function
-                bitboard.and(next, occupied_squares_black(game_state.board))
+                bitboard.and(next, occupied_squares_black(game.board))
               }
               Black -> {
-                bitboard.and(next, occupied_squares_white(game_state.board))
+                bitboard.and(next, occupied_squares_white(game.board))
               }
             }
             let rook_simple_moves = case color {
@@ -2692,8 +2011,7 @@ fn generate_queen_pseudo_legal_move_list(
                     from: queen_origin_square,
                     to: dest,
                     captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game_state, dest)
+                      let assert Some(piece) = piece_at_position(game, dest)
                       Some(piece)
                     },
                     promotion: None,
@@ -2714,13 +2032,10 @@ fn generate_queen_pseudo_legal_move_list(
   )
 }
 
-fn generate_rook_pseudo_legal_move_list(
-  color: Color,
-  game_state: Game,
-) -> List(Move) {
+fn generate_rook_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) {
   let rook_bitboard = case color {
-    White -> game_state.board.white_rook_bitboard
-    Black -> game_state.board.black_rook_bitboard
+    White -> game.board.white_rook_bitboard
+    Black -> game.board.black_rook_bitboard
   }
 
   let rook_origin_squares = board.get_positions(rook_bitboard)
@@ -2734,7 +2049,7 @@ fn generate_rook_pseudo_legal_move_list(
       let north_mask_bb = look_up_north_ray_bb(rook_origin_square)
       let west_mask_bb = look_up_west_ray_bb(rook_origin_square)
 
-      let occupied_squares_bb = occupied_squares(game_state.board)
+      let occupied_squares_bb = occupied_squares(game.board)
 
       let south_blockers_bb = bitboard.and(south_mask_bb, occupied_squares_bb)
       let east_blockers_bb = bitboard.and(east_mask_bb, occupied_squares_bb)
@@ -2784,13 +2099,13 @@ fn generate_rook_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             south_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             south_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2798,13 +2113,13 @@ fn generate_rook_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2812,13 +2127,13 @@ fn generate_rook_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             north_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             north_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2826,13 +2141,13 @@ fn generate_rook_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -2844,10 +2159,10 @@ fn generate_rook_pseudo_legal_move_list(
             let rook_captures = case color {
               White -> {
                 //TODO: should probably add a occupied_squares_by_color function
-                bitboard.and(next, occupied_squares_black(game_state.board))
+                bitboard.and(next, occupied_squares_black(game.board))
               }
               Black -> {
-                bitboard.and(next, occupied_squares_white(game_state.board))
+                bitboard.and(next, occupied_squares_white(game.board))
               }
             }
             let rook_simple_moves = case color {
@@ -2880,8 +2195,7 @@ fn generate_rook_pseudo_legal_move_list(
                     from: rook_origin_square,
                     to: dest,
                     captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game_state, dest)
+                      let assert Some(piece) = piece_at_position(game, dest)
                       Some(piece)
                     },
                     promotion: None,
@@ -2898,40 +2212,34 @@ fn generate_rook_pseudo_legal_move_list(
   )
 }
 
-fn piece_at_position(
-  game_state: Game,
-  position: Position,
-) -> Option(piece.Piece) {
+fn piece_at_position(game: Game, position: Position) -> Option(piece.Piece) {
   let position_bb_masked =
-    bitboard.and(
-      position.to_bitboard(position),
-      occupied_squares(game_state.board),
-    )
+    bitboard.and(position.to_bitboard(position), occupied_squares(game.board))
 
   let position_white_king =
-    bitboard.and(position_bb_masked, game_state.board.white_king_bitboard)
+    bitboard.and(position_bb_masked, game.board.white_king_bitboard)
   let position_white_queen =
-    bitboard.and(position_bb_masked, game_state.board.white_queen_bitboard)
+    bitboard.and(position_bb_masked, game.board.white_queen_bitboard)
   let position_white_rook =
-    bitboard.and(position_bb_masked, game_state.board.white_rook_bitboard)
+    bitboard.and(position_bb_masked, game.board.white_rook_bitboard)
   let position_white_bishop =
-    bitboard.and(position_bb_masked, game_state.board.white_bishop_bitboard)
+    bitboard.and(position_bb_masked, game.board.white_bishop_bitboard)
   let position_white_knight =
-    bitboard.and(position_bb_masked, game_state.board.white_knight_bitboard)
+    bitboard.and(position_bb_masked, game.board.white_knight_bitboard)
   let position_white_pawn =
-    bitboard.and(position_bb_masked, game_state.board.white_pawns_bitboard)
+    bitboard.and(position_bb_masked, game.board.white_pawns_bitboard)
   let position_black_king =
-    bitboard.and(position_bb_masked, game_state.board.black_king_bitboard)
+    bitboard.and(position_bb_masked, game.board.black_king_bitboard)
   let position_black_queen =
-    bitboard.and(position_bb_masked, game_state.board.black_queen_bitboard)
+    bitboard.and(position_bb_masked, game.board.black_queen_bitboard)
   let position_black_rook =
-    bitboard.and(position_bb_masked, game_state.board.black_rook_bitboard)
+    bitboard.and(position_bb_masked, game.board.black_rook_bitboard)
   let position_black_bishop =
-    bitboard.and(position_bb_masked, game_state.board.black_bishop_bitboard)
+    bitboard.and(position_bb_masked, game.board.black_bishop_bitboard)
   let position_black_knight =
-    bitboard.and(position_bb_masked, game_state.board.black_knight_bitboard)
+    bitboard.and(position_bb_masked, game.board.black_knight_bitboard)
   let position_black_pawn =
-    bitboard.and(position_bb_masked, game_state.board.black_pawns_bitboard)
+    bitboard.and(position_bb_masked, game.board.black_pawns_bitboard)
 
   case position_bb_masked {
     bitboard.Bitboard(bitboard: 0) -> option.None
@@ -2964,11 +2272,11 @@ fn piece_at_position(
 
 fn generate_bishop_pseudo_legal_move_list(
   color: Color,
-  game_state: Game,
+  game: Game,
 ) -> List(Move) {
   let bishop_bitboard = case color {
-    White -> game_state.board.white_bishop_bitboard
-    Black -> game_state.board.black_bishop_bitboard
+    White -> game.board.white_bishop_bitboard
+    Black -> game.board.black_bishop_bitboard
   }
 
   let bishop_origin_squares = board.get_positions(bishop_bitboard)
@@ -2982,7 +2290,7 @@ fn generate_bishop_pseudo_legal_move_list(
       let north_east_mask_bb = look_up_north_east_ray_bb(bishop_origin_square)
       let north_west_mask_bb = look_up_north_west_ray_bb(bishop_origin_square)
 
-      let occupied_squares_bb = occupied_squares(game_state.board)
+      let occupied_squares_bb = occupied_squares(game.board)
 
       let south_west_blockers_bb =
         bitboard.and(south_west_mask_bb, occupied_squares_bb)
@@ -3048,13 +2356,13 @@ fn generate_bishop_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             south_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             south_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -3062,13 +2370,13 @@ fn generate_bishop_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             south_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             south_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -3076,13 +2384,13 @@ fn generate_bishop_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             north_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             north_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -3090,13 +2398,13 @@ fn generate_bishop_pseudo_legal_move_list(
         White -> {
           bitboard.and(
             north_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game_state.board)),
+            bitboard.not(occupied_squares_white(game.board)),
           )
         }
         Black -> {
           bitboard.and(
             north_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game_state.board)),
+            bitboard.not(occupied_squares_black(game.board)),
           )
         }
       }
@@ -3113,10 +2421,10 @@ fn generate_bishop_pseudo_legal_move_list(
             let captures = case color {
               White -> {
                 //TODO: should probably add a occupied_squares_by_color function
-                bitboard.and(next, occupied_squares_black(game_state.board))
+                bitboard.and(next, occupied_squares_black(game.board))
               }
               Black -> {
-                bitboard.and(next, occupied_squares_white(game_state.board))
+                bitboard.and(next, occupied_squares_white(game.board))
               }
             }
             let rook_simple_moves = case color {
@@ -3149,8 +2457,7 @@ fn generate_bishop_pseudo_legal_move_list(
                     from: bishop_origin_square,
                     to: dest,
                     captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game_state, dest)
+                      let assert Some(piece) = piece_at_position(game, dest)
                       Some(piece)
                     },
                     promotion: None,
@@ -3169,11 +2476,11 @@ fn generate_bishop_pseudo_legal_move_list(
 
 fn generate_knight_pseudo_legal_move_list(
   color: Color,
-  game_state: Game,
+  game: Game,
 ) -> List(Move) {
   let knight_bitboard = case color {
-    White -> game_state.board.white_knight_bitboard
-    Black -> game_state.board.black_knight_bitboard
+    White -> game.board.white_knight_bitboard
+    Black -> game.board.black_knight_bitboard
   }
 
   let knight_origin_squares = board.get_positions(knight_bitboard)
@@ -3227,20 +2534,20 @@ fn generate_knight_pseudo_legal_move_list(
 
       let list_of_friendly_piece_bitboards = case color {
         White -> [
-          game_state.board.white_king_bitboard,
-          game_state.board.white_queen_bitboard,
-          game_state.board.white_rook_bitboard,
-          game_state.board.white_bishop_bitboard,
-          game_state.board.white_knight_bitboard,
-          game_state.board.white_pawns_bitboard,
+          game.board.white_king_bitboard,
+          game.board.white_queen_bitboard,
+          game.board.white_rook_bitboard,
+          game.board.white_bishop_bitboard,
+          game.board.white_knight_bitboard,
+          game.board.white_pawns_bitboard,
         ]
         Black -> [
-          game_state.board.black_king_bitboard,
-          game_state.board.black_queen_bitboard,
-          game_state.board.black_rook_bitboard,
-          game_state.board.black_bishop_bitboard,
-          game_state.board.black_knight_bitboard,
-          game_state.board.black_pawns_bitboard,
+          game.board.black_king_bitboard,
+          game.board.black_queen_bitboard,
+          game.board.black_rook_bitboard,
+          game.board.black_bishop_bitboard,
+          game.board.black_knight_bitboard,
+          game.board.black_pawns_bitboard,
         ]
       }
 
@@ -3260,13 +2567,13 @@ fn generate_knight_pseudo_legal_move_list(
           //TODO: should probably add a occupied_squares_by_color function
           bitboard.and(
             knight_unblocked_target_square_bb,
-            occupied_squares_black(game_state.board),
+            occupied_squares_black(game.board),
           )
         }
         Black -> {
           bitboard.and(
             knight_unblocked_target_square_bb,
-            occupied_squares_white(game_state.board),
+            occupied_squares_white(game.board),
           )
         }
       }
@@ -3295,7 +2602,7 @@ fn generate_knight_pseudo_legal_move_list(
               from: origin,
               to: dest,
               captured: {
-                let assert Some(piece) = piece_at_position(game_state, dest)
+                let assert Some(piece) = piece_at_position(game, dest)
                 Some(piece)
               },
               promotion: None,
@@ -3308,13 +2615,9 @@ fn generate_knight_pseudo_legal_move_list(
   )
 }
 
-fn generate_pawn_pseudo_legal_move_list(
-  color: Color,
-  game_state: Game,
-) -> List(Move) {
-  let capture_list = generate_pawn_capture_move_list(color, game_state)
-  let moves_no_captures =
-    generate_pawn_non_capture_move_bitboard(color, game_state)
+fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) {
+  let capture_list = generate_pawn_capture_move_list(color, game)
+  let moves_no_captures = generate_pawn_non_capture_move_bitboard(color, game)
 
   let non_capture_dest_list = board.get_positions(moves_no_captures)
 
@@ -3397,7 +2700,7 @@ fn generate_pawn_pseudo_legal_move_list(
     )
 
   let initial_rank_double_move_list =
-    generate_pawn_starting_rank_double_move_bitboard(color, game_state)
+    generate_pawn_starting_rank_double_move_bitboard(color, game)
 
   let initial_rank_double_dest_list =
     board.get_positions(initial_rank_double_move_list)
@@ -3578,12 +2881,12 @@ fn generate_pawn_pseudo_legal_move_list(
 
 fn generate_pawn_starting_rank_double_move_bitboard(
   color: Color,
-  game_state: Game,
+  game: Game,
 ) -> bitboard.Bitboard {
   case color {
     White -> {
       let white_pawn_target_squares =
-        bitboard.and(game_state.board.white_pawns_bitboard, rank_2)
+        bitboard.and(game.board.white_pawns_bitboard, rank_2)
 
       let white_pawn_target_squares =
         bitboard.or(
@@ -3591,7 +2894,7 @@ fn generate_pawn_starting_rank_double_move_bitboard(
           bitboard.shift_left(white_pawn_target_squares, 8),
         )
 
-      let occupied_squares = occupied_squares(game_state.board)
+      let occupied_squares = occupied_squares(game.board)
 
       let moves = bitboard.and(occupied_squares, white_pawn_target_squares)
       let moves =
@@ -3602,7 +2905,7 @@ fn generate_pawn_starting_rank_double_move_bitboard(
     }
     Black -> {
       let black_pawn_target_squares =
-        bitboard.and(game_state.board.black_pawns_bitboard, rank_7)
+        bitboard.and(game.board.black_pawns_bitboard, rank_7)
 
       let black_pawn_target_squares =
         bitboard.or(
@@ -3610,7 +2913,7 @@ fn generate_pawn_starting_rank_double_move_bitboard(
           bitboard.shift_right(black_pawn_target_squares, 8),
         )
 
-      let occupied_squares = occupied_squares(game_state.board)
+      let occupied_squares = occupied_squares(game.board)
 
       let moves = bitboard.and(occupied_squares, black_pawn_target_squares)
       let moves =
@@ -3624,23 +2927,23 @@ fn generate_pawn_starting_rank_double_move_bitboard(
 
 fn generate_pawn_non_capture_move_bitboard(
   color: Color,
-  game_state: Game,
+  game: Game,
 ) -> bitboard.Bitboard {
   case color {
     White -> {
       let white_pawn_target_squares =
-        bitboard.shift_left(game_state.board.white_pawns_bitboard, 8)
+        bitboard.shift_left(game.board.white_pawns_bitboard, 8)
 
       let list_of_enemy_piece_bitboards = [
-        game_state.board.black_king_bitboard,
-        game_state.board.black_queen_bitboard,
-        game_state.board.black_rook_bitboard,
-        game_state.board.black_bishop_bitboard,
-        game_state.board.black_knight_bitboard,
-        game_state.board.black_pawns_bitboard,
+        game.board.black_king_bitboard,
+        game.board.black_queen_bitboard,
+        game.board.black_rook_bitboard,
+        game.board.black_bishop_bitboard,
+        game.board.black_knight_bitboard,
+        game.board.black_pawns_bitboard,
       ]
 
-      let occupied_squares_white = occupied_squares_white(game_state.board)
+      let occupied_squares_white = occupied_squares_white(game.board)
 
       let enemy_pieces =
         list.fold(
@@ -3656,18 +2959,18 @@ fn generate_pawn_non_capture_move_bitboard(
 
     Black -> {
       let black_pawn_target_squares =
-        bitboard.shift_right(game_state.board.black_pawns_bitboard, 8)
+        bitboard.shift_right(game.board.black_pawns_bitboard, 8)
 
       let list_of_enemy_piece_bitboards = [
-        game_state.board.white_king_bitboard,
-        game_state.board.white_queen_bitboard,
-        game_state.board.white_rook_bitboard,
-        game_state.board.white_bishop_bitboard,
-        game_state.board.white_knight_bitboard,
-        game_state.board.white_pawns_bitboard,
+        game.board.white_king_bitboard,
+        game.board.white_queen_bitboard,
+        game.board.white_rook_bitboard,
+        game.board.white_bishop_bitboard,
+        game.board.white_knight_bitboard,
+        game.board.white_pawns_bitboard,
       ]
 
-      let occupied_squares_black = occupied_squares_black(game_state.board)
+      let occupied_squares_black = occupied_squares_black(game.board)
 
       let enemy_pieces =
         list.fold(
@@ -3683,35 +2986,35 @@ fn generate_pawn_non_capture_move_bitboard(
   }
 }
 
-fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move) {
+fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
   let pawn_attack_set = case color {
     White -> {
-      generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
+      generate_pawn_attack_set(game.board.white_pawns_bitboard, color)
     }
     Black -> {
-      generate_pawn_attack_set(game_state.board.black_pawns_bitboard, color)
+      generate_pawn_attack_set(game.board.black_pawns_bitboard, color)
     }
   }
-  generate_pawn_attack_set(game_state.board.white_pawns_bitboard, color)
+  generate_pawn_attack_set(game.board.white_pawns_bitboard, color)
   let list_of_enemy_piece_bitboards = case color {
     White -> {
       [
-        game_state.board.black_king_bitboard,
-        game_state.board.black_queen_bitboard,
-        game_state.board.black_rook_bitboard,
-        game_state.board.black_bishop_bitboard,
-        game_state.board.black_knight_bitboard,
-        game_state.board.black_pawns_bitboard,
+        game.board.black_king_bitboard,
+        game.board.black_queen_bitboard,
+        game.board.black_rook_bitboard,
+        game.board.black_bishop_bitboard,
+        game.board.black_knight_bitboard,
+        game.board.black_pawns_bitboard,
       ]
     }
     Black -> {
       [
-        game_state.board.white_king_bitboard,
-        game_state.board.white_queen_bitboard,
-        game_state.board.white_rook_bitboard,
-        game_state.board.white_bishop_bitboard,
-        game_state.board.white_knight_bitboard,
-        game_state.board.white_pawns_bitboard,
+        game.board.white_king_bitboard,
+        game.board.white_queen_bitboard,
+        game.board.white_rook_bitboard,
+        game.board.white_bishop_bitboard,
+        game.board.white_knight_bitboard,
+        game.board.white_pawns_bitboard,
       ]
     }
   }
@@ -3736,8 +3039,8 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
           not_a_file,
         )
       [
-        bitboard.and(east_origins, game_state.board.white_pawns_bitboard),
-        bitboard.and(west_origins, game_state.board.white_pawns_bitboard),
+        bitboard.and(east_origins, game.board.white_pawns_bitboard),
+        bitboard.and(west_origins, game.board.white_pawns_bitboard),
       ]
     }
     Black -> {
@@ -3752,8 +3055,8 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
           not_h_file,
         )
       [
-        bitboard.and(east_origins, game_state.board.black_pawns_bitboard),
-        bitboard.and(west_origins, game_state.board.black_pawns_bitboard),
+        bitboard.and(east_origins, game.board.black_pawns_bitboard),
+        bitboard.and(west_origins, game.board.black_pawns_bitboard),
       ]
     }
   }
@@ -3803,7 +3106,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Queen)),
@@ -3813,7 +3116,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Rook)),
@@ -3823,7 +3126,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Bishop)),
@@ -3833,7 +3136,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Knight)),
@@ -3845,7 +3148,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Queen)),
@@ -3855,7 +3158,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Rook)),
@@ -3865,7 +3168,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Bishop)),
@@ -3875,7 +3178,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Knight)),
@@ -3887,7 +3190,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: east_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, east_attack)
+                          piece_at_position(game, east_attack)
                         Some(piece)
                       },
                       promotion: None,
@@ -3930,7 +3233,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Queen)),
@@ -3940,7 +3243,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Rook)),
@@ -3950,7 +3253,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Bishop)),
@@ -3960,7 +3263,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Knight)),
@@ -3972,7 +3275,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Queen)),
@@ -3982,7 +3285,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Rook)),
@@ -3992,7 +3295,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Bishop)),
@@ -4002,7 +3305,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: Some(piece.Piece(color, Knight)),
@@ -4014,7 +3317,7 @@ fn generate_pawn_capture_move_list(color: Color, game_state: Game) -> List(Move)
                       to: west_attack,
                       captured: {
                         let assert Some(piece) =
-                          piece_at_position(game_state, west_attack)
+                          piece_at_position(game, west_attack)
                         Some(piece)
                       },
                       promotion: None,
@@ -4261,28 +3564,684 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardMap {
   board_map
 }
 
-pub fn print_board(game_actor: Subject(Message)) {
-  process.call(game_actor, PrintBoard, 1000)
+pub fn print_board(game: Game) {
+  let board_map = bitboard_repr_to_map_repr(game.board)
+  io.print("\n")
+  io.print("\n")
+  io.print("   +---+---+---+---+---+---+---+---+")
+  list.each(
+    positions_in_printing_order,
+    fn(pos) {
+      let piece_to_print = result.unwrap(map.get(board_map, pos), None)
+      case pos.file {
+        position.A -> {
+          io.print("\n")
+          io.print(
+            " " <> int.to_string(position.rank_to_int(pos.rank) + 1) <> " | ",
+          )
+          io.print(case piece_to_print {
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
+            None -> " "
+          })
+          io.print(" | ")
+        }
+
+        position.H -> {
+          io.print(case piece_to_print {
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
+            None -> " "
+          })
+
+          io.print(" | ")
+          io.print("\n")
+          io.print("   +---+---+---+---+---+---+---+---+")
+        }
+
+        _ -> {
+          io.print(case piece_to_print {
+            Some(piece.Piece(White, Pawn)) -> "♙"
+            Some(piece.Piece(White, Knight)) -> "♘"
+            Some(piece.Piece(White, Bishop)) -> "♗"
+            Some(piece.Piece(White, Rook)) -> "♖"
+            Some(piece.Piece(White, Queen)) -> "♕"
+            Some(piece.Piece(White, King)) -> "♔"
+            Some(piece.Piece(Black, Pawn)) -> "♟"
+            Some(piece.Piece(Black, Knight)) -> "♞"
+            Some(piece.Piece(Black, Bishop)) -> "♝"
+            Some(piece.Piece(Black, Rook)) -> "♜"
+            Some(piece.Piece(Black, Queen)) -> "♛"
+            Some(piece.Piece(Black, King)) -> "♚"
+            None -> " "
+          })
+          io.print(" | ")
+        }
+      }
+    },
+  )
+  io.print("\n")
+  io.print("     a   b   c   d   e   f   g   h\n")
 }
 
-pub fn apply_move(game_actor: Subject(Message), move: Move) {
-  process.call(game_actor, ApplyMove(_, move), 1000)
+pub fn apply_move(game: Game, move: Move) -> Game {
+  // TODO: This could be way more efficient if we just kept track of the legal moves
+  // or if we had a way to generate legal moves from a given position
+  let legal_moves = {
+    generate_pseudo_legal_move_list(game, game.turn)
+    |> list.filter(fn(move) { is_move_legal(game, move) })
+  }
+
+  let new_game_state = case list.contains(legal_moves, move) {
+    True -> {
+      let new_game_state = apply_move_unchecked(game, move)
+      new_game_state
+    }
+    False -> {
+      game
+    }
+  }
+
+  new_game_state
 }
 
-pub fn apply_move_uci(game_actor: Subject(Message), move_uci: String) {
-  process.call(game_actor, ApplyMoveUCI(_, move_uci), 1000)
+pub fn apply_move_uci(game: Game, move: String) -> Game {
+  case length(move) {
+    4 | 5 -> {
+      let move_chars = string.to_graphemes(move)
+      let from_file = case list.first(move_chars) {
+        Ok("a") -> A
+        Ok("b") -> B
+        Ok("c") -> C
+        Ok("d") -> D
+        Ok("e") -> E
+        Ok("f") -> F
+        Ok("g") -> G
+        Ok("h") -> H
+        _ -> panic("Invalid move")
+      }
+      let assert Ok(move_chars) = list.rest(move_chars)
+      let from_rank = case list.first(move_chars) {
+        Ok("1") -> One
+        Ok("2") -> Two
+        Ok("3") -> Three
+        Ok("4") -> Four
+        Ok("5") -> Five
+        Ok("6") -> Six
+        Ok("7") -> Seven
+        Ok("8") -> Eight
+        _ -> panic("Invalid move")
+      }
+      let assert Ok(move_chars) = list.rest(move_chars)
+      let to_file = case list.first(move_chars) {
+        Ok("a") -> A
+        Ok("b") -> B
+        Ok("c") -> C
+        Ok("d") -> D
+        Ok("e") -> E
+        Ok("f") -> F
+        Ok("g") -> G
+        Ok("h") -> H
+        _ -> panic("Invalid move")
+      }
+      let assert Ok(move_chars) = list.rest(move_chars)
+      let to_rank = case list.first(move_chars) {
+        Ok("1") -> One
+        Ok("2") -> Two
+        Ok("3") -> Three
+        Ok("4") -> Four
+        Ok("5") -> Five
+        Ok("6") -> Six
+        Ok("7") -> Seven
+        Ok("8") -> Eight
+        _ -> panic("Invalid move")
+      }
+
+      let promo = case list.length(move_chars) {
+        5 -> {
+          let assert Ok(move_chars) = list.rest(move_chars)
+          case list.first(move_chars) {
+            Ok("q") -> Some(Queen)
+            Ok("r") -> Some(Rook)
+            Ok("b") -> Some(Bishop)
+            Ok("n") -> Some(Knight)
+            _ -> panic("Invalid move")
+          }
+        }
+        _ -> None
+      }
+
+      // TODO: This could be way more efficient if we just kept track of the legal moves
+      // or if we had a way to generate legal moves from a given position
+      let legal_moves = {
+        generate_pseudo_legal_move_list(game, game.turn)
+        |> list.filter(fn(move) { is_move_legal(game, move) })
+      }
+
+      let assert Ok(move) =
+        list.find(
+          legal_moves,
+          fn(legal_move) {
+            case legal_move {
+              move.Normal(
+                from: from,
+                to: to,
+                captured: _,
+                promotion: Some(promotion),
+              ) -> {
+                case promo {
+                  Some(promo) ->
+                    from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == promotion.kind
+                  None -> False
+                }
+              }
+              move.Normal(from: from, to: to, captured: _, promotion: None) -> {
+                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == None
+              }
+              move.Castle(from: from, to: to) -> {
+                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
+              }
+              move.EnPassant(from: from, to: to) -> {
+                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
+              }
+              _ -> panic("Invalid move")
+            }
+          },
+        )
+      let new_game_state = apply_move_unchecked(game, move)
+      new_game_state
+    }
+    _ -> panic("Invalid move")
+  }
 }
 
-pub fn undo_move(game_actor: Subject(Message)) {
-  process.call(game_actor, UndoMove, 1000)
+pub fn undo_move(game: Game) -> Game {
+  case game.history {
+    [] -> {
+      game
+    }
+    [move, ..rest] -> {
+      case move {
+        move.Normal(
+          from: from,
+          to: to,
+          captured: captured_piece,
+          promotion: promo_piece,
+        ) -> {
+          let moving_piece = case board.get_piece_at_position(game.board, to) {
+            None -> {
+              panic("Invalid move")
+            }
+            Some(piece) -> piece
+          }
+
+          let moving_piece = case promo_piece {
+            None -> moving_piece
+            Some(_) -> piece.Piece(color: moving_piece.color, kind: Pawn)
+          }
+
+          let new_turn = {
+            case game.turn {
+              White -> Black
+              Black -> White
+            }
+          }
+
+          let new_game_state = case captured_piece {
+            None -> {
+              let assert Some(new_board) =
+                board.remove_piece_at_position(game.board, to)
+
+              Game(..game, board: new_board)
+            }
+            Some(piece) -> {
+              let assert Some(new_board) =
+                board.remove_piece_at_position(game.board, to)
+
+              let new_board = board.set_piece_at_position(new_board, to, piece)
+
+              Game(..game, board: new_board)
+            }
+          }
+
+          let new_board =
+            board.set_piece_at_position(
+              new_game_state.board,
+              from,
+              moving_piece,
+            )
+
+          let new_game_state = Game(..new_game_state, board: new_board)
+
+          let new_ply = game.ply - 1
+
+          let new_white_kingside_castle = case game.white_kingside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_white_queenside_castle = case game.white_queenside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_black_kingside_castle = case game.black_kingside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_black_queenside_castle = case game.black_queenside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_history = rest
+
+          let new_en_passant = case rest {
+            [] -> None
+            [move] | [move, ..] -> {
+              case move {
+                move.Normal(
+                  from: position.Position(file: _, rank: Two),
+                  to: position.Position(file: file, rank: Four),
+                  captured: None,
+                  promotion: None,
+                ) if game.turn == White -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Four),
+                    )
+                  {
+                    Some(piece) -> piece
+                    None -> panic("Invalid move")
+                  }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Three))
+                    }
+                    _ -> None
+                  }
+                }
+                move.Normal(
+                  from: position.Position(file: _, rank: Seven),
+                  to: position.Position(file: file, rank: Five),
+                  captured: None,
+                  promotion: None,
+                ) if game.turn == Black -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Five),
+                    )
+                  {
+                    Some(piece) -> piece
+                    None -> panic("Invalid move")
+                  }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Six))
+                    }
+                    _ -> None
+                  }
+                }
+                _ -> None
+              }
+            }
+          }
+
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              turn: new_turn,
+              history: new_history,
+              ply: new_ply,
+              white_kingside_castle: new_white_kingside_castle,
+              white_queenside_castle: new_white_queenside_castle,
+              black_kingside_castle: new_black_kingside_castle,
+              black_queenside_castle: new_black_queenside_castle,
+              en_passant: new_en_passant,
+            )
+
+          new_game_state
+        }
+        move.Castle(from: from, to: to) -> {
+          let new_turn = {
+            case game.turn {
+              White -> Black
+              Black -> White
+            }
+          }
+          let new_game_state =
+            Game(
+              ..game,
+              board: board.set_piece_at_position(
+                game.board,
+                from,
+                piece.Piece(color: new_turn, kind: King),
+              ),
+            )
+          let rook_castling_target_square = case to {
+            position.Position(file: G, rank: One) ->
+              position.Position(file: F, rank: One)
+            position.Position(file: G, rank: Eight) ->
+              position.Position(file: F, rank: Eight)
+            position.Position(file: C, rank: One) ->
+              position.Position(file: D, rank: One)
+            position.Position(file: C, rank: Eight) ->
+              position.Position(file: D, rank: Eight)
+            _ -> panic("Invalid castle move")
+          }
+
+          let new_board = case
+            board.remove_piece_at_position(
+              new_game_state.board,
+              rook_castling_target_square,
+            )
+          {
+            Some(board) -> board
+            None -> panic("Invalid move")
+          }
+          let new_game_state = Game(..new_game_state, board: new_board)
+
+          let assert Some(new_board) =
+            board.remove_piece_at_position(new_game_state.board, to)
+          let new_game_state = Game(..new_game_state, board: new_board)
+
+          let rook_castling_origin_square = case to {
+            position.Position(file: G, rank: One) ->
+              position.Position(file: H, rank: One)
+            position.Position(file: G, rank: Eight) ->
+              position.Position(file: H, rank: Eight)
+            position.Position(file: C, rank: One) ->
+              position.Position(file: A, rank: One)
+            position.Position(file: C, rank: Eight) ->
+              position.Position(file: A, rank: Eight)
+            _ -> panic("Invalid castle move")
+          }
+
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              board: board.set_piece_at_position(
+                new_game_state.board,
+                rook_castling_origin_square,
+                piece.Piece(color: new_turn, kind: Rook),
+              ),
+            )
+
+          let new_ply = game.ply - 1
+
+          let new_white_kingside_castle = case game.white_kingside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_white_queenside_castle = case game.white_queenside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_black_kingside_castle = case game.black_kingside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_black_queenside_castle = case game.black_queenside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_history = rest
+
+          let new_en_passant = case rest {
+            [] -> None
+            [move] | [move, ..] -> {
+              case move {
+                move.Normal(
+                  from: position.Position(file: _, rank: Two),
+                  to: position.Position(file: file, rank: Four),
+                  captured: None,
+                  promotion: None,
+                ) if game.turn == White -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Four),
+                    )
+                  {
+                    Some(piece) -> piece
+                    None -> panic("Invalid move")
+                  }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Three))
+                    }
+                    _ -> None
+                  }
+                }
+                move.Normal(
+                  from: position.Position(file: _, rank: Seven),
+                  to: position.Position(file: file, rank: Five),
+                  captured: None,
+                  promotion: None,
+                ) if game.turn == Black -> {
+                  let moving_piece = case
+                    board.get_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: file, rank: Five),
+                    )
+                  {
+                    Some(piece) -> piece
+                    None -> panic("Invalid move")
+                  }
+                  case moving_piece {
+                    piece.Piece(color: _, kind: Pawn) -> {
+                      Some(position.Position(file: file, rank: Six))
+                    }
+                    _ -> None
+                  }
+                }
+                _ -> None
+              }
+            }
+          }
+
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              turn: new_turn,
+              history: new_history,
+              ply: new_ply,
+              white_kingside_castle: new_white_kingside_castle,
+              white_queenside_castle: new_white_queenside_castle,
+              black_kingside_castle: new_black_kingside_castle,
+              black_queenside_castle: new_black_queenside_castle,
+              en_passant: new_en_passant,
+            )
+
+          new_game_state
+        }
+
+        move.EnPassant(from: from, to: to) -> {
+          let assert Some(moving_piece) =
+            board.get_piece_at_position(game.board, to)
+
+          let assert Some(new_board) =
+            board.remove_piece_at_position(game.board, to)
+          let new_game_state = Game(..game, board: new_board)
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              board: board.set_piece_at_position(
+                new_game_state.board,
+                from,
+                moving_piece,
+              ),
+            )
+
+          let new_game_state = case game.turn {
+            Black -> {
+              Game(
+                ..new_game_state,
+                board: board.set_piece_at_position(
+                  new_game_state.board,
+                  position.Position(file: to.file, rank: Four),
+                  piece.Piece(color: White, kind: Pawn),
+                ),
+              )
+            }
+            White -> {
+              Game(
+                ..new_game_state,
+                board: board.set_piece_at_position(
+                  new_game_state.board,
+                  position.Position(file: to.file, rank: Five),
+                  piece.Piece(color: Black, kind: Pawn),
+                ),
+              )
+            }
+          }
+
+          let new_ply = game.ply - 1
+
+          let new_white_kingside_castle = case game.white_kingside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_white_queenside_castle = case game.white_queenside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_black_kingside_castle = case game.black_kingside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_black_queenside_castle = case game.black_queenside_castle {
+            Yes -> Yes
+            No(ply) -> {
+              case ply == game.ply {
+                True -> Yes
+                False -> No(ply)
+              }
+            }
+          }
+
+          let new_turn = {
+            case game.turn {
+              White -> Black
+              Black -> White
+            }
+          }
+
+          let new_history = rest
+
+          let new_en_passant = to
+
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              turn: new_turn,
+              history: new_history,
+              ply: new_ply,
+              white_kingside_castle: new_white_kingside_castle,
+              white_queenside_castle: new_white_queenside_castle,
+              black_kingside_castle: new_black_kingside_castle,
+              black_queenside_castle: new_black_queenside_castle,
+              en_passant: Some(new_en_passant),
+            )
+
+          new_game_state
+        }
+      }
+    }
+  }
 }
 
-pub fn all_legal_moves(game_actor: Subject(Message)) {
-  process.call(game_actor, AllLegalMoves, 1000)
-}
-
-pub fn get_fen(game_actor: Subject(Message)) {
-  process.call(game_actor, GetFen, 1000)
+pub fn all_legal_moves(game: Game) -> List(Move) {
+  let legal_moves = {
+    generate_pseudo_legal_move_list(game, game.turn)
+    |> list.filter(fn(move) { is_move_legal(game, move) })
+  }
+  legal_moves
 }
 
 pub fn print_board_from_fen(fen: String) {
@@ -4363,247 +4322,4 @@ pub fn print_board_from_fen(fen: String) {
   )
   io.print("\n")
   io.print("     a   b   c   d   e   f   g   h\n")
-}
-
-fn handle_print_board(
-  game_state: Game,
-  client: Subject(Nil),
-) -> actor.Next(Message, Game) {
-  let board_map = bitboard_repr_to_map_repr(game_state.board)
-  io.print("\n")
-  io.print("\n")
-  io.print("   +---+---+---+---+---+---+---+---+")
-  list.each(
-    positions_in_printing_order,
-    fn(pos) {
-      let piece_to_print = result.unwrap(map.get(board_map, pos), None)
-      case pos.file {
-        position.A -> {
-          io.print("\n")
-          io.print(
-            " " <> int.to_string(position.rank_to_int(pos.rank) + 1) <> " | ",
-          )
-          io.print(case piece_to_print {
-            Some(piece.Piece(White, Pawn)) -> "♙"
-            Some(piece.Piece(White, Knight)) -> "♘"
-            Some(piece.Piece(White, Bishop)) -> "♗"
-            Some(piece.Piece(White, Rook)) -> "♖"
-            Some(piece.Piece(White, Queen)) -> "♕"
-            Some(piece.Piece(White, King)) -> "♔"
-            Some(piece.Piece(Black, Pawn)) -> "♟"
-            Some(piece.Piece(Black, Knight)) -> "♞"
-            Some(piece.Piece(Black, Bishop)) -> "♝"
-            Some(piece.Piece(Black, Rook)) -> "♜"
-            Some(piece.Piece(Black, Queen)) -> "♛"
-            Some(piece.Piece(Black, King)) -> "♚"
-            None -> " "
-          })
-          io.print(" | ")
-        }
-
-        position.H -> {
-          io.print(case piece_to_print {
-            Some(piece.Piece(White, Pawn)) -> "♙"
-            Some(piece.Piece(White, Knight)) -> "♘"
-            Some(piece.Piece(White, Bishop)) -> "♗"
-            Some(piece.Piece(White, Rook)) -> "♖"
-            Some(piece.Piece(White, Queen)) -> "♕"
-            Some(piece.Piece(White, King)) -> "♔"
-            Some(piece.Piece(Black, Pawn)) -> "♟"
-            Some(piece.Piece(Black, Knight)) -> "♞"
-            Some(piece.Piece(Black, Bishop)) -> "♝"
-            Some(piece.Piece(Black, Rook)) -> "♜"
-            Some(piece.Piece(Black, Queen)) -> "♛"
-            Some(piece.Piece(Black, King)) -> "♚"
-            None -> " "
-          })
-
-          io.print(" | ")
-          io.print("\n")
-          io.print("   +---+---+---+---+---+---+---+---+")
-        }
-
-        _ -> {
-          io.print(case piece_to_print {
-            Some(piece.Piece(White, Pawn)) -> "♙"
-            Some(piece.Piece(White, Knight)) -> "♘"
-            Some(piece.Piece(White, Bishop)) -> "♗"
-            Some(piece.Piece(White, Rook)) -> "♖"
-            Some(piece.Piece(White, Queen)) -> "♕"
-            Some(piece.Piece(White, King)) -> "♔"
-            Some(piece.Piece(Black, Pawn)) -> "♟"
-            Some(piece.Piece(Black, Knight)) -> "♞"
-            Some(piece.Piece(Black, Bishop)) -> "♝"
-            Some(piece.Piece(Black, Rook)) -> "♜"
-            Some(piece.Piece(Black, Queen)) -> "♛"
-            Some(piece.Piece(Black, King)) -> "♚"
-            None -> " "
-          })
-          io.print(" | ")
-        }
-      }
-    },
-  )
-  io.print("\n")
-  io.print("     a   b   c   d   e   f   g   h\n")
-
-  process.send(client, Nil)
-  actor.continue(game_state)
-}
-
-pub fn new_game_from_fen(fen_string: String) {
-  let fen = fen.from_string(fen_string)
-
-  let status = InProgress
-
-  let ply = case fen.turn {
-    White -> {
-      { fen.fullmove - 1 } * 2
-    }
-    Black -> {
-      { fen.fullmove - 1 } * 2 + 1
-    }
-  }
-
-  let white_kingside_castle = case fen.castling.white_kingside {
-    True -> Yes
-    False -> No(1)
-  }
-
-  let white_queenside_castle = case fen.castling.white_queenside {
-    True -> Yes
-    False -> No(1)
-  }
-
-  let black_kingside_castle = case fen.castling.black_kingside {
-    True -> Yes
-    False -> No(2)
-  }
-
-  let black_queenside_castle = case fen.castling.black_queenside {
-    True -> Yes
-    False -> No(2)
-  }
-
-  let game_state =
-    Game(
-      board: fen.board,
-      turn: fen.turn,
-      history: [],
-      status: Some(status),
-      fifty_move_rule: 0,
-      ply: ply,
-      white_kingside_castle: white_kingside_castle,
-      white_queenside_castle: white_queenside_castle,
-      black_kingside_castle: black_kingside_castle,
-      black_queenside_castle: black_queenside_castle,
-      en_passant: fen.en_passant,
-    )
-  let assert Ok(actor) = actor.start(game_state, handle_message)
-  actor
-}
-
-pub fn new_game() {
-  let white_king_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
-    )
-
-  let white_queen_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
-    )
-
-  let white_rook_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001,
-    )
-
-  let white_bishop_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100,
-    )
-
-  let white_knight_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010,
-    )
-
-  let white_pawns_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
-    )
-
-  let black_king_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_queen_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_rook_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_bishop_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_knight_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_pawns_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let board =
-    board.BoardBB(
-      black_king_bitboard: black_king_bitboard,
-      black_queen_bitboard: black_queen_bitboard,
-      black_rook_bitboard: black_rook_bitboard,
-      black_bishop_bitboard: black_bishop_bitboard,
-      black_knight_bitboard: black_knight_bitboard,
-      black_pawns_bitboard: black_pawns_bitboard,
-      white_king_bitboard: white_king_bitboard,
-      white_queen_bitboard: white_queen_bitboard,
-      white_rook_bitboard: white_rook_bitboard,
-      white_bishop_bitboard: white_bishop_bitboard,
-      white_knight_bitboard: white_knight_bitboard,
-      white_pawns_bitboard: white_pawns_bitboard,
-    )
-
-  let turn = White
-
-  let history = []
-
-  let status = InProgress
-
-  let ply = 0
-
-  let assert Ok(actor) =
-    actor.start(
-      Game(
-        board: board,
-        turn: turn,
-        history: history,
-        status: Some(status),
-        fifty_move_rule: 0,
-        ply: ply,
-        white_kingside_castle: Yes,
-        white_queenside_castle: Yes,
-        black_kingside_castle: Yes,
-        black_queenside_castle: Yes,
-        en_passant: None,
-      ),
-      handle_message,
-    )
-  actor
 }

@@ -4,20 +4,23 @@ import gleam/list
 import move
 
 pub fn main() {
-  let game_actor =
+  // When we start the gamer server process, we receive a "subject" which allows
+  // us to send messages to the process, similar to how we need a PID in erlang/elixir
+  // to send messages to a specific process.
+  let game_server_subject =
     game_server.from_fen(
       "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
     )
 
-  game_server.print_board(game_actor)
+  game_server.print_board(game_server_subject)
 
-  game_server.all_legal_moves(game_actor)
+  game_server.all_legal_moves(game_server_subject)
   |> list.map(move.to_string)
   |> list.each(io.println)
 
-  game_server.apply_move_uci(game_actor, "e2e4")
+  game_server.apply_move_uci(game_server_subject, "e2e4")
 
-  game_server.print_board(game_actor)
+  game_server.print_board(game_server_subject)
 }
 
 fn perft(game_actor, depth) {

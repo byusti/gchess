@@ -3645,603 +3645,657 @@ pub fn print_board(game: Game) {
 }
 
 pub fn apply_move(game: Game, move: Move) -> Game {
-  // TODO: This could be way more efficient if we just kept track of the legal moves
-  // or if we had a way to generate legal moves from a given position
-  let legal_moves = {
-    generate_pseudo_legal_move_list(game, game.turn)
-    |> list.filter(fn(move) { is_move_legal(game, move) })
-  }
-
-  let new_game_state = case list.contains(legal_moves, move) {
-    True -> {
-      let new_game_state = apply_move_unchecked(game, move)
-      new_game_state
-    }
-    False -> {
-      game
-    }
-  }
-
-  new_game_state
-}
-
-pub fn apply_move_uci(game: Game, move: String) -> Game {
-  case length(move) {
-    4 | 5 -> {
-      let move_chars = string.to_graphemes(move)
-      let from_file = case list.first(move_chars) {
-        Ok("a") -> A
-        Ok("b") -> B
-        Ok("c") -> C
-        Ok("d") -> D
-        Ok("e") -> E
-        Ok("f") -> F
-        Ok("g") -> G
-        Ok("h") -> H
-        _ -> panic("Invalid move")
-      }
-      let assert Ok(move_chars) = list.rest(move_chars)
-      let from_rank = case list.first(move_chars) {
-        Ok("1") -> One
-        Ok("2") -> Two
-        Ok("3") -> Three
-        Ok("4") -> Four
-        Ok("5") -> Five
-        Ok("6") -> Six
-        Ok("7") -> Seven
-        Ok("8") -> Eight
-        _ -> panic("Invalid move")
-      }
-      let assert Ok(move_chars) = list.rest(move_chars)
-      let to_file = case list.first(move_chars) {
-        Ok("a") -> A
-        Ok("b") -> B
-        Ok("c") -> C
-        Ok("d") -> D
-        Ok("e") -> E
-        Ok("f") -> F
-        Ok("g") -> G
-        Ok("h") -> H
-        _ -> panic("Invalid move")
-      }
-      let assert Ok(move_chars) = list.rest(move_chars)
-      let to_rank = case list.first(move_chars) {
-        Ok("1") -> One
-        Ok("2") -> Two
-        Ok("3") -> Three
-        Ok("4") -> Four
-        Ok("5") -> Five
-        Ok("6") -> Six
-        Ok("7") -> Seven
-        Ok("8") -> Eight
-        _ -> panic("Invalid move")
-      }
-
-      let promo = case list.length(move_chars) {
-        5 -> {
-          let assert Ok(move_chars) = list.rest(move_chars)
-          case list.first(move_chars) {
-            Ok("q") -> Some(Queen)
-            Ok("r") -> Some(Rook)
-            Ok("b") -> Some(Bishop)
-            Ok("n") -> Some(Knight)
-            _ -> panic("Invalid move")
-          }
-        }
-        _ -> None
-      }
-
-      // TODO: This could be way more efficient if we just kept track of the legal moves
-      // or if we had a way to generate legal moves from a given position
+  case game.status {
+    Some(InProgress) | None -> {
       let legal_moves = {
         generate_pseudo_legal_move_list(game, game.turn)
         |> list.filter(fn(move) { is_move_legal(game, move) })
       }
 
-      let assert Ok(move) =
-        list.find(
-          legal_moves,
-          fn(legal_move) {
-            case legal_move {
-              move.Normal(
-                from: from,
-                to: to,
-                captured: _,
-                promotion: Some(promotion),
-              ) -> {
-                case promo {
-                  Some(promo) ->
-                    from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == promotion.kind
-                  None -> False
-                }
-              }
-              move.Normal(from: from, to: to, captured: _, promotion: None) -> {
-                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == None
-              }
-              move.Castle(from: from, to: to) -> {
-                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
-              }
-              move.EnPassant(from: from, to: to) -> {
-                from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
-              }
-              _ -> panic("Invalid move")
-            }
-          },
-        )
-      let new_game_state = apply_move_unchecked(game, move)
+      let new_game_state = case list.contains(legal_moves, move) {
+        True -> {
+          let new_game_state = apply_move_unchecked(game, move)
+          new_game_state
+        }
+        False -> {
+          game
+        }
+      }
+
       new_game_state
     }
-    _ -> panic("Invalid move")
+    Some(_) -> {
+      game
+    }
+  }
+}
+
+pub fn apply_move_uci(game: Game, move: String) -> Game {
+  case game.status {
+    Some(InProgress) | None ->
+      case length(move) {
+        4 | 5 -> {
+          let move_chars = string.to_graphemes(move)
+          let from_file = case list.first(move_chars) {
+            Ok("a") -> A
+            Ok("b") -> B
+            Ok("c") -> C
+            Ok("d") -> D
+            Ok("e") -> E
+            Ok("f") -> F
+            Ok("g") -> G
+            Ok("h") -> H
+            _ -> panic("Invalid move")
+          }
+          let assert Ok(move_chars) = list.rest(move_chars)
+          let from_rank = case list.first(move_chars) {
+            Ok("1") -> One
+            Ok("2") -> Two
+            Ok("3") -> Three
+            Ok("4") -> Four
+            Ok("5") -> Five
+            Ok("6") -> Six
+            Ok("7") -> Seven
+            Ok("8") -> Eight
+            _ -> panic("Invalid move")
+          }
+          let assert Ok(move_chars) = list.rest(move_chars)
+          let to_file = case list.first(move_chars) {
+            Ok("a") -> A
+            Ok("b") -> B
+            Ok("c") -> C
+            Ok("d") -> D
+            Ok("e") -> E
+            Ok("f") -> F
+            Ok("g") -> G
+            Ok("h") -> H
+            _ -> panic("Invalid move")
+          }
+          let assert Ok(move_chars) = list.rest(move_chars)
+          let to_rank = case list.first(move_chars) {
+            Ok("1") -> One
+            Ok("2") -> Two
+            Ok("3") -> Three
+            Ok("4") -> Four
+            Ok("5") -> Five
+            Ok("6") -> Six
+            Ok("7") -> Seven
+            Ok("8") -> Eight
+            _ -> panic("Invalid move")
+          }
+
+          let promo = case list.length(move_chars) {
+            5 -> {
+              let assert Ok(move_chars) = list.rest(move_chars)
+              case list.first(move_chars) {
+                Ok("q") -> Some(Queen)
+                Ok("r") -> Some(Rook)
+                Ok("b") -> Some(Bishop)
+                Ok("n") -> Some(Knight)
+                _ -> panic("Invalid move")
+              }
+            }
+            _ -> None
+          }
+
+          // TODO: This could be way more efficient if we just kept track of the legal moves
+          // or if we had a way to generate legal moves from a given position
+          let legal_moves = {
+            generate_pseudo_legal_move_list(game, game.turn)
+            |> list.filter(fn(move) { is_move_legal(game, move) })
+          }
+
+          let assert Ok(move) =
+            list.find(
+              legal_moves,
+              fn(legal_move) {
+                case legal_move {
+                  move.Normal(
+                    from: from,
+                    to: to,
+                    captured: _,
+                    promotion: Some(promotion),
+                  ) -> {
+                    case promo {
+                      Some(promo) ->
+                        from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == promotion.kind
+                      None -> False
+                    }
+                  }
+                  move.Normal(from: from, to: to, captured: _, promotion: None) -> {
+                    from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank && promo == None
+                  }
+                  move.Castle(from: from, to: to) -> {
+                    from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
+                  }
+                  move.EnPassant(from: from, to: to) -> {
+                    from.file == from_file && from.rank == from_rank && to.file == to_file && to.rank == to_rank
+                  }
+                  _ -> panic("Invalid move")
+                }
+              },
+            )
+          let new_game_state = apply_move_unchecked(game, move)
+          new_game_state
+        }
+        _ -> panic("Invalid move")
+      }
+    Some(_) -> game
   }
 }
 
 pub fn undo_move(game: Game) -> Game {
-  case game.history {
-    [] -> {
-      game
-    }
-    [move, ..rest] -> {
-      case move {
-        move.Normal(
-          from: from,
-          to: to,
-          captured: captured_piece,
-          promotion: promo_piece,
-        ) -> {
-          let moving_piece = case board.get_piece_at_position(game.board, to) {
-            None -> {
-              panic("Invalid move")
+  case game.status {
+    Some(InProgress) | None -> {
+      case game.history {
+        [] -> {
+          game
+        }
+        [move, ..rest] -> {
+          case move {
+            move.Normal(
+              from: from,
+              to: to,
+              captured: captured_piece,
+              promotion: promo_piece,
+            ) -> {
+              let moving_piece = case
+                board.get_piece_at_position(game.board, to)
+              {
+                None -> {
+                  panic("Invalid move")
+                }
+                Some(piece) -> piece
+              }
+
+              let moving_piece = case promo_piece {
+                None -> moving_piece
+                Some(_) -> piece.Piece(color: moving_piece.color, kind: Pawn)
+              }
+
+              let new_turn = {
+                case game.turn {
+                  White -> Black
+                  Black -> White
+                }
+              }
+
+              let new_game_state = case captured_piece {
+                None -> {
+                  let assert Some(new_board) =
+                    board.remove_piece_at_position(game.board, to)
+
+                  Game(..game, board: new_board)
+                }
+                Some(piece) -> {
+                  let assert Some(new_board) =
+                    board.remove_piece_at_position(game.board, to)
+
+                  let new_board =
+                    board.set_piece_at_position(new_board, to, piece)
+
+                  Game(..game, board: new_board)
+                }
+              }
+
+              let new_board =
+                board.set_piece_at_position(
+                  new_game_state.board,
+                  from,
+                  moving_piece,
+                )
+
+              let new_game_state = Game(..new_game_state, board: new_board)
+
+              let new_ply = game.ply - 1
+
+              let new_white_kingside_castle = case game.white_kingside_castle {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_white_queenside_castle = case
+                game.white_queenside_castle
+              {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_black_kingside_castle = case game.black_kingside_castle {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_black_queenside_castle = case
+                game.black_queenside_castle
+              {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_history = rest
+
+              let new_en_passant = case rest {
+                [] -> None
+                [move] | [move, ..] -> {
+                  case move {
+                    move.Normal(
+                      from: position.Position(file: _, rank: Two),
+                      to: position.Position(file: file, rank: Four),
+                      captured: None,
+                      promotion: None,
+                    ) if game.turn == White -> {
+                      let moving_piece = case
+                        board.get_piece_at_position(
+                          new_game_state.board,
+                          position.Position(file: file, rank: Four),
+                        )
+                      {
+                        Some(piece) -> piece
+                        None -> panic("Invalid move")
+                      }
+                      case moving_piece {
+                        piece.Piece(color: _, kind: Pawn) -> {
+                          Some(position.Position(file: file, rank: Three))
+                        }
+                        _ -> None
+                      }
+                    }
+                    move.Normal(
+                      from: position.Position(file: _, rank: Seven),
+                      to: position.Position(file: file, rank: Five),
+                      captured: None,
+                      promotion: None,
+                    ) if game.turn == Black -> {
+                      let moving_piece = case
+                        board.get_piece_at_position(
+                          new_game_state.board,
+                          position.Position(file: file, rank: Five),
+                        )
+                      {
+                        Some(piece) -> piece
+                        None -> panic("Invalid move")
+                      }
+                      case moving_piece {
+                        piece.Piece(color: _, kind: Pawn) -> {
+                          Some(position.Position(file: file, rank: Six))
+                        }
+                        _ -> None
+                      }
+                    }
+                    _ -> None
+                  }
+                }
+              }
+
+              let new_fifty_move_rule = case game.fifty_move_rule {
+                0 -> 0
+                _ -> game.fifty_move_rule - 1
+              }
+
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  turn: new_turn,
+                  history: new_history,
+                  ply: new_ply,
+                  fifty_move_rule: new_fifty_move_rule,
+                  white_kingside_castle: new_white_kingside_castle,
+                  white_queenside_castle: new_white_queenside_castle,
+                  black_kingside_castle: new_black_kingside_castle,
+                  black_queenside_castle: new_black_queenside_castle,
+                  en_passant: new_en_passant,
+                )
+
+              new_game_state
             }
-            Some(piece) -> piece
-          }
+            move.Castle(from: from, to: to) -> {
+              let new_turn = {
+                case game.turn {
+                  White -> Black
+                  Black -> White
+                }
+              }
+              let new_game_state =
+                Game(
+                  ..game,
+                  board: board.set_piece_at_position(
+                    game.board,
+                    from,
+                    piece.Piece(color: new_turn, kind: King),
+                  ),
+                )
+              let rook_castling_target_square = case to {
+                position.Position(file: G, rank: One) ->
+                  position.Position(file: F, rank: One)
+                position.Position(file: G, rank: Eight) ->
+                  position.Position(file: F, rank: Eight)
+                position.Position(file: C, rank: One) ->
+                  position.Position(file: D, rank: One)
+                position.Position(file: C, rank: Eight) ->
+                  position.Position(file: D, rank: Eight)
+                _ -> panic("Invalid castle move")
+              }
 
-          let moving_piece = case promo_piece {
-            None -> moving_piece
-            Some(_) -> piece.Piece(color: moving_piece.color, kind: Pawn)
-          }
+              let new_board = case
+                board.remove_piece_at_position(
+                  new_game_state.board,
+                  rook_castling_target_square,
+                )
+              {
+                Some(board) -> board
+                None -> panic("Invalid move")
+              }
+              let new_game_state = Game(..new_game_state, board: new_board)
 
-          let new_turn = {
-            case game.turn {
-              White -> Black
-              Black -> White
+              let assert Some(new_board) =
+                board.remove_piece_at_position(new_game_state.board, to)
+              let new_game_state = Game(..new_game_state, board: new_board)
+
+              let rook_castling_origin_square = case to {
+                position.Position(file: G, rank: One) ->
+                  position.Position(file: H, rank: One)
+                position.Position(file: G, rank: Eight) ->
+                  position.Position(file: H, rank: Eight)
+                position.Position(file: C, rank: One) ->
+                  position.Position(file: A, rank: One)
+                position.Position(file: C, rank: Eight) ->
+                  position.Position(file: A, rank: Eight)
+                _ -> panic("Invalid castle move")
+              }
+
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  board: board.set_piece_at_position(
+                    new_game_state.board,
+                    rook_castling_origin_square,
+                    piece.Piece(color: new_turn, kind: Rook),
+                  ),
+                )
+
+              let new_ply = game.ply - 1
+
+              let new_white_kingside_castle = case game.white_kingside_castle {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_white_queenside_castle = case
+                game.white_queenside_castle
+              {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_black_kingside_castle = case game.black_kingside_castle {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_black_queenside_castle = case
+                game.black_queenside_castle
+              {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
+                  }
+                }
+              }
+
+              let new_history = rest
+
+              let new_en_passant = case rest {
+                [] -> None
+                [move] | [move, ..] -> {
+                  case move {
+                    move.Normal(
+                      from: position.Position(file: _, rank: Two),
+                      to: position.Position(file: file, rank: Four),
+                      captured: None,
+                      promotion: None,
+                    ) if game.turn == White -> {
+                      let moving_piece = case
+                        board.get_piece_at_position(
+                          new_game_state.board,
+                          position.Position(file: file, rank: Four),
+                        )
+                      {
+                        Some(piece) -> piece
+                        None -> panic("Invalid move")
+                      }
+                      case moving_piece {
+                        piece.Piece(color: _, kind: Pawn) -> {
+                          Some(position.Position(file: file, rank: Three))
+                        }
+                        _ -> None
+                      }
+                    }
+                    move.Normal(
+                      from: position.Position(file: _, rank: Seven),
+                      to: position.Position(file: file, rank: Five),
+                      captured: None,
+                      promotion: None,
+                    ) if game.turn == Black -> {
+                      let moving_piece = case
+                        board.get_piece_at_position(
+                          new_game_state.board,
+                          position.Position(file: file, rank: Five),
+                        )
+                      {
+                        Some(piece) -> piece
+                        None -> panic("Invalid move")
+                      }
+                      case moving_piece {
+                        piece.Piece(color: _, kind: Pawn) -> {
+                          Some(position.Position(file: file, rank: Six))
+                        }
+                        _ -> None
+                      }
+                    }
+                    _ -> None
+                  }
+                }
+              }
+
+              let new_fifty_move_rule = case game.fifty_move_rule {
+                0 -> 0
+                _ -> game.fifty_move_rule - 1
+              }
+
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  turn: new_turn,
+                  history: new_history,
+                  ply: new_ply,
+                  fifty_move_rule: new_fifty_move_rule,
+                  white_kingside_castle: new_white_kingside_castle,
+                  white_queenside_castle: new_white_queenside_castle,
+                  black_kingside_castle: new_black_kingside_castle,
+                  black_queenside_castle: new_black_queenside_castle,
+                  en_passant: new_en_passant,
+                )
+
+              new_game_state
             }
-          }
 
-          let new_game_state = case captured_piece {
-            None -> {
+            move.EnPassant(from: from, to: to) -> {
+              let assert Some(moving_piece) =
+                board.get_piece_at_position(game.board, to)
+
               let assert Some(new_board) =
                 board.remove_piece_at_position(game.board, to)
+              let new_game_state = Game(..game, board: new_board)
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  board: board.set_piece_at_position(
+                    new_game_state.board,
+                    from,
+                    moving_piece,
+                  ),
+                )
 
-              Game(..game, board: new_board)
-            }
-            Some(piece) -> {
-              let assert Some(new_board) =
-                board.remove_piece_at_position(game.board, to)
-
-              let new_board = board.set_piece_at_position(new_board, to, piece)
-
-              Game(..game, board: new_board)
-            }
-          }
-
-          let new_board =
-            board.set_piece_at_position(
-              new_game_state.board,
-              from,
-              moving_piece,
-            )
-
-          let new_game_state = Game(..new_game_state, board: new_board)
-
-          let new_ply = game.ply - 1
-
-          let new_white_kingside_castle = case game.white_kingside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_white_queenside_castle = case game.white_queenside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_kingside_castle = case game.black_kingside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_queenside_castle = case game.black_queenside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_history = rest
-
-          let new_en_passant = case rest {
-            [] -> None
-            [move] | [move, ..] -> {
-              case move {
-                move.Normal(
-                  from: position.Position(file: _, rank: Two),
-                  to: position.Position(file: file, rank: Four),
-                  captured: None,
-                  promotion: None,
-                ) if game.turn == White -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
+              let new_game_state = case game.turn {
+                Black -> {
+                  Game(
+                    ..new_game_state,
+                    board: board.set_piece_at_position(
                       new_game_state.board,
-                      position.Position(file: file, rank: Four),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Three))
-                    }
-                    _ -> None
+                      position.Position(file: to.file, rank: Four),
+                      piece.Piece(color: White, kind: Pawn),
+                    ),
+                  )
+                }
+                White -> {
+                  Game(
+                    ..new_game_state,
+                    board: board.set_piece_at_position(
+                      new_game_state.board,
+                      position.Position(file: to.file, rank: Five),
+                      piece.Piece(color: Black, kind: Pawn),
+                    ),
+                  )
+                }
+              }
+
+              let new_ply = game.ply - 1
+
+              let new_white_kingside_castle = case game.white_kingside_castle {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
                   }
                 }
-                move.Normal(
-                  from: position.Position(file: _, rank: Seven),
-                  to: position.Position(file: file, rank: Five),
-                  captured: None,
-                  promotion: None,
-                ) if game.turn == Black -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
-                      new_game_state.board,
-                      position.Position(file: file, rank: Five),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Six))
-                    }
-                    _ -> None
+              }
+
+              let new_white_queenside_castle = case
+                game.white_queenside_castle
+              {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
                   }
                 }
-                _ -> None
               }
-            }
-          }
 
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              turn: new_turn,
-              history: new_history,
-              ply: new_ply,
-              white_kingside_castle: new_white_kingside_castle,
-              white_queenside_castle: new_white_queenside_castle,
-              black_kingside_castle: new_black_kingside_castle,
-              black_queenside_castle: new_black_queenside_castle,
-              en_passant: new_en_passant,
-            )
-
-          new_game_state
-        }
-        move.Castle(from: from, to: to) -> {
-          let new_turn = {
-            case game.turn {
-              White -> Black
-              Black -> White
-            }
-          }
-          let new_game_state =
-            Game(
-              ..game,
-              board: board.set_piece_at_position(
-                game.board,
-                from,
-                piece.Piece(color: new_turn, kind: King),
-              ),
-            )
-          let rook_castling_target_square = case to {
-            position.Position(file: G, rank: One) ->
-              position.Position(file: F, rank: One)
-            position.Position(file: G, rank: Eight) ->
-              position.Position(file: F, rank: Eight)
-            position.Position(file: C, rank: One) ->
-              position.Position(file: D, rank: One)
-            position.Position(file: C, rank: Eight) ->
-              position.Position(file: D, rank: Eight)
-            _ -> panic("Invalid castle move")
-          }
-
-          let new_board = case
-            board.remove_piece_at_position(
-              new_game_state.board,
-              rook_castling_target_square,
-            )
-          {
-            Some(board) -> board
-            None -> panic("Invalid move")
-          }
-          let new_game_state = Game(..new_game_state, board: new_board)
-
-          let assert Some(new_board) =
-            board.remove_piece_at_position(new_game_state.board, to)
-          let new_game_state = Game(..new_game_state, board: new_board)
-
-          let rook_castling_origin_square = case to {
-            position.Position(file: G, rank: One) ->
-              position.Position(file: H, rank: One)
-            position.Position(file: G, rank: Eight) ->
-              position.Position(file: H, rank: Eight)
-            position.Position(file: C, rank: One) ->
-              position.Position(file: A, rank: One)
-            position.Position(file: C, rank: Eight) ->
-              position.Position(file: A, rank: Eight)
-            _ -> panic("Invalid castle move")
-          }
-
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              board: board.set_piece_at_position(
-                new_game_state.board,
-                rook_castling_origin_square,
-                piece.Piece(color: new_turn, kind: Rook),
-              ),
-            )
-
-          let new_ply = game.ply - 1
-
-          let new_white_kingside_castle = case game.white_kingside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_white_queenside_castle = case game.white_queenside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_kingside_castle = case game.black_kingside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_queenside_castle = case game.black_queenside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_history = rest
-
-          let new_en_passant = case rest {
-            [] -> None
-            [move] | [move, ..] -> {
-              case move {
-                move.Normal(
-                  from: position.Position(file: _, rank: Two),
-                  to: position.Position(file: file, rank: Four),
-                  captured: None,
-                  promotion: None,
-                ) if game.turn == White -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
-                      new_game_state.board,
-                      position.Position(file: file, rank: Four),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Three))
-                    }
-                    _ -> None
+              let new_black_kingside_castle = case game.black_kingside_castle {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
                   }
                 }
-                move.Normal(
-                  from: position.Position(file: _, rank: Seven),
-                  to: position.Position(file: file, rank: Five),
-                  captured: None,
-                  promotion: None,
-                ) if game.turn == Black -> {
-                  let moving_piece = case
-                    board.get_piece_at_position(
-                      new_game_state.board,
-                      position.Position(file: file, rank: Five),
-                    )
-                  {
-                    Some(piece) -> piece
-                    None -> panic("Invalid move")
-                  }
-                  case moving_piece {
-                    piece.Piece(color: _, kind: Pawn) -> {
-                      Some(position.Position(file: file, rank: Six))
-                    }
-                    _ -> None
+              }
+
+              let new_black_queenside_castle = case
+                game.black_queenside_castle
+              {
+                Yes -> Yes
+                No(ply) -> {
+                  case ply == game.ply {
+                    True -> Yes
+                    False -> No(ply)
                   }
                 }
-                _ -> None
               }
-            }
-          }
 
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              turn: new_turn,
-              history: new_history,
-              ply: new_ply,
-              white_kingside_castle: new_white_kingside_castle,
-              white_queenside_castle: new_white_queenside_castle,
-              black_kingside_castle: new_black_kingside_castle,
-              black_queenside_castle: new_black_queenside_castle,
-              en_passant: new_en_passant,
-            )
-
-          new_game_state
-        }
-
-        move.EnPassant(from: from, to: to) -> {
-          let assert Some(moving_piece) =
-            board.get_piece_at_position(game.board, to)
-
-          let assert Some(new_board) =
-            board.remove_piece_at_position(game.board, to)
-          let new_game_state = Game(..game, board: new_board)
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              board: board.set_piece_at_position(
-                new_game_state.board,
-                from,
-                moving_piece,
-              ),
-            )
-
-          let new_game_state = case game.turn {
-            Black -> {
-              Game(
-                ..new_game_state,
-                board: board.set_piece_at_position(
-                  new_game_state.board,
-                  position.Position(file: to.file, rank: Four),
-                  piece.Piece(color: White, kind: Pawn),
-                ),
-              )
-            }
-            White -> {
-              Game(
-                ..new_game_state,
-                board: board.set_piece_at_position(
-                  new_game_state.board,
-                  position.Position(file: to.file, rank: Five),
-                  piece.Piece(color: Black, kind: Pawn),
-                ),
-              )
-            }
-          }
-
-          let new_ply = game.ply - 1
-
-          let new_white_kingside_castle = case game.white_kingside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
+              let new_turn = {
+                case game.turn {
+                  White -> Black
+                  Black -> White
+                }
               }
-            }
-          }
 
-          let new_white_queenside_castle = case game.white_queenside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
+              let new_history = rest
+
+              let new_en_passant = to
+
+              let new_fifty_move_rule = case game.fifty_move_rule {
+                0 -> 0
+                _ -> game.fifty_move_rule - 1
               }
+
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  turn: new_turn,
+                  history: new_history,
+                  ply: new_ply,
+                  fifty_move_rule: new_fifty_move_rule,
+                  white_kingside_castle: new_white_kingside_castle,
+                  white_queenside_castle: new_white_queenside_castle,
+                  black_kingside_castle: new_black_kingside_castle,
+                  black_queenside_castle: new_black_queenside_castle,
+                  en_passant: Some(new_en_passant),
+                )
+
+              new_game_state
             }
           }
-
-          let new_black_kingside_castle = case game.black_kingside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_black_queenside_castle = case game.black_queenside_castle {
-            Yes -> Yes
-            No(ply) -> {
-              case ply == game.ply {
-                True -> Yes
-                False -> No(ply)
-              }
-            }
-          }
-
-          let new_turn = {
-            case game.turn {
-              White -> Black
-              Black -> White
-            }
-          }
-
-          let new_history = rest
-
-          let new_en_passant = to
-
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              turn: new_turn,
-              history: new_history,
-              ply: new_ply,
-              white_kingside_castle: new_white_kingside_castle,
-              white_queenside_castle: new_white_queenside_castle,
-              black_kingside_castle: new_black_kingside_castle,
-              black_queenside_castle: new_black_queenside_castle,
-              en_passant: Some(new_en_passant),
-            )
-
-          new_game_state
         }
       }
+    }
+    Some(_) -> {
+      game
     }
   }
 }
 
 pub fn all_legal_moves(game: Game) -> List(Move) {
-  let legal_moves = {
-    generate_pseudo_legal_move_list(game, game.turn)
-    |> list.filter(fn(move) { is_move_legal(game, move) })
+  case game.status {
+    Some(InProgress) | None -> {
+      let legal_moves = {
+        generate_pseudo_legal_move_list(game, game.turn)
+        |> list.filter(fn(move) { is_move_legal(game, move) })
+      }
+      legal_moves
+    }
+    Some(_) -> []
   }
-  legal_moves
 }
 
 pub fn print_board_from_fen(fen: String) {

@@ -3,7 +3,7 @@ import gleam/io
 import gleam/list
 import gleam/string.{length}
 import gleam/int
-import gleam/map.{type Map}
+import gleam/map
 import gleam/result
 import bitboard.{type Bitboard}
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
@@ -18,41 +18,8 @@ import position.{
 import fen
 import ray
 import castle_rights.{type CastleRights, No, Yes}
-
-pub type DrawReason {
-  Stalemate
-  FiftyMoveRule
-  ThreefoldRepetition
-  InsufficientMaterial
-  Manual
-}
-
-pub type WinReason {
-  Checkmate
-  Resignation
-  Timeout
-}
-
-pub type Status {
-  Draw(reason: DrawReason)
-  Win(winner: Color, reason: String)
-  InProgress(
-    fifty_move_rule: Int,
-    threefold_repetition_rule: Map(ThreeFoldPosition, Int),
-  )
-}
-
-pub type ThreeFoldPosition {
-  ThreeFoldPosition(
-    turn: Color,
-    board: BoardBB,
-    en_passant: Option(Position),
-    white_kingside_castle: CastleRights,
-    white_queenside_castle: CastleRights,
-    black_kingside_castle: CastleRights,
-    black_queenside_castle: CastleRights,
-  )
-}
+import status.{type Status,
+  Draw, FiftyMoveRule, InProgress, ThreefoldRepetition}
 
 pub type Game {
   Game(
@@ -744,7 +711,7 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
             Some(_) -> #(threefold_repetition_rule, 0)
             None -> {
               let new_threefold_position =
-                ThreeFoldPosition(
+                status.ThreeFoldPosition(
                   turn: game.turn,
                   board: game.board,
                   en_passant: game.en_passant,
@@ -4335,7 +4302,7 @@ pub fn undo_move(game: Game) -> Game {
                   }
 
                   let threefold_position =
-                    ThreeFoldPosition(
+                    status.ThreeFoldPosition(
                       board: game.board,
                       turn: game.turn,
                       white_kingside_castle: game.white_kingside_castle,

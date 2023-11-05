@@ -2,7 +2,8 @@ import gleam/otp/actor
 import gleam/erlang/process.{type Subject}
 import move.{type Move}
 import gleam/option.{type Option}
-import game.{type Game, type Status}
+import game.{type Game}
+import status.{type Status}
 
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
@@ -10,7 +11,6 @@ pub type Message {
   ApplyMoveUCI(reply_with: Subject(Game), move: String)
   UndoMove(reply_with: Subject(Game))
   GetFen(reply_with: Subject(String))
-  //todo: GetFenAsString
   GetStatus(reply_with: Subject(Option(Status)))
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
@@ -38,6 +38,10 @@ pub fn all_legal_moves(game_actor: Subject(Message)) {
 
 pub fn get_fen(game_actor: Subject(Message)) {
   process.call(game_actor, GetFen, 1000)
+}
+
+pub fn get_status(game_actor: Subject(Message)) {
+  process.call(game_actor, GetStatus, 1000)
 }
 
 fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {

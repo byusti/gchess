@@ -192,7 +192,7 @@ pub fn to_fen(game: Game) -> String {
 }
 
 fn is_move_legal(game: Game, move: Move) -> Bool {
-  let new_game_state = apply_move_unchecked(game, move)
+  let new_game_state = apply_pseudo_legal_move(game, move)
   case move {
     move.Normal(from: _, to: _, captured: _, promotion: _)
     | move.EnPassant(from: _, to: _) -> {
@@ -267,7 +267,7 @@ fn is_move_legal(game: Game, move: Move) -> Bool {
 // Apply move to the board. This function is not concerned with whether 
 // the move is possible, it just attempts to apply a move to the board.
 // This function is used for check detection and applying legal moves
-fn apply_move_unchecked(game: Game, move: Move) -> Game {
+fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
   case move {
     move.Normal(
       from: from,
@@ -3654,7 +3654,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
 
       let new_game_state = case list.contains(legal_moves, move) {
         True -> {
-          let new_game_state = apply_move_unchecked(game, move)
+          let new_game_state = apply_pseudo_legal_move(game, move)
           new_game_state
         }
         False -> {
@@ -3775,7 +3775,7 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
                 }
               },
             )
-          let new_game_state = apply_move_unchecked(game, move)
+          let new_game_state = apply_pseudo_legal_move(game, move)
           new_game_state
         }
         _ -> panic("Invalid move")

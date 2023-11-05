@@ -25,7 +25,7 @@ pub fn main() {
   game_server.print_board(game_server_subject)
 
   int.to_string(perft(
-    game.from_fen_string(
+    game.from_fen_string_no_status(
       "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
     ),
     1,

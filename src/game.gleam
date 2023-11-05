@@ -3,7 +3,7 @@ import gleam/io
 import gleam/list
 import gleam/string.{length}
 import gleam/int
-import gleam/map
+import gleam/map.{type Map}
 import gleam/result
 import bitboard.{type Bitboard}
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
@@ -36,7 +36,22 @@ pub type WinReason {
 pub type Status {
   Draw(reason: DrawReason)
   Win(winner: Color, reason: String)
-  InProgress
+  InProgress(
+    fifty_move_rule: Int,
+    threefold_repetition_rule: Map(ThreeFoldPosition, Int),
+  )
+}
+
+pub type ThreeFoldPosition {
+  ThreeFoldPosition(
+    turn: Color,
+    board: BoardBB,
+    en_passant: Option(Position),
+    white_kingside_castle: CastleRights,
+    white_queenside_castle: CastleRights,
+    black_kingside_castle: CastleRights,
+    black_queenside_castle: CastleRights,
+  )
 }
 
 pub type Game {
@@ -46,7 +61,6 @@ pub type Game {
     history: List(Move),
     status: Option(Status),
     ply: Int,
-    fifty_move_rule: Int,
     white_kingside_castle: CastleRights,
     white_queenside_castle: CastleRights,
     black_kingside_castle: CastleRights,
@@ -191,6 +205,105 @@ pub fn to_fen(game: Game) -> String {
   fen.to_string(game_fen)
 }
 
+pub fn new_game_without_status() -> Game {
+  let white_king_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
+    )
+
+  let white_queen_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
+    )
+
+  let white_rook_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001,
+    )
+
+  let white_bishop_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100,
+    )
+
+  let white_knight_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010,
+    )
+
+  let white_pawns_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
+    )
+
+  let black_king_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+    )
+
+  let black_queen_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+    )
+
+  let black_rook_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+    )
+
+  let black_bishop_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+    )
+
+  let black_knight_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+    )
+
+  let black_pawns_bitboard =
+    bitboard.Bitboard(
+      bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
+    )
+
+  let board =
+    board.BoardBB(
+      black_king_bitboard: black_king_bitboard,
+      black_queen_bitboard: black_queen_bitboard,
+      black_rook_bitboard: black_rook_bitboard,
+      black_bishop_bitboard: black_bishop_bitboard,
+      black_knight_bitboard: black_knight_bitboard,
+      black_pawns_bitboard: black_pawns_bitboard,
+      white_king_bitboard: white_king_bitboard,
+      white_queen_bitboard: white_queen_bitboard,
+      white_rook_bitboard: white_rook_bitboard,
+      white_bishop_bitboard: white_bishop_bitboard,
+      white_knight_bitboard: white_knight_bitboard,
+      white_pawns_bitboard: white_pawns_bitboard,
+    )
+
+  let turn = White
+
+  let history = []
+
+  let status = None
+
+  let ply = 0
+
+  Game(
+    board: board,
+    turn: turn,
+    history: history,
+    status: status,
+    ply: ply,
+    white_kingside_castle: Yes,
+    white_queenside_castle: Yes,
+    black_kingside_castle: Yes,
+    black_queenside_castle: Yes,
+    en_passant: None,
+  )
+}
+
 pub fn new_game() -> Game {
   let white_king_bitboard =
     bitboard.Bitboard(
@@ -272,7 +385,8 @@ pub fn new_game() -> Game {
 
   let history = []
 
-  let status = InProgress
+  let status =
+    InProgress(fifty_move_rule: 0, threefold_repetition_rule: map.new())
 
   let ply = 0
 
@@ -281,7 +395,6 @@ pub fn new_game() -> Game {
     turn: turn,
     history: history,
     status: Some(status),
-    fifty_move_rule: 0,
     ply: ply,
     white_kingside_castle: Yes,
     white_queenside_castle: Yes,
@@ -291,10 +404,60 @@ pub fn new_game() -> Game {
   )
 }
 
+pub fn from_fen_string_no_status(fen_string: String) -> Game {
+  let fen = fen.from_string(fen_string)
+
+  let ply = case fen.turn {
+    White -> {
+      { fen.fullmove - 1 } * 2
+    }
+    Black -> {
+      { fen.fullmove - 1 } * 2 + 1
+    }
+  }
+
+  let white_kingside_castle = case fen.castling.white_kingside {
+    True -> Yes
+    False -> No(1)
+  }
+
+  let white_queenside_castle = case fen.castling.white_queenside {
+    True -> Yes
+    False -> No(1)
+  }
+
+  let black_kingside_castle = case fen.castling.black_kingside {
+    True -> Yes
+    False -> No(2)
+  }
+
+  let black_queenside_castle = case fen.castling.black_queenside {
+    True -> Yes
+    False -> No(2)
+  }
+
+  Game(
+    board: fen.board,
+    turn: fen.turn,
+    history: [],
+    status: None,
+    ply: ply,
+    white_kingside_castle: white_kingside_castle,
+    white_queenside_castle: white_queenside_castle,
+    black_kingside_castle: black_kingside_castle,
+    black_queenside_castle: black_queenside_castle,
+    en_passant: fen.en_passant,
+  )
+}
+
 pub fn from_fen_string(fen_string: String) -> Game {
   let fen = fen.from_string(fen_string)
 
-  let status = InProgress
+  let status =
+    InProgress(
+      fifty_move_rule: fen.halfmove,
+      threefold_repetition_rule: map.new(),
+    )
 
   let ply = case fen.turn {
     White -> {
@@ -330,7 +493,6 @@ pub fn from_fen_string(fen_string: String) -> Game {
     turn: fen.turn,
     history: [],
     status: Some(status),
-    fifty_move_rule: fen.halfmove,
     ply: ply,
     white_kingside_castle: white_kingside_castle,
     white_queenside_castle: white_queenside_castle,
@@ -559,24 +721,86 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
         _ -> None
       }
 
-      let new_fifty_move_rule = case captured_piece {
-        None ->
-          case moving_piece {
-            piece.Piece(color: _, kind: piece.Pawn) -> 0
-            _ -> game.fifty_move_rule + 1
-          }
-        Some(_) -> 0
-      }
-
       let new_status = case game.status {
         None -> None
-        Some(InProgress) -> {
-          case new_fifty_move_rule / 2 + 1 {
-            50 -> Some(Draw(FiftyMoveRule))
-            _ -> game.status
+        Some(InProgress(
+          fifty_move_rule: fifty_move_rule,
+          threefold_repetition_rule: threefold_repetition_rule,
+        )) -> {
+          let new_fifty_move_rule = case captured_piece {
+            Some(_) -> 0
+            None -> fifty_move_rule + 1
           }
+          let new_status = case new_fifty_move_rule / 2 + 1 {
+            50 -> Some(Draw(FiftyMoveRule))
+            _ ->
+              Some(InProgress(
+                fifty_move_rule: new_fifty_move_rule,
+                threefold_repetition_rule: threefold_repetition_rule,
+              ))
+          }
+
+          let #(new_threefold_repetition_rule, count) = case captured_piece {
+            Some(_) -> #(threefold_repetition_rule, 0)
+            None -> {
+              let new_threefold_position =
+                ThreeFoldPosition(
+                  turn: game.turn,
+                  board: game.board,
+                  en_passant: game.en_passant,
+                  white_kingside_castle: game.white_kingside_castle,
+                  white_queenside_castle: game.white_queenside_castle,
+                  black_kingside_castle: game.black_kingside_castle,
+                  black_queenside_castle: game.black_queenside_castle,
+                )
+              let #(new_threefold_repetition_rule, count) = case
+                map.get(threefold_repetition_rule, new_threefold_position)
+              {
+                Error(_) -> {
+                  let new_threefold_repetition_rule =
+                    map.insert(
+                      threefold_repetition_rule,
+                      new_threefold_position,
+                      1,
+                    )
+
+                  #(new_threefold_repetition_rule, 1)
+                }
+                Ok(count) -> {
+                  let new_threefold_repetition_rule =
+                    map.insert(
+                      threefold_repetition_rule,
+                      new_threefold_position,
+                      count + 1,
+                    )
+
+                  #(new_threefold_repetition_rule, count + 1)
+                }
+              }
+
+              #(new_threefold_repetition_rule, count)
+            }
+          }
+
+          let new_status = case new_status {
+            Some(InProgress(
+              fifty_move_rule: fifty_move_rule,
+              threefold_repetition_rule: _,
+            )) -> {
+              case count {
+                3 -> Some(Draw(ThreefoldRepetition))
+                _ ->
+                  Some(InProgress(
+                    fifty_move_rule: fifty_move_rule,
+                    threefold_repetition_rule: new_threefold_repetition_rule,
+                  ))
+              }
+            }
+            _ -> new_status
+          }
+          new_status
         }
-        Some(_) -> game.status
+        Some(_) -> panic("game is over, unable to apply moves to board")
       }
 
       let new_game_state =
@@ -586,7 +810,6 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
           history: new_history,
           ply: new_ply,
           status: new_status,
-          fifty_move_rule: new_fifty_move_rule,
           white_kingside_castle: new_white_king_castle,
           white_queenside_castle: new_white_queen_castle,
           black_kingside_castle: new_black_king_castle,
@@ -681,17 +904,24 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
 
       let new_history = [move, ..game.history]
 
-      let new_fifty_move_rule = game.fifty_move_rule + 1
-
       let new_status = case game.status {
         None -> None
-        Some(InProgress) -> {
+        Some(InProgress(
+          fifty_move_rule: fifty_move_rule,
+          threefold_repetition_rule: threefold_repetition_rule,
+        )) -> {
+          let new_fifty_move_rule = fifty_move_rule + 1
           case new_fifty_move_rule / 2 + 1 {
             50 -> Some(Draw(FiftyMoveRule))
-            _ -> game.status
+            _ ->
+              Some(InProgress(
+                fifty_move_rule: new_fifty_move_rule,
+                threefold_repetition_rule: threefold_repetition_rule,
+              ))
           }
         }
-        Some(_) -> game.status
+
+        Some(_) -> panic("game is over, unable to apply moves to board")
       }
 
       let new_game_state =
@@ -701,7 +931,6 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
           history: new_history,
           ply: new_ply,
           status: new_status,
-          fifty_move_rule: new_fifty_move_rule,
           white_kingside_castle: new_white_king_castle,
           white_queenside_castle: new_white_queen_castle,
           black_kingside_castle: new_black_king_castle,
@@ -777,17 +1006,18 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
 
       let new_ply = new_game_state.ply + 1
 
-      let new_fifty_move_rule = 0
-
       let new_status = case game.status {
         None -> None
-        Some(InProgress) -> {
-          case new_fifty_move_rule / 2 + 1 {
-            50 -> Some(Draw(FiftyMoveRule))
-            _ -> game.status
-          }
+        Some(InProgress(
+          fifty_move_rule: _,
+          threefold_repetition_rule: threefold_repetition_rule,
+        )) -> {
+          Some(InProgress(
+            fifty_move_rule: 0,
+            threefold_repetition_rule: threefold_repetition_rule,
+          ))
         }
-        Some(_) -> game.status
+        Some(_) -> panic("game is over, unable to apply moves to board")
       }
 
       let new_game_state =
@@ -796,7 +1026,6 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
           history: new_history,
           ply: new_ply,
           status: new_status,
-          fifty_move_rule: new_fifty_move_rule,
         )
       new_game_state
     }
@@ -3795,7 +4024,7 @@ pub fn print_board(game: Game) {
 
 pub fn apply_move(game: Game, move: Move) -> Game {
   case game.status {
-    Some(InProgress) | None -> {
+    Some(InProgress(_, _)) | None -> {
       let legal_moves = {
         generate_pseudo_legal_move_list(game, game.turn)
         |> list.filter(fn(move) { is_move_legal(game, move) })
@@ -3821,7 +4050,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
 
 pub fn apply_move_uci(game: Game, move: String) -> Game {
   case game.status {
-    Some(InProgress) | None ->
+    Some(InProgress(_, _)) | None ->
       case length(move) {
         4 | 5 -> {
           let move_chars = string.to_graphemes(move)
@@ -3935,7 +4164,7 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
 
 pub fn undo_move(game: Game) -> Game {
   case game.status {
-    Some(InProgress) | None -> {
+    Some(InProgress(_, _)) | None -> {
       case game.history {
         [] -> {
           game
@@ -4097,9 +4326,47 @@ pub fn undo_move(game: Game) -> Game {
                 }
               }
 
-              let new_fifty_move_rule = case game.fifty_move_rule {
-                0 -> 0
-                _ -> game.fifty_move_rule - 1
+              let new_status = case game.status {
+                None -> None
+                Some(InProgress(fifty_move_rule, threefold_repetition_rule)) -> {
+                  let new_fifty_move_rule = case fifty_move_rule {
+                    0 -> 0
+                    _ -> fifty_move_rule - 1
+                  }
+
+                  let threefold_position =
+                    ThreeFoldPosition(
+                      board: game.board,
+                      turn: game.turn,
+                      white_kingside_castle: game.white_kingside_castle,
+                      white_queenside_castle: game.white_queenside_castle,
+                      black_kingside_castle: game.black_kingside_castle,
+                      black_queenside_castle: game.black_queenside_castle,
+                      en_passant: game.en_passant,
+                    )
+                  let new_threefold_repetition_rule = case
+                    map.get(threefold_repetition_rule, threefold_position)
+                  {
+                    Error(Nil) -> threefold_repetition_rule
+                    Ok(0) | Ok(1) ->
+                      map.delete(threefold_repetition_rule, threefold_position)
+                    Ok(count) ->
+                      map.insert(
+                        threefold_repetition_rule,
+                        threefold_position,
+                        count - 1,
+                      )
+                  }
+
+                  Some(InProgress(
+                    new_fifty_move_rule,
+                    new_threefold_repetition_rule,
+                  ))
+                }
+                Some(_) ->
+                  panic(
+                    "trying to undo a move in a finished game is not possible",
+                  )
               }
 
               let new_game_state =
@@ -4108,7 +4375,7 @@ pub fn undo_move(game: Game) -> Game {
                   turn: new_turn,
                   history: new_history,
                   ply: new_ply,
-                  fifty_move_rule: new_fifty_move_rule,
+                  status: new_status,
                   white_kingside_castle: new_white_kingside_castle,
                   white_queenside_castle: new_white_queenside_castle,
                   black_kingside_castle: new_black_kingside_castle,
@@ -4284,9 +4551,19 @@ pub fn undo_move(game: Game) -> Game {
                 }
               }
 
-              let new_fifty_move_rule = case game.fifty_move_rule {
-                0 -> 0
-                _ -> game.fifty_move_rule - 1
+              let new_status = case game.status {
+                None -> None
+                Some(InProgress(fifty_move_rule, threefold_repetition_rule)) -> {
+                  case fifty_move_rule {
+                    0 -> Some(InProgress(0, threefold_repetition_rule))
+                    _ ->
+                      Some(InProgress(
+                        fifty_move_rule - 1,
+                        threefold_repetition_rule,
+                      ))
+                  }
+                }
+                Some(_) -> panic("Trying to undo a move in a finished game")
               }
 
               let new_game_state =
@@ -4295,7 +4572,7 @@ pub fn undo_move(game: Game) -> Game {
                   turn: new_turn,
                   history: new_history,
                   ply: new_ply,
-                  fifty_move_rule: new_fifty_move_rule,
+                  status: new_status,
                   white_kingside_castle: new_white_kingside_castle,
                   white_queenside_castle: new_white_queenside_castle,
                   black_kingside_castle: new_black_kingside_castle,
@@ -4403,9 +4680,19 @@ pub fn undo_move(game: Game) -> Game {
 
               let new_en_passant = to
 
-              let new_fifty_move_rule = case game.fifty_move_rule {
-                0 -> 0
-                _ -> game.fifty_move_rule - 1
+              let new_status = case game.status {
+                None -> None
+                Some(InProgress(fifty_move_rule, threefold_repetition_rule)) -> {
+                  case fifty_move_rule {
+                    0 -> Some(InProgress(0, threefold_repetition_rule))
+                    _ ->
+                      Some(InProgress(
+                        fifty_move_rule - 1,
+                        threefold_repetition_rule,
+                      ))
+                  }
+                }
+                Some(_) -> panic("Trying to undo a move in a finished game")
               }
 
               let new_game_state =
@@ -4414,7 +4701,7 @@ pub fn undo_move(game: Game) -> Game {
                   turn: new_turn,
                   history: new_history,
                   ply: new_ply,
-                  fifty_move_rule: new_fifty_move_rule,
+                  status: new_status,
                   white_kingside_castle: new_white_kingside_castle,
                   white_queenside_castle: new_white_queenside_castle,
                   black_kingside_castle: new_black_kingside_castle,
@@ -4436,7 +4723,7 @@ pub fn undo_move(game: Game) -> Game {
 
 pub fn all_legal_moves(game: Game) -> List(Move) {
   case game.status {
-    Some(InProgress) | None -> {
+    Some(InProgress(_, _)) | None -> {
       let legal_moves = {
         generate_pseudo_legal_move_list(game, game.turn)
         |> list.filter(fn(move) { is_move_legal(game, move) })

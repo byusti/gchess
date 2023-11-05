@@ -5,9 +5,7 @@ import game.{type Game, InProgress}
 import fen
 import color.{Black, White}
 import castle_rights.{No, Yes}
-import gleam/option.{None, Some}
-import bitboard
-import board
+import gleam/option.{Some}
 
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
@@ -150,106 +148,6 @@ pub fn from_fen(fen_string: String) {
 }
 
 pub fn new_game() {
-  let white_king_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
-    )
-
-  let white_queen_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
-    )
-
-  let white_rook_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_10000001,
-    )
-
-  let white_bishop_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00100100,
-    )
-
-  let white_knight_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01000010,
-    )
-
-  let white_pawns_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_11111111_00000000,
-    )
-
-  let black_king_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_queen_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_rook_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b10000001_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_bishop_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00100100_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_knight_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b01000010_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let black_pawns_bitboard =
-    bitboard.Bitboard(
-      bitboard: 0b00000000_11111111_00000000_00000000_00000000_00000000_00000000_00000000,
-    )
-
-  let board =
-    board.BoardBB(
-      black_king_bitboard: black_king_bitboard,
-      black_queen_bitboard: black_queen_bitboard,
-      black_rook_bitboard: black_rook_bitboard,
-      black_bishop_bitboard: black_bishop_bitboard,
-      black_knight_bitboard: black_knight_bitboard,
-      black_pawns_bitboard: black_pawns_bitboard,
-      white_king_bitboard: white_king_bitboard,
-      white_queen_bitboard: white_queen_bitboard,
-      white_rook_bitboard: white_rook_bitboard,
-      white_bishop_bitboard: white_bishop_bitboard,
-      white_knight_bitboard: white_knight_bitboard,
-      white_pawns_bitboard: white_pawns_bitboard,
-    )
-
-  let turn = White
-
-  let history = []
-
-  let status = InProgress
-
-  let ply = 0
-
-  let assert Ok(actor) =
-    actor.start(
-      game.Game(
-        board: board,
-        turn: turn,
-        history: history,
-        status: Some(status),
-        fifty_move_rule: 0,
-        ply: ply,
-        white_kingside_castle: Yes,
-        white_queenside_castle: Yes,
-        black_kingside_castle: Yes,
-        black_queenside_castle: Yes,
-        en_passant: None,
-      ),
-      handle_message,
-    )
+  let assert Ok(actor) = actor.start(game.new_game(), handle_message)
   actor
 }

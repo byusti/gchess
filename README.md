@@ -4,7 +4,7 @@
 <!--[![Hex Docs](https://img.shields.io/badge/hex-docs-ffaff3)](https://hexdocs.pm/gchess/) -->
 ## Intro
 
-A chess library for Gleam.
+A chess library for Gleam. WIP.
 
 ```
 let game_server_subject =

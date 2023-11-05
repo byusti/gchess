@@ -1,11 +1,7 @@
 import gleam/otp/actor
 import gleam/erlang/process.{type Subject}
 import move.{type Move}
-import game.{type Game, InProgress}
-import fen
-import color.{Black, White}
-import castle_rights.{No, Yes}
-import gleam/option.{Some}
+import game.{type Game}
 
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
@@ -96,54 +92,8 @@ fn handle_print_board(
 }
 
 pub fn from_fen(fen_string: String) {
-  let fen = fen.from_string(fen_string)
-
-  let status = InProgress
-
-  let ply = case fen.turn {
-    White -> {
-      { fen.fullmove - 1 } * 2
-    }
-    Black -> {
-      { fen.fullmove - 1 } * 2 + 1
-    }
-  }
-
-  let white_kingside_castle = case fen.castling.white_kingside {
-    True -> Yes
-    False -> No(1)
-  }
-
-  let white_queenside_castle = case fen.castling.white_queenside {
-    True -> Yes
-    False -> No(1)
-  }
-
-  let black_kingside_castle = case fen.castling.black_kingside {
-    True -> Yes
-    False -> No(2)
-  }
-
-  let black_queenside_castle = case fen.castling.black_queenside {
-    True -> Yes
-    False -> No(2)
-  }
-
-  let game =
-    game.Game(
-      board: fen.board,
-      turn: fen.turn,
-      history: [],
-      status: Some(status),
-      fifty_move_rule: fen.halfmove,
-      ply: ply,
-      white_kingside_castle: white_kingside_castle,
-      white_queenside_castle: white_queenside_castle,
-      black_kingside_castle: black_kingside_castle,
-      black_queenside_castle: black_queenside_castle,
-      en_passant: fen.en_passant,
-    )
-  let assert Ok(actor) = actor.start(game, handle_message)
+  let assert Ok(actor) =
+    actor.start(game.from_fen_string(fen_string), handle_message)
   actor
 }
 

@@ -3,16 +3,15 @@ import gleam/list
 import gleam/io
 import gleam/option.{type Option, None, Some}
 import move.{type Move}
+import san
+import game.{type Game}
 
-pub fn parse_pgn(pgn: String) -> List(Move) {
+pub fn load_pgn(pgn: String) -> Game {
   let pgn = string.trim(pgn)
   let pgn = remove_tags(pgn)
   let list_of_movetext = split_movetext(pgn)
-  let list_of_moves = list.map(list_of_movetext, san_to_move)
-  list_of_moves
-}
+  // let list_of_san_moves = list.map(list_of_movetext, san.to_move)
 
-fn san_to_move(san: String) -> Move {
   todo
 }
 

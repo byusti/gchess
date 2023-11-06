@@ -36,8 +36,6 @@ pub type Game {
   )
 }
 
-// Hard coded list of all positions in the order they will be printed
-// Right now we only print the board from whites perspective
 const positions_in_printing_order = [
   position.Position(file: position.A, rank: position.Eight),
   position.Position(file: position.B, rank: position.Eight),
@@ -154,6 +152,13 @@ const rank_8 = bitboard.Bitboard(
 )
 
 pub fn to_fen(game: Game) -> String {
+  let halfmove = case game.status {
+    None -> 0
+    Some(InProgress(fifty_move_rule: halfmove, threefold_repetition_rule: _)) ->
+      halfmove
+    Some(Draw(_)) -> 0
+    Some(_) -> 0
+  }
   let game_fen =
     fen.Fen(
       board: game.board,
@@ -166,9 +171,8 @@ pub fn to_fen(game: Game) -> String {
         black_queenside: castle_rights.to_bool(game.black_queenside_castle),
       ),
       fullmove: game.ply / 2 + 1,
-      halfmove: 0,
+      halfmove: halfmove,
     )
-  //TODO: we dont track this yet
   fen.to_string(game_fen)
 }
 
@@ -482,21 +486,6 @@ fn is_move_legal(game: Game, move: Move) -> Bool {
       case is_king_in_check(game, game.turn) {
         True -> False
         False -> {
-          // Determine if king is attacked at destination square of castling
-          // I realized that after calling this function, it seems the old
-          // location of the king is clear, so I assume there must be some
-          // king of logic somewhere that guarantees that there is only ever one king
-          // on the board at a time
-          let new_game_state =
-            Game(
-              ..new_game_state,
-              board: board.set_piece_at_position(
-                new_game_state.board,
-                to,
-                piece.Piece(color: game.turn, kind: King),
-              ),
-            )
-
           case is_king_in_check(new_game_state, game.turn) {
             True -> False
             False -> {

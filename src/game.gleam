@@ -375,52 +375,6 @@ pub fn new_game() -> Game {
   )
 }
 
-pub fn from_fen_string_no_status(fen_string: String) -> Game {
-  let fen = fen.from_string(fen_string)
-
-  let ply = case fen.turn {
-    White -> {
-      { fen.fullmove - 1 } * 2
-    }
-    Black -> {
-      { fen.fullmove - 1 } * 2 + 1
-    }
-  }
-
-  let white_kingside_castle = case fen.castling.white_kingside {
-    True -> Yes
-    False -> No(1)
-  }
-
-  let white_queenside_castle = case fen.castling.white_queenside {
-    True -> Yes
-    False -> No(1)
-  }
-
-  let black_kingside_castle = case fen.castling.black_kingside {
-    True -> Yes
-    False -> No(2)
-  }
-
-  let black_queenside_castle = case fen.castling.black_queenside {
-    True -> Yes
-    False -> No(2)
-  }
-
-  Game(
-    board: fen.board,
-    turn: fen.turn,
-    history: [],
-    status: None,
-    ply: ply,
-    white_kingside_castle: white_kingside_castle,
-    white_queenside_castle: white_queenside_castle,
-    black_kingside_castle: black_kingside_castle,
-    black_queenside_castle: black_queenside_castle,
-    en_passant: fen.en_passant,
-  )
-}
-
 pub fn from_fen_string(fen_string: String) -> Game {
   let fen = fen.from_string(fen_string)
 

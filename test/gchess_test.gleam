@@ -1,11 +1,19 @@
 import gleeunit
 import gleeunit/should
 import game_server
+import pgn
 import gleam/option.{Some}
 import status.{Draw, InProgress, ThreefoldRepetition}
 
 pub fn main() {
   gleeunit.main()
+}
+
+pub fn split_movetext_test() {
+  let pgn = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6"
+  let moves = pgn.split_movetext(pgn)
+  moves
+  |> should.equal(["1. e4 e5", "2. Nf3 Nc6", "3. Bb5 a6", "4. Ba4 Nf6"])
 }
 
 pub fn threefold_repetition_rule_test() {

@@ -1,9 +1,6 @@
 import gleam/string
 import gleam/list
-import gleam/io
 import gleam/option.{type Option, None, Some}
-import move.{type Move}
-import san
 import game.{type Game}
 
 pub fn load_pgn(pgn: String) -> Game {

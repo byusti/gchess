@@ -3959,7 +3959,97 @@ pub fn apply_move(game: Game, move: Move) -> Game {
   }
 }
 
-pub fn apply_move_san(game: Game, move: MoveSan) -> Game {
+pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
+  let move_san = move_san.from_string(move)
+  case move_san {
+    Ok(move_san) -> {
+      case move_san {
+        move_san.Normal(
+          from: _,
+          to: to,
+          moving_piece: moving_piece,
+          capture: _,
+          promotion: promotion,
+          maybe_check_or_checkmate: _,
+        ) -> {
+          let promotion = case promotion {
+            Some(promotion) -> Some(piece.Piece(game.turn, promotion))
+            None -> None
+          }
+
+          let move = {
+            let potential_moves =
+              list.filter(
+                all_legal_moves(game),
+                fn(move) {
+                  case move {
+                    move.Normal(
+                      from: _,
+                      to: to_legal,
+                      captured: _,
+                      promotion: promo_legal,
+                    ) if to_legal == to && promo_legal == promotion -> {
+                      True
+                    }
+                    _ -> False
+                  }
+                },
+              )
+
+            case potential_moves {
+              [] -> Error("Illegal move")
+              [move] -> {
+                case move {
+                  move.Normal(from: from, to: _, captured: _, promotion: _) -> {
+                    Ok(move)
+                  }
+                  _ -> panic("This panic should be unreachable")
+                }
+              }
+              move_list -> {
+                let maybe_move =
+                  list.filter(
+                    move_list,
+                    fn(move) {
+                      case move {
+                        move.Normal(
+                          from: from,
+                          to: _,
+                          captured: _,
+                          promotion: _,
+                        ) -> {
+                          let assert Some(piece) =
+                            board.get_piece_at_position(game.board, from)
+                          piece.kind == moving_piece
+                        }
+                        _ -> panic("This panic should be unreachable")
+                      }
+                    },
+                  )
+                case maybe_move {
+                  [] -> Error("Illegal move")
+                  [move] -> Ok(move)
+                  _ -> panic("This panic should be unreachable")
+                }
+              }
+            }
+          }
+
+          case move {
+            Ok(move) -> {
+              let new_game_state = apply_move(game, move)
+              Ok(new_game_state)
+            }
+            Error(_) -> Error("Illegal move")
+          }
+        }
+
+        _ -> todo
+      }
+    }
+    Error(_) -> Error("Invalid move")
+  }
+
   todo
 }
 

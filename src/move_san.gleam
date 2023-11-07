@@ -1,4 +1,4 @@
-import position.{type File, type Rank}
+import position.{type File, type Position, type Rank}
 import piece.{type Kind}
 import gleam/option.{type Option, None, Some}
 import gleam/string
@@ -8,7 +8,7 @@ import gleam/list
 pub type MoveSan {
   Normal(
     from: Option(PositionSan),
-    to: PositionSan,
+    to: Position,
     moving_piece: Kind,
     capture: Bool,
     promotion: Option(Kind),
@@ -124,7 +124,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
 
           Ok(Normal(
             from: Some(PositionSan(file: Some(from_file), rank: Some(from_rank))),
-            to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+            to: position.Position(file: to_file, rank: to_rank),
             moving_piece: moving_piece,
             capture: capture,
             promotion: promotion,
@@ -174,7 +174,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
 
               Ok(Normal(
                 from: Some(PositionSan(file: Some(from_file), rank: None)),
-                to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                to: position.Position(file: to_file, rank: to_rank),
                 moving_piece: moving_piece,
                 capture: capture,
                 promotion: promotion,
@@ -220,7 +220,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
 
               Ok(Normal(
                 from: Some(PositionSan(file: None, rank: Some(from_rank))),
-                to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                to: position.Position(file: to_file, rank: to_rank),
                 moving_piece: moving_piece,
                 capture: capture,
                 promotion: promotion,
@@ -258,7 +258,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
 
           Ok(Normal(
             from: None,
-            to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+            to: position.Position(file: to_file, rank: to_rank),
             moving_piece: moving_piece,
             capture: capture,
             promotion: promotion,
@@ -426,7 +426,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                   file: Some(from_file),
                   rank: Some(from_rank),
                 )),
-                to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                to: position.Position(file: to_file, rank: to_rank),
                 moving_piece: piece.Pawn,
                 capture: capture,
                 promotion: promotion,
@@ -487,7 +487,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 False -> {
                   Ok(Normal(
                     from: Some(PositionSan(file: Some(from_file), rank: None)),
-                    to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                    to: position.Position(file: to_file, rank: to_rank),
                     moving_piece: piece.Pawn,
                     capture: capture,
                     promotion: promotion,
@@ -544,7 +544,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 False -> {
                   Ok(Normal(
                     from: Some(PositionSan(file: None, rank: Some(from_rank))),
-                    to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                    to: position.Position(file: to_file, rank: to_rank),
                     moving_piece: piece.Pawn,
                     capture: capture,
                     promotion: promotion,
@@ -593,7 +593,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             False -> {
               Ok(Normal(
                 from: None,
-                to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                to: position.Position(file: to_file, rank: to_rank),
                 moving_piece: piece.Pawn,
                 capture: capture,
                 promotion: promotion,

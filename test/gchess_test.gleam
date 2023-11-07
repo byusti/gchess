@@ -19,7 +19,7 @@ pub fn move_san_from_string_test() {
   |> should.equal(move_san.Normal(
     moving_piece: piece.Pawn,
     from: None,
-    to: move_san.PositionSan(file: Some(position.E), rank: Some(position.Four)),
+    to: position.Position(file: position.E, rank: position.Four),
     capture: False,
     promotion: None,
     maybe_check_or_checkmate: None,
@@ -31,7 +31,7 @@ pub fn move_san_from_string_test() {
   |> should.equal(move_san.Normal(
     moving_piece: piece.Rook,
     from: Some(move_san.PositionSan(file: None, rank: Some(position.One))),
-    to: move_san.PositionSan(file: Some(position.A), rank: Some(position.Three)),
+    to: position.Position(file: position.A, rank: position.Three),
     capture: False,
     promotion: None,
     maybe_check_or_checkmate: None,
@@ -42,7 +42,7 @@ pub fn move_san_from_string_test() {
   |> should.equal(move_san.Normal(
     moving_piece: piece.Rook,
     from: None,
-    to: move_san.PositionSan(file: Some(position.A), rank: Some(position.Three)),
+    to: position.Position(file: position.A, rank: position.Three),
     capture: True,
     promotion: None,
     maybe_check_or_checkmate: None,
@@ -56,7 +56,7 @@ pub fn move_san_from_string_test() {
       file: Some(position.H),
       rank: Some(position.Four),
     )),
-    to: move_san.PositionSan(file: Some(position.E), rank: Some(position.One)),
+    to: position.Position(file: position.E, rank: position.One),
     capture: False,
     promotion: None,
     maybe_check_or_checkmate: None,

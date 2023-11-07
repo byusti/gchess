@@ -2,11 +2,79 @@ import gleeunit
 import gleeunit/should
 import game_server
 import pgn
-import gleam/option.{Some}
+import piece
+import move_san
+import position
+import gleam/option.{None, Some}
 import status.{Draw, InProgress, ThreefoldRepetition}
 
 pub fn main() {
   gleeunit.main()
+}
+
+pub fn move_san_from_string_test() {
+  let assert Ok(move) = move_san.from_string("e4")
+
+  move
+  |> should.equal(move_san.Normal(
+    moving_piece: piece.Pawn,
+    from: None,
+    to: move_san.PositionSan(file: Some(position.E), rank: Some(position.Four)),
+    capture: False,
+    promotion: None,
+    maybe_check_or_checkmate: None,
+  ))
+
+  let assert Ok(move) = move_san.from_string("R1a3")
+
+  move
+  |> should.equal(move_san.Normal(
+    moving_piece: piece.Rook,
+    from: Some(move_san.PositionSan(file: None, rank: Some(position.One))),
+    to: move_san.PositionSan(file: Some(position.A), rank: Some(position.Three)),
+    capture: False,
+    promotion: None,
+    maybe_check_or_checkmate: None,
+  ))
+
+  let assert Ok(move) = move_san.from_string("Rxa3")
+  move
+  |> should.equal(move_san.Normal(
+    moving_piece: piece.Rook,
+    from: None,
+    to: move_san.PositionSan(file: Some(position.A), rank: Some(position.Three)),
+    capture: True,
+    promotion: None,
+    maybe_check_or_checkmate: None,
+  ))
+
+  let assert Ok(move) = move_san.from_string("Qh4e1")
+  move
+  |> should.equal(move_san.Normal(
+    moving_piece: piece.Queen,
+    from: Some(move_san.PositionSan(
+      file: Some(position.H),
+      rank: Some(position.Four),
+    )),
+    to: move_san.PositionSan(file: Some(position.E), rank: Some(position.One)),
+    capture: False,
+    promotion: None,
+    maybe_check_or_checkmate: None,
+  ))
+
+  let assert Ok(move) = move_san.from_string("0-0")
+  move
+  |> should.equal(move_san.Castle(
+    side: move_san.KingSide,
+    maybe_check_or_checkmate: None,
+  ))
+
+  let assert Ok(move) = move_san.from_string("0-0-0")
+  move
+  |> should.equal(move_san.Castle(
+    side: move_san.QueenSide,
+    maybe_check_or_checkmate: None,
+  ))
 }
 
 pub fn split_movetext_test() {

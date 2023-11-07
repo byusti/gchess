@@ -11,6 +11,7 @@ import color.{type Color, Black, White}
 import board_map.{type BoardMap}
 import board.{type BoardBB}
 import move.{type Move}
+import move_san.{type MoveSan}
 import position.{
   type Position, A, B, C, D, E, Eight, F, Five, Four, G, H, One, Seven, Six,
   Three, Two,
@@ -3956,6 +3957,10 @@ pub fn apply_move(game: Game, move: Move) -> Game {
       game
     }
   }
+}
+
+pub fn apply_move_san(game: Game, move: MoveSan) -> Game {
+  todo
 }
 
 pub fn apply_move_uci(game: Game, move: String) -> Game {

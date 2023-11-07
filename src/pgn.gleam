@@ -1,16 +1,35 @@
 import gleam/string
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import game.{type Game}
 
-pub fn load_pgn(pgn: String) -> Game {
-  let pgn = string.trim(pgn)
-  let pgn = remove_tags(pgn)
-  let list_of_movetext = split_movetext(pgn)
-  // let list_of_san_moves = list.map(list_of_movetext, san.to_move)
+// import game.{type Game}
+// import move_san
 
-  todo
-}
+// pub fn load_pgn(pgn: String) -> Game {
+//   let game = game.new_game()
+//   let pgn = string.trim(pgn)
+//   let pgn = remove_tags(pgn)
+//   let list_of_movetext = split_movetext(pgn)
+//   list.fold(
+//     list_of_movetext,
+//     game,
+//     fn(game, movetext) {
+//       let game = case string.split(movetext, " ") {
+//         [_index, white_ply, black_ply] -> {
+//           let white_ply = move_san.from_string(white_ply)
+//           let black_ply = move_san.from_string(black_ply)
+//           todo
+//         }
+//         [index, white_ply] -> todo
+//         [index] -> todo
+//         _ -> panic("Invalid PGN")
+//       }
+//       game
+//     },
+//   )
+
+//   todo
+// }
 
 pub fn split_movetext(pgn) -> List(String) {
   case pop_move(pgn) {

@@ -1,35 +1,42 @@
 import gleam/string
 import gleam/list
 import gleam/option.{type Option, None, Some}
+import game.{type Game}
 
-// import game.{type Game}
-// import move_san
-
-// pub fn load_pgn(pgn: String) -> Game {
-//   let game = game.new_game()
-//   let pgn = string.trim(pgn)
-//   let pgn = remove_tags(pgn)
-//   let list_of_movetext = split_movetext(pgn)
-//   list.fold(
-//     list_of_movetext,
-//     game,
-//     fn(game, movetext) {
-//       let game = case string.split(movetext, " ") {
-//         [_index, white_ply, black_ply] -> {
-//           let white_ply = move_san.from_string(white_ply)
-//           let black_ply = move_san.from_string(black_ply)
-//           todo
-//         }
-//         [index, white_ply] -> todo
-//         [index] -> todo
-//         _ -> panic("Invalid PGN")
-//       }
-//       game
-//     },
-//   )
-
-//   todo
-// }
+pub fn load_pgn(pgn: String) -> Result(Game, String) {
+  let game = game.new_game()
+  let pgn = string.trim(pgn)
+  let pgn = remove_tags(pgn)
+  let list_of_movetext = split_movetext(pgn)
+  list.fold(
+    list_of_movetext,
+    Ok(game),
+    fn(game, movetext) {
+      let game = case string.split(movetext, " ") {
+        [white_ply, black_ply] -> {
+          let assert Ok(game) = game
+          let game = game.apply_move_san_string(game, white_ply)
+          case game {
+            Ok(game) -> {
+              game.apply_move_san_string(game, black_ply)
+            }
+            Error(message) -> Error(message)
+          }
+        }
+        [white_ply] -> {
+          let assert Ok(game) = game
+          let game = game.apply_move_san_string(game, white_ply)
+          game
+        }
+        [] -> {
+          Error("Invalid PGN")
+        }
+        _ -> Error("Invalid PGN")
+      }
+      game
+    },
+  )
+}
 
 pub fn split_movetext(pgn) -> List(String) {
   case pop_move(pgn) {
@@ -45,7 +52,7 @@ fn pop_move(pgn) -> Option(#(String, String)) {
     Ok(#(index_first_digit, rest)) if index_first_digit == "1" || index_first_digit == "2" || index_first_digit == "3" || index_first_digit == "4" || index_first_digit == "5" || index_first_digit == "6" || index_first_digit == "7" || index_first_digit == "8" || index_first_digit == "9" -> {
       case string.split_once(rest, ".") {
         Error(_) -> panic("Could not parse move index")
-        Ok(#(index_rest_of_digits, rest)) -> {
+        Ok(#(_index_rest_of_digits, rest)) -> {
           let rest = string.trim(rest)
           case string.split_once(rest, " ") {
             Ok(#(first_ply, rest)) -> {
@@ -62,32 +69,18 @@ fn pop_move(pgn) -> Option(#(String, String)) {
                     | Ok("8")
                     | Ok("9")
                     | Error(_) -> {
-                      Some(#(
-                        index_first_digit <> index_rest_of_digits <> ". " <> first_ply,
-                        "",
-                      ))
+                      Some(#(first_ply, ""))
                     }
                     _ -> {
-                      Some(#(
-                        index_first_digit <> index_rest_of_digits <> ". " <> first_ply <> " " <> second_ply,
-                        rest,
-                      ))
+                      Some(#(first_ply <> " " <> second_ply, rest))
                     }
                   }
                 }
 
-                Error(_) ->
-                  Some(#(
-                    index_first_digit <> index_rest_of_digits <> ". " <> first_ply <> " " <> rest,
-                    "",
-                  ))
+                Error(_) -> Some(#(first_ply <> " " <> rest, ""))
               }
             }
-            Error(_) ->
-              Some(#(
-                index_first_digit <> index_rest_of_digits <> ". " <> rest,
-                "",
-              ))
+            Error(_) -> Some(#(rest, ""))
           }
         }
       }

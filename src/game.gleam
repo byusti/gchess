@@ -279,12 +279,12 @@ pub fn new_game_without_status() -> Game {
 pub fn new_game() -> Game {
   let white_king_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
     )
 
   let white_queen_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00010000,
+      bitboard: 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001000,
     )
 
   let white_rook_bitboard =
@@ -309,12 +309,12 @@ pub fn new_game() -> Game {
 
   let black_king_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let black_queen_bitboard =
     bitboard.Bitboard(
-      bitboard: 0b00010000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
+      bitboard: 0b00001000_00000000_00000000_00000000_00000000_00000000_00000000_00000000,
     )
 
   let black_rook_bitboard =
@@ -640,7 +640,12 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
         )) -> {
           let new_fifty_move_rule = case captured_piece {
             Some(_) -> 0
-            None -> fifty_move_rule + 1
+            None -> {
+              case moving_piece {
+                piece.Piece(color: _, kind: piece.Pawn) -> 0
+                _ -> fifty_move_rule + 1
+              }
+            }
           }
           let new_status = case new_fifty_move_rule / 2 + 1 {
             50 -> Some(Draw(FiftyMoveRule))

@@ -1,11 +1,13 @@
 import gleeunit
 import gleeunit/should
 import game_server
+import game
 import pgn
 import piece
 import move_san
 import position
 import gleam/option.{None, Some}
+import gleam/map.{type Map}
 import status.{Draw, InProgress, ThreefoldRepetition}
 
 pub fn main() {
@@ -77,11 +79,22 @@ pub fn move_san_from_string_test() {
   ))
 }
 
+pub fn load_pgn_into_game_test() {
+  let pgn = "1. e4 e5 2. Bd3 Bd6 3. Nf3 Nf6 4. O-O"
+  let assert Ok(game) = pgn.load_pgn(pgn)
+  game.print_board(game.new_game())
+  case game.status {
+    Some(InProgress(fifty_move_rule: 5, threefold_repetition_rule: _)) -> True
+    _ -> False
+  }
+  |> should.equal(True)
+}
+
 pub fn split_movetext_test() {
-  let pgn = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6"
+  let pgn = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O"
   let moves = pgn.split_movetext(pgn)
   moves
-  |> should.equal(["1. e4 e5", "2. Nf3 Nc6", "3. Bb5 a6", "4. Ba4 Nf6"])
+  |> should.equal(["e4 e5", "Nf3 Nc6", "Bb5 a6", "Ba4 Nf6", "O-O"])
 }
 
 pub fn threefold_repetition_rule_test() {

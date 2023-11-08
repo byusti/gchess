@@ -80,7 +80,7 @@ pub fn move_san_from_string_test() {
 
 pub fn load_pgn_into_game_test() {
   let pgn = "1. e4 e5 2. Bd3 Bd6 3. Nf3 Nf6 4. O-O"
-  let assert Ok(game) = pgn.load_pgn(pgn)
+  let assert Ok(game) = game.load_pgn(pgn)
   game.print_board(game.new_game())
   case game.status {
     Some(InProgress(fifty_move_rule: 5, threefold_repetition_rule: _)) -> True

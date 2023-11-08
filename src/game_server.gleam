@@ -9,6 +9,7 @@ pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
   ApplyMove(reply_with: Subject(Game), move: Move)
   ApplyMoveUCI(reply_with: Subject(Game), move: String)
+  ApplyMoveSanString(reply_with: Subject(Game), move: String)
   UndoMove(reply_with: Subject(Game))
   GetFen(reply_with: Subject(String))
   GetStatus(reply_with: Subject(Option(Status)))
@@ -49,6 +50,8 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
     AllLegalMoves(client) -> handle_all_legal_moves(game, client)
     ApplyMove(client, move) -> handle_apply_move(game, client, move)
     ApplyMoveUCI(client, move) -> handle_apply_move_uci(game, client, move)
+    ApplyMoveSanString(client, move) ->
+      handle_apply_move_san_string(game, client, move)
     UndoMove(client) -> handle_undo_move(game, client)
     GetFen(client) -> handle_get_fen(game, client)
     GetStatus(client) -> {
@@ -71,6 +74,12 @@ fn handle_all_legal_moves(
 fn handle_undo_move(game: Game, client: Subject(Game)) {
   let new_game_state = game.undo_move(game)
 
+  process.send(client, new_game_state)
+  actor.continue(new_game_state)
+}
+
+fn handle_apply_move_san_string(game: Game, client: Subject(Game), move: String) {
+  let assert Ok(new_game_state) = game.apply_move_san_string(game, move)
   process.send(client, new_game_state)
   actor.continue(new_game_state)
 }
@@ -111,4 +120,13 @@ pub fn from_fen(fen_string: String) {
 pub fn new_game() {
   let assert Ok(actor) = actor.start(game.new_game(), handle_message)
   actor
+}
+
+pub fn load_pgn(pgn_string: String) {
+  case game.load_pgn(pgn_string) {
+    Ok(game) -> {
+      Ok(game)
+    }
+    Error(error) -> Error(error)
+  }
 }

@@ -12,6 +12,7 @@ import board_map.{type BoardMap}
 import board.{type BoardBB}
 import move.{type Move}
 import move_san
+import pgn
 import position.{
   type Position, A, B, C, D, E, Eight, F, Five, Four, G, H, One, Seven, Six,
   Three, Two,
@@ -425,6 +426,41 @@ pub fn from_fen_string(fen_string: String) -> Game {
     black_kingside_castle: black_kingside_castle,
     black_queenside_castle: black_queenside_castle,
     en_passant: fen.en_passant,
+  )
+}
+
+pub fn load_pgn(pgn: String) -> Result(Game, String) {
+  let game = new_game()
+  let pgn = string.trim(pgn)
+  let pgn = pgn.remove_tags(pgn)
+  let list_of_movetext = pgn.split_movetext(pgn)
+  list.fold(
+    list_of_movetext,
+    Ok(game),
+    fn(game, movetext) {
+      let game = case string.split(movetext, " ") {
+        [white_ply, black_ply] -> {
+          let assert Ok(game) = game
+          let game = apply_move_san_string(game, white_ply)
+          case game {
+            Ok(game) -> {
+              apply_move_san_string(game, black_ply)
+            }
+            Error(message) -> Error(message)
+          }
+        }
+        [white_ply] -> {
+          let assert Ok(game) = game
+          let game = apply_move_san_string(game, white_ply)
+          game
+        }
+        [] -> {
+          Error("Invalid PGN")
+        }
+        _ -> Error("Invalid PGN")
+      }
+      game
+    },
   )
 }
 

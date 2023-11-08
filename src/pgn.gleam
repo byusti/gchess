@@ -1,42 +1,6 @@
 import gleam/string
 import gleam/list
 import gleam/option.{type Option, None, Some}
-import game.{type Game}
-
-pub fn load_pgn(pgn: String) -> Result(Game, String) {
-  let game = game.new_game()
-  let pgn = string.trim(pgn)
-  let pgn = remove_tags(pgn)
-  let list_of_movetext = split_movetext(pgn)
-  list.fold(
-    list_of_movetext,
-    Ok(game),
-    fn(game, movetext) {
-      let game = case string.split(movetext, " ") {
-        [white_ply, black_ply] -> {
-          let assert Ok(game) = game
-          let game = game.apply_move_san_string(game, white_ply)
-          case game {
-            Ok(game) -> {
-              game.apply_move_san_string(game, black_ply)
-            }
-            Error(message) -> Error(message)
-          }
-        }
-        [white_ply] -> {
-          let assert Ok(game) = game
-          let game = game.apply_move_san_string(game, white_ply)
-          game
-        }
-        [] -> {
-          Error("Invalid PGN")
-        }
-        _ -> Error("Invalid PGN")
-      }
-      game
-    },
-  )
-}
 
 pub fn split_movetext(pgn) -> List(String) {
   case pop_move(pgn) {
@@ -47,7 +11,7 @@ pub fn split_movetext(pgn) -> List(String) {
   }
 }
 
-fn pop_move(pgn) -> Option(#(String, String)) {
+pub fn pop_move(pgn) -> Option(#(String, String)) {
   case string.pop_grapheme(pgn) {
     Ok(#(index_first_digit, rest)) if index_first_digit == "1" || index_first_digit == "2" || index_first_digit == "3" || index_first_digit == "4" || index_first_digit == "5" || index_first_digit == "6" || index_first_digit == "7" || index_first_digit == "8" || index_first_digit == "9" -> {
       case string.split_once(rest, ".") {
@@ -90,7 +54,7 @@ fn pop_move(pgn) -> Option(#(String, String)) {
   }
 }
 
-fn remove_tags(pgn: String) -> String {
+pub fn remove_tags(pgn: String) -> String {
   case string.pop_grapheme(pgn) {
     Ok(#("[", rest)) -> {
       case string.split_once(rest, "]") {

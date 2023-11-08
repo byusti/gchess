@@ -20,8 +20,9 @@ import position.{
 import fen
 import ray
 import castle_rights.{type CastleRights, No, Yes}
-import status.{type Status,
-  Draw, FiftyMoveRule, InProgress, ThreefoldRepetition}
+import status.{
+  type Status, Draw, FiftyMoveRule, InProgress, ThreefoldRepetition, Win,
+}
 
 pub type Game {
   Game(
@@ -982,6 +983,11 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
       new_game_state
     }
   }
+}
+
+fn has_moves(game: Game) -> Bool {
+  let move_list = all_legal_moves(game)
+  !list.is_empty(move_list)
 }
 
 fn is_king_in_check(game: Game, color: Color) -> Bool {
@@ -3992,6 +3998,32 @@ pub fn apply_move(game: Game, move: Move) -> Game {
         }
       }
 
+      // TODO: move status update logic from apply_pseudo_legal_move to here
+      let new_game_state = case
+        [
+          is_king_in_check(new_game_state, new_game_state.turn),
+          !has_moves(new_game_state),
+        ]
+      {
+        [True, True] -> {
+          let winner = case new_game_state.turn {
+            White -> Black
+            Black -> White
+          }
+          Game(
+            ..new_game_state,
+            status: Some(Win(winner: winner, reason: "Checkmate")),
+          )
+        }
+        [True, False] | [False, False] -> {
+          new_game_state
+        }
+        [False, True] -> {
+          io.println("nothing")
+          Game(..new_game_state, status: Some(Draw(reason: status.Stalemate)))
+        }
+      }
+
       new_game_state
     }
     Some(_) -> {
@@ -4038,7 +4070,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
               )
 
             case potential_moves {
-              [] -> Error("Illegal move")
+              [] -> Error("No potential moves found")
               [move] -> {
                 case move {
                   move.Normal(from: _, to: _, captured: _, promotion: _) -> {
@@ -4068,7 +4100,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
                     },
                   )
                 case maybe_move {
-                  [] -> Error("Illegal move")
+                  [] -> Error("Move not found")
                   [move] -> Ok(move)
                   _ -> panic("This panic should be unreachable")
                 }
@@ -4081,7 +4113,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
               let new_game_state = apply_move(game, move)
               Ok(new_game_state)
             }
-            Error(_) -> Error("Illegal move")
+            Error(error) -> Error(error)
           }
         }
         move_san.Castle(side: side, maybe_check_or_checkmate: _) -> {

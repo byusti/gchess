@@ -7,7 +7,6 @@ import piece
 import move_san
 import position
 import gleam/option.{None, Some}
-import gleam/map.{type Map}
 import status.{Draw, InProgress, ThreefoldRepetition}
 
 pub fn main() {

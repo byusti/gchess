@@ -17,7 +17,7 @@ pub type MoveSan {
   Castle(side: CastleSide, maybe_check_or_checkmate: Option(CheckOrCheckMate))
   EnPassant(
     from: Option(PositionSan),
-    to: PositionSan,
+    to: Position,
     maybe_check_or_checkmate: Option(CheckOrCheckMate),
   )
 }
@@ -416,7 +416,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                   file: Some(from_file),
                   rank: Some(from_rank),
                 )),
-                to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                to: position.Position(file: to_file, rank: to_rank),
                 maybe_check_or_checkmate: maybe_check_or_checkmate,
               ))
             }
@@ -480,7 +480,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 True -> {
                   Ok(EnPassant(
                     from: Some(PositionSan(file: Some(from_file), rank: None)),
-                    to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                    to: position.Position(file: to_file, rank: to_rank),
                     maybe_check_or_checkmate: maybe_check_or_checkmate,
                   ))
                 }
@@ -537,7 +537,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 True -> {
                   Ok(EnPassant(
                     from: Some(PositionSan(file: None, rank: Some(from_rank))),
-                    to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                    to: position.Position(file: to_file, rank: to_rank),
                     maybe_check_or_checkmate: maybe_check_or_checkmate,
                   ))
                 }
@@ -586,7 +586,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             True -> {
               Ok(EnPassant(
                 from: None,
-                to: PositionSan(file: Some(to_file), rank: Some(to_rank)),
+                to: position.Position(file: to_file, rank: to_rank),
                 maybe_check_or_checkmate: maybe_check_or_checkmate,
               ))
             }

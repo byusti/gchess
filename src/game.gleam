@@ -11,7 +11,7 @@ import color.{type Color, Black, White}
 import board_map.{type BoardMap}
 import board.{type BoardBB}
 import move.{type Move}
-import move_san.{type MoveSan}
+import move_san
 import position.{
   type Position, A, B, C, D, E, Eight, F, Five, Four, G, H, One, Seven, Six,
   Three, Two,
@@ -4000,7 +4000,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
               [] -> Error("Illegal move")
               [move] -> {
                 case move {
-                  move.Normal(from: from, to: _, captured: _, promotion: _) -> {
+                  move.Normal(from: _, to: _, captured: _, promotion: _) -> {
                     Ok(move)
                   }
                   _ -> panic("This panic should be unreachable")
@@ -4043,14 +4043,95 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
             Error(_) -> Error("Illegal move")
           }
         }
+        move_san.Castle(side: side, maybe_check_or_checkmate: _) -> {
+          let move = case side {
+            move_san.KingSide -> {
+              case game.turn {
+                White ->
+                  move.Castle(
+                    from: position.Position(
+                      file: position.E,
+                      rank: position.One,
+                    ),
+                    to: position.Position(file: position.G, rank: position.One),
+                  )
+                Black ->
+                  move.Castle(
+                    from: position.Position(
+                      file: position.E,
+                      rank: position.Eight,
+                    ),
+                    to: position.Position(
+                      file: position.G,
+                      rank: position.Eight,
+                    ),
+                  )
+              }
+            }
+            move_san.QueenSide -> {
+              case game.turn {
+                White ->
+                  move.Castle(
+                    from: position.Position(
+                      file: position.E,
+                      rank: position.One,
+                    ),
+                    to: position.Position(file: position.C, rank: position.One),
+                  )
+                Black ->
+                  move.Castle(
+                    from: position.Position(
+                      file: position.E,
+                      rank: position.Eight,
+                    ),
+                    to: position.Position(
+                      file: position.C,
+                      rank: position.Eight,
+                    ),
+                  )
+              }
+            }
+          }
+          Ok(apply_move(game, move))
+        }
+        move_san.EnPassant(from: from, to: to, maybe_check_or_checkmate: _) -> {
+          let ep_moves =
+            list.filter(
+              all_legal_moves(game),
+              fn(move) {
+                case move {
+                  move.EnPassant(from: _, to: to_legal) if to_legal == to -> {
+                    True
+                  }
+                  _ -> False
+                }
+              },
+            )
 
-        _ -> todo
+          case ep_moves {
+            [] -> Error("Illegal move")
+            [move] -> Ok(apply_move(game, move))
+            [move_1, move_2] -> {
+              case from {
+                Some(move_san.PositionSan(file: Some(file), rank: _)) if file == move_1.from.file -> {
+                  Ok(apply_move(game, move_1))
+                }
+                Some(move_san.PositionSan(file: Some(file), rank: _)) if file == move_2.from.file -> {
+                  Ok(apply_move(game, move_2))
+                }
+                _ -> Error("Illegal move")
+              }
+              Ok(apply_move(game, move_1))
+            }
+            _ -> Error("Illegal move")
+          }
+        }
+
+        _ -> panic("This panic should be unreachable")
       }
     }
     Error(_) -> Error("Invalid move")
   }
-
-  todo
 }
 
 pub fn apply_move_uci(game: Game, move: String) -> Game {

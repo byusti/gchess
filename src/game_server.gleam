@@ -125,7 +125,8 @@ pub fn new_game() {
 pub fn load_pgn(pgn_string: String) {
   case game.load_pgn(pgn_string) {
     Ok(game) -> {
-      Ok(game)
+      let assert Ok(actor) = actor.start(game, handle_message)
+      Ok(actor)
     }
     Error(error) -> Error(error)
   }

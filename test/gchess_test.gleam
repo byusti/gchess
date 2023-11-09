@@ -1,11 +1,12 @@
 import gleeunit
 import gleeunit/should
-import game_server
+import game_server.{new_server}
 import game
 import pgn
+import move.{Normal}
 import piece
 import move_san
-import position
+import position.{E, Position}
 import gleam/option.{None, Some}
 import status.{Draw, InProgress, ThreefoldRepetition}
 
@@ -97,8 +98,7 @@ pub fn split_movetext_test() {
 }
 
 pub fn threefold_repetition_rule_test() {
-  let server = game_server.new_game()
-
+  let server = new_server()
   game_server.apply_move_uci(server, "e2e4")
   game_server.apply_move_uci(server, "e7e5")
 

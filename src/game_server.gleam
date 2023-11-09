@@ -3,6 +3,7 @@ import gleam/erlang/process.{type Subject}
 import move.{type Move}
 import gleam/option.{type Option}
 import game.{type Game}
+import color.{type Color}
 import status.{type Status}
 
 pub type Message {
@@ -11,8 +12,12 @@ pub type Message {
   ApplyMoveUCI(reply_with: Subject(Game), move: String)
   ApplyMoveSanString(reply_with: Subject(Game), move: String)
   UndoMove(reply_with: Subject(Game))
+  GetState(reply_with: Subject(Game))
+  GetSideToMove(reply_with: Subject(Color))
   GetFen(reply_with: Subject(String))
   GetStatus(reply_with: Subject(Option(Status)))
+  NewGame(reply_with: Subject(Game))
+  NewGameFromFen(reply_with: Subject(Game), fen: String)
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
@@ -27,6 +32,10 @@ pub fn apply_move(game_actor: Subject(Message), move: Move) {
 
 pub fn apply_move_uci(game_actor: Subject(Message), move_uci: String) {
   process.call(game_actor, ApplyMoveUCI(_, move_uci), 1000)
+}
+
+pub fn apply_move_san_string(game_actor: Subject(Message), move_san: String) {
+  process.call(game_actor, ApplyMoveSanString(_, move_san), 1000)
 }
 
 pub fn undo_move(game_actor: Subject(Message)) {
@@ -45,6 +54,14 @@ pub fn get_status(game_actor: Subject(Message)) {
   process.call(game_actor, GetStatus, 1000)
 }
 
+pub fn new_game(game_actor: Subject(Message)) {
+  process.call(game_actor, NewGame, 1000)
+}
+
+pub fn new_game_from_fen(game_actor: Subject(Message), fen: String) {
+  process.call(game_actor, NewGameFromFen(_, fen), 1000)
+}
+
 fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
   case message {
     AllLegalMoves(client) -> handle_all_legal_moves(game, client)
@@ -53,10 +70,28 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
     ApplyMoveSanString(client, move) ->
       handle_apply_move_san_string(game, client, move)
     UndoMove(client) -> handle_undo_move(game, client)
+    GetState(client) -> {
+      process.send(client, game)
+      actor.continue(game)
+    }
     GetFen(client) -> handle_get_fen(game, client)
     GetStatus(client) -> {
       process.send(client, game.status)
       actor.continue(game)
+    }
+    GetSideToMove(client) -> {
+      process.send(client, game.turn)
+      actor.continue(game)
+    }
+    NewGame(client) -> {
+      let new_game = game.new_game()
+      process.send(client, new_game)
+      actor.continue(new_game)
+    }
+    NewGameFromFen(client, fen) -> {
+      let new_game = game.from_fen_string(fen)
+      process.send(client, new_game)
+      actor.continue(new_game)
     }
     Shutdown -> actor.Stop(process.Normal)
     PrintBoard(client) -> handle_print_board(game, client)
@@ -111,13 +146,7 @@ fn handle_print_board(
   actor.continue(game)
 }
 
-pub fn from_fen(fen_string: String) {
-  let assert Ok(actor) =
-    actor.start(game.from_fen_string(fen_string), handle_message)
-  actor
-}
-
-pub fn new_game() {
+pub fn new_server() {
   let assert Ok(actor) = actor.start(game.new_game(), handle_message)
   actor
 }

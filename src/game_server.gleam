@@ -18,6 +18,7 @@ pub type Message {
   GetStatus(reply_with: Subject(Option(Status)))
   NewGame(reply_with: Subject(Game))
   NewGameFromFen(reply_with: Subject(Game), fen: String)
+  DisableStatus(reply_with: Subject(Game))
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
@@ -52,6 +53,10 @@ pub fn get_fen(game_actor: Subject(Message)) {
 
 pub fn get_status(game_actor: Subject(Message)) {
   process.call(game_actor, GetStatus, 1000)
+}
+
+pub fn disable_status(game_actor: Subject(Message)) {
+  process.call(game_actor, DisableStatus, 1000)
 }
 
 pub fn new_game(game_actor: Subject(Message)) {
@@ -91,6 +96,11 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
     }
     NewGameFromFen(client, fen) -> {
       let new_game = game.from_fen_string(fen)
+      process.send(client, new_game)
+      actor.continue(new_game)
+    }
+    DisableStatus(client) -> {
+      let new_game = game.disable_status(game)
       process.send(client, new_game)
       actor.continue(new_game)
     }

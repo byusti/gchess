@@ -1,5 +1,15 @@
-import game_server
 import gleam/list
+import game_server
+
+// pub fn main() {
+//   let server = new_server()
+//   new_game_from_fen(
+//     server,
+//     "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+//   )
+//   disable_status(server)
+//   io.println(int.to_string(perft(server, 2)))
+// }
 
 pub fn perft(game_server_subject, depth) {
   case depth {

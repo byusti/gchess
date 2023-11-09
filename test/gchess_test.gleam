@@ -1,6 +1,7 @@
 import gleeunit
 import gleeunit/should
-import game_server.{new_server}
+import game_server.{disable_status, new_game_from_fen, new_server}
+import gchess.{perft}
 import game
 import pgn
 import piece

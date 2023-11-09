@@ -3981,6 +3981,10 @@ pub fn print_board(game: Game) {
   io.print("     a   b   c   d   e   f   g   h\n")
 }
 
+pub fn disable_status(game: Game) -> Game {
+  Game(..game, status: None)
+}
+
 pub fn apply_move(game: Game, move: Move) -> Game {
   case game.status {
     Some(InProgress(_, _)) | None -> {

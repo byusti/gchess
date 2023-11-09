@@ -9,7 +9,7 @@ import status.{type Status}
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
   ApplyMove(reply_with: Subject(Game), move: Move)
-  ApplyMoveUCI(reply_with: Subject(Game), move: String)
+  ApplyMoveUciString(reply_with: Subject(Game), move: String)
   ApplyMoveSanString(reply_with: Subject(Game), move: String)
   UndoMove(reply_with: Subject(Game))
   GetState(reply_with: Subject(Game))
@@ -30,8 +30,8 @@ pub fn apply_move(game_actor: Subject(Message), move: Move) {
   process.call(game_actor, ApplyMove(_, move), 1000)
 }
 
-pub fn apply_move_uci(game_actor: Subject(Message), move_uci: String) {
-  process.call(game_actor, ApplyMoveUCI(_, move_uci), 1000)
+pub fn apply_move_uci_string(game_actor: Subject(Message), move_uci: String) {
+  process.call(game_actor, ApplyMoveUciString(_, move_uci), 1000)
 }
 
 pub fn apply_move_san_string(game_actor: Subject(Message), move_san: String) {
@@ -66,7 +66,8 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
   case message {
     AllLegalMoves(client) -> handle_all_legal_moves(game, client)
     ApplyMove(client, move) -> handle_apply_move(game, client, move)
-    ApplyMoveUCI(client, move) -> handle_apply_move_uci(game, client, move)
+    ApplyMoveUciString(client, move) ->
+      handle_apply_move_uci(game, client, move)
     ApplyMoveSanString(client, move) ->
       handle_apply_move_san_string(game, client, move)
     UndoMove(client) -> handle_undo_move(game, client)

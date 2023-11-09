@@ -3,10 +3,9 @@ import gleeunit/should
 import game_server.{new_server}
 import game
 import pgn
-import move.{Normal}
 import piece
 import move_san
-import position.{E, Position}
+import position
 import gleam/option.{None, Some}
 import status.{Draw, InProgress, ThreefoldRepetition}
 
@@ -99,13 +98,13 @@ pub fn split_movetext_test() {
 
 pub fn threefold_repetition_rule_test() {
   let server = new_server()
-  game_server.apply_move_uci(server, "e2e4")
-  game_server.apply_move_uci(server, "e7e5")
+  game_server.apply_move_uci_string(server, "e2e4")
+  game_server.apply_move_uci_string(server, "e7e5")
 
-  game_server.apply_move_uci(server, "f1e2")
-  game_server.apply_move_uci(server, "f8e7")
-  game_server.apply_move_uci(server, "e2f1")
-  game_server.apply_move_uci(server, "e7f8")
+  game_server.apply_move_uci_string(server, "f1e2")
+  game_server.apply_move_uci_string(server, "f8e7")
+  game_server.apply_move_uci_string(server, "e2f1")
+  game_server.apply_move_uci_string(server, "e7f8")
   game_server.print_board(server)
   case game_server.get_status(server) {
     Some(InProgress(_, _)) -> True
@@ -113,10 +112,10 @@ pub fn threefold_repetition_rule_test() {
   }
   |> should.equal(True)
 
-  game_server.apply_move_uci(server, "f1e2")
-  game_server.apply_move_uci(server, "f8e7")
-  game_server.apply_move_uci(server, "e2f1")
-  game_server.apply_move_uci(server, "e7f8")
+  game_server.apply_move_uci_string(server, "f1e2")
+  game_server.apply_move_uci_string(server, "f8e7")
+  game_server.apply_move_uci_string(server, "e2f1")
+  game_server.apply_move_uci_string(server, "e7f8")
   game_server.print_board(server)
   case game_server.get_status(server) {
     Some(InProgress(_, _)) -> True
@@ -124,10 +123,10 @@ pub fn threefold_repetition_rule_test() {
   }
   |> should.equal(True)
 
-  game_server.apply_move_uci(server, "f1e2")
-  game_server.apply_move_uci(server, "f8e7")
-  game_server.apply_move_uci(server, "e2f1")
-  game_server.apply_move_uci(server, "e7f8")
+  game_server.apply_move_uci_string(server, "f1e2")
+  game_server.apply_move_uci_string(server, "f8e7")
+  game_server.apply_move_uci_string(server, "e2f1")
+  game_server.apply_move_uci_string(server, "e7f8")
   game_server.print_board(server)
   game_server.get_status(server)
   |> should.equal(Some(Draw(ThreefoldRepetition)))

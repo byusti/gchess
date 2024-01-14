@@ -66,14 +66,14 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
       let capture = list.contains(rest, "x")
 
       let positional_information =
-        list.filter(
-          rest,
-          fn(grapheme) { grapheme != "+" && grapheme != "#" && grapheme != "x" },
-        )
+        list.filter(rest, fn(grapheme) {
+          grapheme != "+" && grapheme != "#" && grapheme != "x"
+        })
 
       case list.length(positional_information) {
         4 -> {
-          let [from_file, from_rank, to_file, to_rank] = positional_information
+          let assert [from_file, from_rank, to_file, to_rank] =
+            positional_information
           let from_file = case from_file {
             "a" -> position.A
             "b" -> position.B
@@ -132,7 +132,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
           ))
         }
         3 -> {
-          let [maybe_from_file_or_from_rank, to_file, to_rank] =
+          let assert [maybe_from_file_or_from_rank, to_file, to_rank] =
             positional_information
           case maybe_from_file_or_from_rank {
             "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" -> {
@@ -231,7 +231,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
           }
         }
         2 -> {
-          let [to_file, to_rank] = positional_information
+          let assert [to_file, to_rank] = positional_information
           let to_file = case to_file {
             "a" -> position.A
             "b" -> position.B
@@ -287,6 +287,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 maybe_check_or_checkmate: Some(CheckMate),
               ))
             }
+            _ -> Error(InvalidCastleString)
           }
         }
         ["-", "O", ..checks_or_checkmates] | ["-", "0", ..checks_or_checkmates] -> {
@@ -303,6 +304,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 maybe_check_or_checkmate: Some(CheckMate),
               ))
             }
+            _ -> Error(InvalidCastleString)
           }
         }
         _ -> Error(InvalidCastleString)
@@ -331,15 +333,12 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
       let rest = list.filter(rest, fn(grapheme) { grapheme != "x" })
 
       let #(promotion_segment, rest) =
-        list.partition(
-          [pawn_move_first_grapheme, ..rest],
-          fn(grapheme) {
-            case grapheme {
-              "=" | "Q" | "R" | "B" | "N" -> True
-              _ -> False
-            }
-          },
-        )
+        list.partition([pawn_move_first_grapheme, ..rest], fn(grapheme) {
+          case grapheme {
+            "=" | "Q" | "R" | "B" | "N" -> True
+            _ -> False
+          }
+        })
 
       let promotion = case promotion_segment {
         [] -> None
@@ -347,6 +346,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
         ["=", "R", ..] -> Some(piece.Rook)
         ["=", "B", ..] -> Some(piece.Bishop)
         ["=", "N", ..] -> Some(piece.Knight)
+        _ -> panic("Invalid promotion segment.")
       }
 
       let maybe_check_or_checkmate = case list.last(rest) {
@@ -360,7 +360,8 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
 
       case list.length(positional_information) {
         4 -> {
-          let [from_file, from_rank, to_file, to_rank] = positional_information
+          let assert [from_file, from_rank, to_file, to_rank] =
+            positional_information
           let from_file = case from_file {
             "a" -> position.A
             "b" -> position.B
@@ -436,7 +437,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
           }
         }
         3 -> {
-          let [maybe_from_file_or_from_rank, to_file, to_rank] =
+          let assert [maybe_from_file_or_from_rank, to_file, to_rank] =
             positional_information
           case maybe_from_file_or_from_rank {
             "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" -> {
@@ -557,7 +558,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
           }
         }
         2 -> {
-          let [to_file, to_rank] = positional_information
+          let assert [to_file, to_rank] = positional_information
           let to_file = case to_file {
             "a" -> position.A
             "b" -> position.B
@@ -602,6 +603,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             }
           }
         }
+        _ -> Error(InvalidPositionalInformation)
       }
     }
     _ -> Error(InvalidMoveString)

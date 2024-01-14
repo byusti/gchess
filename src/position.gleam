@@ -122,6 +122,7 @@ pub fn from_int(i: Int) -> Option(Position) {
   }
 }
 
+// should return option or result
 pub fn int_to_rank(i: Int) -> Rank {
   case i {
     0 -> One
@@ -132,9 +133,11 @@ pub fn int_to_rank(i: Int) -> Rank {
     5 -> Six
     6 -> Seven
     7 -> Eight
+    _ -> panic
   }
 }
 
+// should return option or result
 pub fn int_to_file(i: Int) -> File {
   case i {
     0 -> A
@@ -145,6 +148,7 @@ pub fn int_to_file(i: Int) -> File {
     5 -> F
     6 -> G
     7 -> H
+    _ -> panic
   }
 }
 

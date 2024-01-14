@@ -3,7 +3,7 @@ import board.{type BoardBB}
 import position.{type Position}
 import gleam/option.{type Option}
 import castle_rights.{type CastleRights}
-import gleam/map.{type Map}
+import gleam/dict.{type Dict}
 
 pub type DrawReason {
   Stalemate
@@ -36,7 +36,7 @@ pub type Status {
   Win(winner: Color, reason: String)
   InProgress(
     fifty_move_rule: Int,
-    threefold_repetition_rule: Map(ThreeFoldPosition, Int),
+    threefold_repetition_rule: Dict(ThreeFoldPosition, Int),
   )
 }
 

@@ -1,4 +1,4 @@
-import gleam/bitwise
+import gleam/int
 
 pub type Bitboard {
   Bitboard(bitboard: Int)
@@ -17,27 +17,27 @@ pub fn full_bitboard() -> Bitboard {
 }
 
 pub fn and(bitboard1: Bitboard, bitboard2: Bitboard) -> Bitboard {
-  Bitboard(bitwise.and(bitboard1.bitboard, bitboard2.bitboard))
+  Bitboard(int.bitwise_and(bitboard1.bitboard, bitboard2.bitboard))
 }
 
 pub fn exclusive_or(bitboard1: Bitboard, bitboard2: Bitboard) -> Bitboard {
-  Bitboard(bitwise.exclusive_or(bitboard1.bitboard, bitboard2.bitboard))
+  Bitboard(int.bitwise_exclusive_or(bitboard1.bitboard, bitboard2.bitboard))
 }
 
 pub fn or(bitboard1: Bitboard, bitboard2: Bitboard) -> Bitboard {
-  Bitboard(bitwise.or(bitboard1.bitboard, bitboard2.bitboard))
+  Bitboard(int.bitwise_or(bitboard1.bitboard, bitboard2.bitboard))
 }
 
 pub fn not(bitboard: Bitboard) -> Bitboard {
-  Bitboard(bitwise.not(bitboard.bitboard))
+  Bitboard(int.bitwise_not(bitboard.bitboard))
 }
 
 pub fn shift_left(bitboard: Bitboard, shift: Int) -> Bitboard {
-  Bitboard(bitwise.shift_left(bitboard.bitboard, shift))
+  Bitboard(int.bitwise_shift_left(bitboard.bitboard, shift))
 }
 
 pub fn shift_right(bitboard: Bitboard, shift: Int) -> Bitboard {
-  Bitboard(bitwise.shift_right(bitboard.bitboard, shift))
+  Bitboard(int.bitwise_shift_right(bitboard.bitboard, shift))
 }
 
 pub fn bitscan_forward(bitboard: Bitboard) -> Int {

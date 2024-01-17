@@ -12,11 +12,11 @@ pub fn main() {
   )
   disable_status(server)
   let start = system_time(Second)
-  let perft_restult = perft(server, 2)
+  let perft_result = perft(server, 2)
   let end = system_time(Second)
 
   io.print("Perft result: ")
-  io.print(int.to_string(perft_restult))
+  io.print(int.to_string(perft_result))
   io.print("\n")
   io.print("Time: ")
   io.print(int.to_string(end - start))

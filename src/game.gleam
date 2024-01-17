@@ -19,6 +19,7 @@ import position.{
 }
 import fen
 import ray
+import knight_target
 import castle_rights.{type CastleRights, No, Yes}
 import status.{
   type Status, Draw, FiftyMoveRule, InProgress, ThreefoldRepetition, Win,
@@ -994,7 +995,88 @@ fn is_king_in_check(game: Game, color: Color) -> Bool {
     }
   }
   let enemy_move_list = {
-    generate_pseudo_legal_move_list(game, enemy_color)
+    let king_bb = case color {
+      White -> game.board.white_king_bitboard
+      Black -> game.board.black_king_bitboard
+    }
+    let assert [king_pos] = board.get_positions(king_bb)
+    let rook_bb = case color {
+      White -> game.board.black_rook_bitboard
+      Black -> game.board.white_rook_bitboard
+    }
+
+    let king_rook_ray_bb =
+      bitboard.or(look_up_east_ray_bb(king_pos), look_up_west_ray_bb(king_pos))
+      |> bitboard.or(look_up_north_ray_bb(king_pos))
+      |> bitboard.or(look_up_south_ray_bb(king_pos))
+    let viable_attacking_rook_bb = bitboard.and(rook_bb, king_rook_ray_bb)
+    let rook_move_list = case viable_attacking_rook_bb {
+      bitboard.Bitboard(bitboard: 0) -> []
+      _ -> generate_rook_pseudo_legal_move_list(enemy_color, game)
+    }
+
+    let bishop_bb = case color {
+      White -> game.board.black_bishop_bitboard
+      Black -> game.board.white_bishop_bitboard
+    }
+    let king_bishop_ray_bb =
+      bitboard.or(
+        look_up_north_east_ray_bb(king_pos),
+        look_up_north_west_ray_bb(king_pos),
+      )
+      |> bitboard.or(look_up_south_east_ray_bb(king_pos))
+      |> bitboard.or(look_up_south_west_ray_bb(king_pos))
+    let viable_attacking_bishop_bb = bitboard.and(bishop_bb, king_bishop_ray_bb)
+    let bishop_move_list = case viable_attacking_bishop_bb {
+      bitboard.Bitboard(bitboard: 0) -> []
+      _ -> generate_bishop_pseudo_legal_move_list(enemy_color, game)
+    }
+
+    let queen_bb = case color {
+      White -> game.board.black_queen_bitboard
+      Black -> game.board.white_queen_bitboard
+    }
+
+    let king_queen_ray_bb = bitboard.or(king_rook_ray_bb, king_bishop_ray_bb)
+
+    let viable_attacking_queen_bb = bitboard.and(queen_bb, king_queen_ray_bb)
+
+    let queen_move_list = case viable_attacking_queen_bb {
+      bitboard.Bitboard(bitboard: 0) -> []
+      _ -> generate_queen_pseudo_legal_move_list(enemy_color, game)
+    }
+
+    let knight_bb = case color {
+      White -> game.board.black_knight_bitboard
+      Black -> game.board.white_knight_bitboard
+    }
+
+    let king_knight_target_bb = look_up_knight_target_bb(king_pos)
+
+    let viable_attacking_knight_bb =
+      bitboard.and(knight_bb, king_knight_target_bb)
+
+    let knight_move_list = case viable_attacking_knight_bb {
+      bitboard.Bitboard(bitboard: 0) -> []
+      _ -> generate_knight_pseudo_legal_move_list(enemy_color, game)
+    }
+
+    // TODO: use this same logic for the pawn move list
+
+    let list_of_move_lists = [
+      rook_move_list,
+      bishop_move_list,
+      queen_move_list,
+      knight_move_list,
+      generate_pawn_pseudo_legal_move_list(enemy_color, game),
+    ]
+
+    let move_list =
+      list.fold(list_of_move_lists, [], fn(collector, next) {
+        list.append(collector, next)
+      })
+
+    move_list
   }
   let enemy_move_list = {
     enemy_move_list
@@ -1027,6 +1109,82 @@ fn generate_pseudo_legal_move_list(game: Game, color: Color) -> List(Move) {
     })
 
   move_list
+}
+
+fn look_up_knight_target_bb(origin_square: Position) -> Bitboard {
+  case origin_square {
+    position.Position(file: A, rank: One) -> knight_target.knight_target_bb_a1
+    position.Position(file: A, rank: Two) -> knight_target.knight_target_bb_a2
+    position.Position(file: A, rank: Three) -> knight_target.knight_target_bb_a3
+    position.Position(file: A, rank: Four) -> knight_target.knight_target_bb_a4
+    position.Position(file: A, rank: Five) -> knight_target.knight_target_bb_a5
+    position.Position(file: A, rank: Six) -> knight_target.knight_target_bb_a6
+    position.Position(file: A, rank: Seven) -> knight_target.knight_target_bb_a7
+    position.Position(file: A, rank: Eight) -> knight_target.knight_target_bb_a8
+
+    position.Position(file: B, rank: One) -> knight_target.knight_target_bb_b1
+    position.Position(file: B, rank: Two) -> knight_target.knight_target_bb_b2
+    position.Position(file: B, rank: Three) -> knight_target.knight_target_bb_b3
+    position.Position(file: B, rank: Four) -> knight_target.knight_target_bb_b4
+    position.Position(file: B, rank: Five) -> knight_target.knight_target_bb_b5
+    position.Position(file: B, rank: Six) -> knight_target.knight_target_bb_b6
+    position.Position(file: B, rank: Seven) -> knight_target.knight_target_bb_b7
+    position.Position(file: B, rank: Eight) -> knight_target.knight_target_bb_b8
+
+    position.Position(file: C, rank: One) -> knight_target.knight_target_bb_c1
+    position.Position(file: C, rank: Two) -> knight_target.knight_target_bb_c2
+    position.Position(file: C, rank: Three) -> knight_target.knight_target_bb_c3
+    position.Position(file: C, rank: Four) -> knight_target.knight_target_bb_c4
+    position.Position(file: C, rank: Five) -> knight_target.knight_target_bb_c5
+    position.Position(file: C, rank: Six) -> knight_target.knight_target_bb_c6
+    position.Position(file: C, rank: Seven) -> knight_target.knight_target_bb_c7
+    position.Position(file: C, rank: Eight) -> knight_target.knight_target_bb_c8
+
+    position.Position(file: D, rank: One) -> knight_target.knight_target_bb_d1
+    position.Position(file: D, rank: Two) -> knight_target.knight_target_bb_d2
+    position.Position(file: D, rank: Three) -> knight_target.knight_target_bb_d3
+    position.Position(file: D, rank: Four) -> knight_target.knight_target_bb_d4
+    position.Position(file: D, rank: Five) -> knight_target.knight_target_bb_d5
+    position.Position(file: D, rank: Six) -> knight_target.knight_target_bb_d6
+    position.Position(file: D, rank: Seven) -> knight_target.knight_target_bb_d7
+    position.Position(file: D, rank: Eight) -> knight_target.knight_target_bb_d8
+
+    position.Position(file: E, rank: One) -> knight_target.knight_target_bb_e1
+    position.Position(file: E, rank: Two) -> knight_target.knight_target_bb_e2
+    position.Position(file: E, rank: Three) -> knight_target.knight_target_bb_e3
+    position.Position(file: E, rank: Four) -> knight_target.knight_target_bb_e4
+    position.Position(file: E, rank: Five) -> knight_target.knight_target_bb_e5
+    position.Position(file: E, rank: Six) -> knight_target.knight_target_bb_e6
+    position.Position(file: E, rank: Seven) -> knight_target.knight_target_bb_e7
+    position.Position(file: E, rank: Eight) -> knight_target.knight_target_bb_e8
+
+    position.Position(file: F, rank: One) -> knight_target.knight_target_bb_f1
+    position.Position(file: F, rank: Two) -> knight_target.knight_target_bb_f2
+    position.Position(file: F, rank: Three) -> knight_target.knight_target_bb_f3
+    position.Position(file: F, rank: Four) -> knight_target.knight_target_bb_f4
+    position.Position(file: F, rank: Five) -> knight_target.knight_target_bb_f5
+    position.Position(file: F, rank: Six) -> knight_target.knight_target_bb_f6
+    position.Position(file: F, rank: Seven) -> knight_target.knight_target_bb_f7
+    position.Position(file: F, rank: Eight) -> knight_target.knight_target_bb_f8
+
+    position.Position(file: G, rank: One) -> knight_target.knight_target_bb_g1
+    position.Position(file: G, rank: Two) -> knight_target.knight_target_bb_g2
+    position.Position(file: G, rank: Three) -> knight_target.knight_target_bb_g3
+    position.Position(file: G, rank: Four) -> knight_target.knight_target_bb_g4
+    position.Position(file: G, rank: Five) -> knight_target.knight_target_bb_g5
+    position.Position(file: G, rank: Six) -> knight_target.knight_target_bb_g6
+    position.Position(file: G, rank: Seven) -> knight_target.knight_target_bb_g7
+    position.Position(file: G, rank: Eight) -> knight_target.knight_target_bb_g8
+
+    position.Position(file: H, rank: One) -> knight_target.knight_target_bb_h1
+    position.Position(file: H, rank: Two) -> knight_target.knight_target_bb_h2
+    position.Position(file: H, rank: Three) -> knight_target.knight_target_bb_h3
+    position.Position(file: H, rank: Four) -> knight_target.knight_target_bb_h4
+    position.Position(file: H, rank: Five) -> knight_target.knight_target_bb_h5
+    position.Position(file: H, rank: Six) -> knight_target.knight_target_bb_h6
+    position.Position(file: H, rank: Seven) -> knight_target.knight_target_bb_h7
+    position.Position(file: H, rank: Eight) -> knight_target.knight_target_bb_h8
+  }
 }
 
 fn look_up_east_ray_bb(origin_square: Position) -> Bitboard {
@@ -4036,7 +4194,6 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
                 }
                 _ -> Error("Illegal move")
               }
-              Ok(apply_move(game, move_1))
             }
             _ -> Error("Illegal move")
           }

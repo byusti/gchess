@@ -3995,7 +3995,11 @@ pub fn disable_status(game: Game) -> Game {
 
 pub fn apply_move(game: Game, move: Move) -> Game {
   case game.status {
-    Some(InProgress(_, _)) | None -> {
+    None -> {
+      let new_game_state = apply_pseudo_legal_move(game, move)
+      new_game_state
+    }
+    Some(InProgress(_, _)) -> {
       let legal_moves = {
         generate_pseudo_legal_move_list(game, game.turn)
         |> list.filter(fn(move) { is_move_legal(game, move) })

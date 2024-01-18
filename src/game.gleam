@@ -4208,6 +4208,8 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
   }
 }
 
+// TODO: This doesnt handle status yet, but it should
+// it should be as simple as keeping the logic for parsing uci and then calling apply_move
 pub fn apply_move_uci(game: Game, move: String) -> Game {
   case game.status {
     Some(InProgress(_, _)) | None ->

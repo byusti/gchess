@@ -789,6 +789,13 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
           position.Position(file: D, rank: Eight)
         _ -> panic("Invalid castle move")
       }
+
+      let new_turn = {
+        case game.turn {
+          White -> Black
+          Black -> White
+        }
+      }
       let new_game_state =
         Game(
           ..new_game_state,
@@ -843,13 +850,6 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
           No(new_ply),
           No(new_ply),
         ]
-      }
-
-      let new_turn = {
-        case game.turn {
-          White -> Black
-          Black -> White
-        }
       }
 
       let new_history = [move, ..game.history]
@@ -956,6 +956,13 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
 
       let new_ply = new_game_state.ply + 1
 
+      let new_turn = {
+        case game.turn {
+          White -> Black
+          Black -> White
+        }
+      }
+
       let new_status = case game.status {
         None -> None
         Some(InProgress(
@@ -974,6 +981,7 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
         Game(
           ..new_game_state,
           history: new_history,
+          turn: new_turn,
           ply: new_ply,
           status: new_status,
         )
@@ -1978,7 +1986,6 @@ fn generate_castling_pseudo_legal_move_list(
     White -> game.white_kingside_castle
     Black -> game.black_kingside_castle
   }
-
   let castling_moves =
     list.append(
       case [queenside_rook_flag, queenside_clear_flag, king_position_flag] {
@@ -2018,7 +2025,6 @@ fn generate_castling_pseudo_legal_move_list(
         _ -> []
       },
     )
-
   castling_moves
 }
 
@@ -3996,7 +4002,21 @@ pub fn disable_status(game: Game) -> Game {
 pub fn apply_move(game: Game, move: Move) -> Game {
   case game.status {
     None -> {
-      let new_game_state = apply_pseudo_legal_move(game, move)
+      let legal_moves = {
+        generate_pseudo_legal_move_list(game, game.turn)
+        |> list.filter(fn(move) { is_move_legal(game, move) })
+      }
+
+      let new_game_state = case list.contains(legal_moves, move) {
+        True -> {
+          let new_game_state = apply_pseudo_legal_move(game, move)
+          new_game_state
+        }
+        False -> {
+          game
+        }
+      }
+
       new_game_state
     }
     Some(InProgress(_, _)) -> {
@@ -4036,7 +4056,6 @@ pub fn apply_move(game: Game, move: Move) -> Game {
           new_game_state
         }
         [False, True] -> {
-          io.println("nothing")
           Game(..new_game_state, status: Some(Draw(reason: status.Stalemate)))
         }
         _ -> panic
@@ -4756,21 +4775,29 @@ pub fn undo_move(game: Game) -> Game {
             }
 
             move.EnPassant(from: from, to: to) -> {
-              let assert Some(moving_piece) =
-                board.get_piece_at_position(game.board, to)
-
               let assert Some(new_board) =
                 board.remove_piece_at_position(game.board, to)
               let new_game_state = Game(..game, board: new_board)
-              let new_game_state =
-                Game(
-                  ..new_game_state,
-                  board: board.set_piece_at_position(
-                    new_game_state.board,
-                    from,
-                    moving_piece,
-                  ),
-                )
+              let new_game_state = case game.turn {
+                Black ->
+                  Game(
+                    ..new_game_state,
+                    board: board.set_piece_at_position(
+                      new_game_state.board,
+                      from,
+                      piece.Piece(color: White, kind: Pawn),
+                    ),
+                  )
+                White ->
+                  Game(
+                    ..new_game_state,
+                    board: board.set_piece_at_position(
+                      new_game_state.board,
+                      from,
+                      piece.Piece(color: Black, kind: Pawn),
+                    ),
+                  )
+              }
 
               let new_game_state = case game.turn {
                 Black -> {
@@ -4778,8 +4805,8 @@ pub fn undo_move(game: Game) -> Game {
                     ..new_game_state,
                     board: board.set_piece_at_position(
                       new_game_state.board,
-                      position.Position(file: to.file, rank: Four),
-                      piece.Piece(color: White, kind: Pawn),
+                      position.Position(file: to.file, rank: Five),
+                      piece.Piece(color: Black, kind: Pawn),
                     ),
                   )
                 }
@@ -4788,8 +4815,8 @@ pub fn undo_move(game: Game) -> Game {
                     ..new_game_state,
                     board: board.set_piece_at_position(
                       new_game_state.board,
-                      position.Position(file: to.file, rank: Five),
-                      piece.Piece(color: Black, kind: Pawn),
+                      position.Position(file: to.file, rank: Four),
+                      piece.Piece(color: White, kind: Pawn),
                     ),
                   )
                 }

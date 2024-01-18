@@ -2,17 +2,18 @@ import gleam/list
 import game_server.{disable_status, new_game_from_fen, new_server}
 import gleam/io
 import gleam/int
+import move
 import gleam/erlang.{Second, system_time}
 
 pub fn main() {
   let server = new_server()
   new_game_from_fen(
     server,
-    "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
   )
   disable_status(server)
   let start = system_time(Second)
-  let perft_result = perft(server, 3)
+  let perft_result = perft(server, 2)
   let end = system_time(Second)
 
   io.print("Perft result: ")
@@ -32,7 +33,9 @@ pub fn perft(game_server_subject, depth) {
       let nodes =
         list.fold(moves, 0, fn(nodes, move) {
           game_server.apply_move(game_server_subject, move)
+
           let nodes = nodes + perft(game_server_subject, depth - 1)
+
           game_server.undo_move(game_server_subject)
           nodes
         })

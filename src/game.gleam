@@ -464,7 +464,7 @@ pub fn load_pgn(pgn: String) -> Result(Game, String) {
 
 // TODO: This function needs to be written to not be so slow
 fn is_move_legal(game: Game, move: Move) -> Bool {
-  let new_game_state = apply_pseudo_legal_move(game, move)
+  let new_game_state = apply_move_raw(game, move)
   case move {
     move.Normal(from: _, to: _, captured: _, promotion: _)
     | move.EnPassant(from: _, to: _) -> {
@@ -522,8 +522,9 @@ fn is_move_legal(game: Game, move: Move) -> Bool {
 
 // Apply move to the board. This function is not concerned with whether 
 // the move is possible, it just attempts to apply a move to the board.
-// This function is used for check detection and applying legal moves
-fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
+// This function is used for check detection and speeding up move application
+// during tests. 
+pub fn apply_move_raw(game: Game, move: Move) -> Game {
   case move {
     move.Normal(
       from: from,
@@ -874,6 +875,8 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
         Some(_) -> panic("game is over, unable to apply moves to board")
       }
 
+      let new_en_passant = None
+
       let new_game_state =
         Game(
           ..new_game_state,
@@ -881,6 +884,7 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
           history: new_history,
           ply: new_ply,
           status: new_status,
+          en_passant: new_en_passant,
           white_kingside_castle: new_white_king_castle,
           white_queenside_castle: new_white_queen_castle,
           black_kingside_castle: new_black_king_castle,
@@ -977,12 +981,15 @@ fn apply_pseudo_legal_move(game: Game, move: Move) -> Game {
         Some(_) -> panic("game is over, unable to apply moves to board")
       }
 
+      let new_en_passant = None
+
       let new_game_state =
         Game(
           ..new_game_state,
           history: new_history,
           turn: new_turn,
           ply: new_ply,
+          en_passant: new_en_passant,
           status: new_status,
         )
       new_game_state
@@ -4009,7 +4016,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
 
       let new_game_state = case list.contains(legal_moves, move) {
         True -> {
-          let new_game_state = apply_pseudo_legal_move(game, move)
+          let new_game_state = apply_move_raw(game, move)
           new_game_state
         }
         False -> {
@@ -4027,7 +4034,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
 
       let new_game_state = case list.contains(legal_moves, move) {
         True -> {
-          let new_game_state = apply_pseudo_legal_move(game, move)
+          let new_game_state = apply_move_raw(game, move)
           new_game_state
         }
         False -> {
@@ -4035,7 +4042,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
         }
       }
 
-      // TODO: move status update logic from apply_pseudo_legal_move to here
+      // TODO: move status update logic from apply_move_raw to here
       let new_game_state = case
         [
           is_king_in_check(new_game_state, new_game_state.turn),
@@ -4344,7 +4351,7 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
                 }
               }
             })
-          let new_game_state = apply_pseudo_legal_move(game, move)
+          let new_game_state = apply_move_raw(game, move)
           new_game_state
         }
         _ -> panic("Invalid move")
@@ -4372,7 +4379,7 @@ pub fn undo_move(game: Game) -> Game {
                 board.get_piece_at_position(game.board, to)
               {
                 None -> {
-                  panic("Invalid move")
+                  panic("Undoing Normal Move: Could not get piece at position")
                 }
                 Some(piece) -> piece
               }
@@ -4481,7 +4488,10 @@ pub fn undo_move(game: Game) -> Game {
                         )
                       {
                         Some(piece) -> piece
-                        None -> panic("Invalid move")
+                        None ->
+                          panic(
+                            "Undoing Normal Move: Could not get piece at position",
+                          )
                       }
                       case moving_piece {
                         piece.Piece(color: _, kind: Pawn) -> {
@@ -4503,7 +4513,10 @@ pub fn undo_move(game: Game) -> Game {
                         )
                       {
                         Some(piece) -> piece
-                        None -> panic("Invalid move")
+                        None ->
+                          panic(
+                            "Undoing Normal Move:Could not get piece at position",
+                          )
                       }
                       case moving_piece {
                         piece.Piece(color: _, kind: Pawn) -> {
@@ -4556,7 +4569,7 @@ pub fn undo_move(game: Game) -> Game {
                 }
                 Some(_) ->
                   panic(
-                    "trying to undo a move in a finished game is not possible",
+                    "Undoing Normal Move: trying to undo a move in a finished game is not possible",
                   )
               }
 
@@ -4601,7 +4614,7 @@ pub fn undo_move(game: Game) -> Game {
                   position.Position(file: D, rank: One)
                 position.Position(file: C, rank: Eight) ->
                   position.Position(file: D, rank: Eight)
-                _ -> panic("Invalid castle move")
+                _ -> panic("Undoing Castle Move: Invalid castle move")
               }
 
               let new_board = case
@@ -4611,7 +4624,10 @@ pub fn undo_move(game: Game) -> Game {
                 )
               {
                 Some(board) -> board
-                None -> panic("Invalid move")
+                None ->
+                  panic(
+                    "Undoing Castle Move: Could not remove piece at position",
+                  )
               }
               let new_game_state = Game(..new_game_state, board: new_board)
 
@@ -4628,7 +4644,7 @@ pub fn undo_move(game: Game) -> Game {
                   position.Position(file: A, rank: One)
                 position.Position(file: C, rank: Eight) ->
                   position.Position(file: A, rank: Eight)
-                _ -> panic("Invalid castle move")
+                _ -> panic("Undoing Castle Move: Invalid castle move")
               }
 
               let new_game_state =
@@ -4706,7 +4722,10 @@ pub fn undo_move(game: Game) -> Game {
                         )
                       {
                         Some(piece) -> piece
-                        None -> panic("Invalid move")
+                        None ->
+                          panic(
+                            "Undoing Castle Move: could not get piece at position 1",
+                          )
                       }
                       case moving_piece {
                         piece.Piece(color: _, kind: Pawn) -> {
@@ -4728,8 +4747,12 @@ pub fn undo_move(game: Game) -> Game {
                         )
                       {
                         Some(piece) -> piece
-                        None -> panic("Invalid move")
+                        None ->
+                          panic(
+                            "Undoing Castle Move: could not get piece at position 2",
+                          )
                       }
+
                       case moving_piece {
                         piece.Piece(color: _, kind: Pawn) -> {
                           Some(position.Position(file: file, rank: Six))
@@ -4754,7 +4777,10 @@ pub fn undo_move(game: Game) -> Game {
                       ))
                   }
                 }
-                Some(_) -> panic("Trying to undo a move in a finished game")
+                Some(_) ->
+                  panic(
+                    "Undoing Castle Move: Trying to undo a move in a finished game",
+                  )
               }
 
               let new_game_state =
@@ -4798,7 +4824,6 @@ pub fn undo_move(game: Game) -> Game {
                     ),
                   )
               }
-
               let new_game_state = case game.turn {
                 Black -> {
                   Game(
@@ -4891,7 +4916,10 @@ pub fn undo_move(game: Game) -> Game {
                       ))
                   }
                 }
-                Some(_) -> panic("Trying to undo a move in a finished game")
+                Some(_) ->
+                  panic(
+                    "Undoing En Passant Move: Trying to undo a move in a finished game",
+                  )
               }
 
               let new_game_state =

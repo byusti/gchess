@@ -11,6 +11,7 @@ pub type Message {
   ApplyMove(reply_with: Subject(Game), move: Move)
   ApplyMoveUciString(reply_with: Subject(Game), move: String)
   ApplyMoveSanString(reply_with: Subject(Game), move: String)
+  ApplyMoveRaw(reply_with: Subject(Game), move: Move)
   UndoMove(reply_with: Subject(Game))
   GetState(reply_with: Subject(Game))
   GetSideToMove(reply_with: Subject(Color))
@@ -37,6 +38,10 @@ pub fn apply_move_uci_string(game_actor: Subject(Message), move_uci: String) {
 
 pub fn apply_move_san_string(game_actor: Subject(Message), move_san: String) {
   process.call(game_actor, ApplyMoveSanString(_, move_san), 1000)
+}
+
+pub fn apply_move_raw(game_actor: Subject(Message), move: Move) {
+  process.call(game_actor, ApplyMoveRaw(_, move), 1000)
 }
 
 pub fn undo_move(game_actor: Subject(Message)) {
@@ -75,6 +80,7 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
       handle_apply_move_uci(game, client, move)
     ApplyMoveSanString(client, move) ->
       handle_apply_move_san_string(game, client, move)
+    ApplyMoveRaw(client, move) -> handle_apply_move_raw(game, client, move)
     UndoMove(client) -> handle_undo_move(game, client)
     GetState(client) -> {
       process.send(client, game)
@@ -138,6 +144,12 @@ fn handle_apply_move_uci(game: Game, client: Subject(Game), move: String) {
 
 fn handle_apply_move(game: Game, client: Subject(Game), move: Move) {
   let new_game_state = game.apply_move(game, move)
+  process.send(client, new_game_state)
+  actor.continue(new_game_state)
+}
+
+fn handle_apply_move_raw(game: Game, client: Subject(Game), move: Move) {
+  let new_game_state = game.apply_move_raw(game, move)
   process.send(client, new_game_state)
   actor.continue(new_game_state)
 }

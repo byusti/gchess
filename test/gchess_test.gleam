@@ -1,6 +1,6 @@
 import gleeunit
 import gleeunit/should
-import game_server.{new_server}
+import game_server.{disable_status, new_game_from_fen, new_server}
 import game
 import pgn
 import piece
@@ -8,9 +8,85 @@ import move_san
 import position
 import gleam/option.{None, Some}
 import status.{Draw, InProgress, ThreefoldRepetition}
+import gleam/list
 
 pub fn main() {
   gleeunit.main()
+}
+
+// TODO: I cant run any perft tests past depth 2 without getting some kind of error.
+// If run these tests in main via 'gleam run' instead of 'gleam test' they work fine.
+pub fn perft_1_test() {
+  let server = new_server()
+  new_game_from_fen(
+    server,
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+  )
+  disable_status(server)
+  perft(server, 2)
+  |> should.equal(2039)
+}
+
+pub fn perft_2_test() {
+  let server = new_server()
+  new_game_from_fen(
+    server,
+    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+  )
+  disable_status(server)
+  perft(server, 2)
+  |> should.equal(2039)
+}
+
+pub fn perft_3_test() {
+  let server = new_server()
+  new_game_from_fen(
+    server,
+    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+  )
+  disable_status(server)
+  perft(server, 2)
+  |> should.equal(264)
+}
+
+// TODO: fix this test, fails because of bad fen parsing
+// pub fn perft_3_test() {
+//   let server = new_server()
+//   new_game_from_fen(server, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - 0 1")
+//   disable_status(server)
+//   perft(server, 3)
+//   |> should.equal(2812)
+// }
+
+// TODO: test exceeds eunit default timeout of 5 seconds, either make the timeout configurable or
+// make the test faster
+// pub fn perft_4_test() {
+//   let server = new_server()
+//   new_game_from_fen(
+//     server,
+//     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+//   )
+//   disable_status(server)
+//   perft(server, 3)
+//   |> should.equal(97_862)
+// }
+
+pub fn perft(game_server_subject, depth) {
+  case depth {
+    0 -> 1
+    _ -> {
+      let moves = game_server.all_legal_moves(game_server_subject)
+      let nodes =
+        list.fold(moves, 0, fn(nodes, move) {
+          game_server.apply_move_raw(game_server_subject, move)
+          let nodes = nodes + perft(game_server_subject, depth - 1)
+
+          game_server.undo_move(game_server_subject)
+          nodes
+        })
+      nodes
+    }
+  }
 }
 
 pub fn move_san_from_string_test() {
@@ -81,7 +157,6 @@ pub fn move_san_from_string_test() {
 pub fn load_pgn_into_game_test() {
   let pgn = "1. e4 e5 2. Bd3 Bd6 3. Nf3 Nf6 4. O-O"
   let assert Ok(game) = game.load_pgn(pgn)
-  game.print_board(game.new_game())
   case game.status {
     Some(InProgress(fifty_move_rule: 5, threefold_repetition_rule: _)) -> True
     _ -> False

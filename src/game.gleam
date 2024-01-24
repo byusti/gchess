@@ -667,100 +667,12 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
         _ -> None
       }
 
-      let new_status = case game.status {
-        None -> None
-        Some(InProgress(
-          fifty_move_rule: fifty_move_rule,
-          threefold_repetition_rule: threefold_repetition_rule,
-        )) -> {
-          let new_fifty_move_rule = case captured_piece {
-            Some(_) -> 0
-            None -> {
-              case moving_piece {
-                piece.Piece(color: _, kind: piece.Pawn) -> 0
-                _ -> fifty_move_rule + 1
-              }
-            }
-          }
-          let new_status = case new_fifty_move_rule / 2 + 1 {
-            50 -> Some(Draw(FiftyMoveRule))
-            _ ->
-              Some(InProgress(
-                fifty_move_rule: new_fifty_move_rule,
-                threefold_repetition_rule: threefold_repetition_rule,
-              ))
-          }
-
-          let #(new_threefold_repetition_rule, count) = case captured_piece {
-            Some(_) -> #(threefold_repetition_rule, 0)
-            None -> {
-              let new_threefold_position =
-                status.ThreeFoldPosition(
-                  turn: game.turn,
-                  board: game.board,
-                  en_passant: game.en_passant,
-                  white_kingside_castle: game.white_kingside_castle,
-                  white_queenside_castle: game.white_queenside_castle,
-                  black_kingside_castle: game.black_kingside_castle,
-                  black_queenside_castle: game.black_queenside_castle,
-                )
-              let #(new_threefold_repetition_rule, count) = case
-                dict.get(threefold_repetition_rule, new_threefold_position)
-              {
-                Error(_) -> {
-                  let new_threefold_repetition_rule =
-                    dict.insert(
-                      threefold_repetition_rule,
-                      new_threefold_position,
-                      1,
-                    )
-
-                  #(new_threefold_repetition_rule, 1)
-                }
-                Ok(count) -> {
-                  let new_threefold_repetition_rule =
-                    dict.insert(
-                      threefold_repetition_rule,
-                      new_threefold_position,
-                      count + 1,
-                    )
-
-                  #(new_threefold_repetition_rule, count + 1)
-                }
-              }
-
-              #(new_threefold_repetition_rule, count)
-            }
-          }
-
-          let new_status = case new_status {
-            Some(InProgress(
-              fifty_move_rule: fifty_move_rule,
-              threefold_repetition_rule: _,
-            )) -> {
-              case count {
-                3 -> Some(Draw(ThreefoldRepetition))
-                _ ->
-                  Some(InProgress(
-                    fifty_move_rule: fifty_move_rule,
-                    threefold_repetition_rule: new_threefold_repetition_rule,
-                  ))
-              }
-            }
-            _ -> new_status
-          }
-          new_status
-        }
-        Some(_) -> panic("game is over, unable to apply moves to board")
-      }
-
       let new_game_state =
         Game(
           ..new_game_state,
           turn: new_turn,
           history: new_history,
           ply: new_ply,
-          status: new_status,
           white_kingside_castle: new_white_king_castle,
           white_queenside_castle: new_white_queen_castle,
           black_kingside_castle: new_black_king_castle,
@@ -855,26 +767,6 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
 
       let new_history = [move, ..game.history]
 
-      let new_status = case game.status {
-        None -> None
-        Some(InProgress(
-          fifty_move_rule: fifty_move_rule,
-          threefold_repetition_rule: threefold_repetition_rule,
-        )) -> {
-          let new_fifty_move_rule = fifty_move_rule + 1
-          case new_fifty_move_rule / 2 + 1 {
-            50 -> Some(Draw(FiftyMoveRule))
-            _ ->
-              Some(InProgress(
-                fifty_move_rule: new_fifty_move_rule,
-                threefold_repetition_rule: threefold_repetition_rule,
-              ))
-          }
-        }
-
-        Some(_) -> panic("game is over, unable to apply moves to board")
-      }
-
       let new_en_passant = None
 
       let new_game_state =
@@ -883,7 +775,6 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           turn: new_turn,
           history: new_history,
           ply: new_ply,
-          status: new_status,
           en_passant: new_en_passant,
           white_kingside_castle: new_white_king_castle,
           white_queenside_castle: new_white_queen_castle,
@@ -967,20 +858,6 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
         }
       }
 
-      let new_status = case game.status {
-        None -> None
-        Some(InProgress(
-          fifty_move_rule: _,
-          threefold_repetition_rule: threefold_repetition_rule,
-        )) -> {
-          Some(InProgress(
-            fifty_move_rule: 0,
-            threefold_repetition_rule: threefold_repetition_rule,
-          ))
-        }
-        Some(_) -> panic("game is over, unable to apply moves to board")
-      }
-
       let new_en_passant = None
 
       let new_game_state =
@@ -990,7 +867,6 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           turn: new_turn,
           ply: new_ply,
           en_passant: new_en_passant,
-          status: new_status,
         )
       new_game_state
     }
@@ -4042,7 +3918,6 @@ pub fn apply_move(game: Game, move: Move) -> Game {
         }
       }
 
-      // TODO: move status update logic from apply_move_raw to here
       let new_game_state = case
         [
           is_king_in_check(new_game_state, new_game_state.turn),
@@ -4060,6 +3935,146 @@ pub fn apply_move(game: Game, move: Move) -> Game {
           )
         }
         [True, False] | [False, False] -> {
+          let new_status = case move {
+            move.Normal(
+              from: from,
+              to: _,
+              captured: captured_piece,
+              promotion: _,
+            ) -> {
+              let assert Some(moving_piece) =
+                board.get_piece_at_position(game.board, from)
+
+              case game.status {
+                None -> None
+                Some(InProgress(
+                  fifty_move_rule: fifty_move_rule,
+                  threefold_repetition_rule: threefold_repetition_rule,
+                )) -> {
+                  let new_fifty_move_rule = case captured_piece {
+                    Some(_) -> 0
+                    None -> {
+                      case moving_piece {
+                        piece.Piece(color: _, kind: piece.Pawn) -> 0
+                        _ -> fifty_move_rule + 1
+                      }
+                    }
+                  }
+                  let new_status = case new_fifty_move_rule / 2 + 1 {
+                    50 -> Some(Draw(FiftyMoveRule))
+                    _ ->
+                      Some(InProgress(
+                        fifty_move_rule: new_fifty_move_rule,
+                        threefold_repetition_rule: threefold_repetition_rule,
+                      ))
+                  }
+
+                  let #(new_threefold_repetition_rule, count) = case
+                    captured_piece
+                  {
+                    Some(_) -> #(threefold_repetition_rule, 0)
+                    None -> {
+                      let new_threefold_position =
+                        status.ThreeFoldPosition(
+                          turn: game.turn,
+                          board: game.board,
+                          en_passant: game.en_passant,
+                          white_kingside_castle: game.white_kingside_castle,
+                          white_queenside_castle: game.white_queenside_castle,
+                          black_kingside_castle: game.black_kingside_castle,
+                          black_queenside_castle: game.black_queenside_castle,
+                        )
+                      let #(new_threefold_repetition_rule, count) = case
+                        dict.get(
+                          threefold_repetition_rule,
+                          new_threefold_position,
+                        )
+                      {
+                        Error(_) -> {
+                          let new_threefold_repetition_rule =
+                            dict.insert(
+                              threefold_repetition_rule,
+                              new_threefold_position,
+                              1,
+                            )
+
+                          #(new_threefold_repetition_rule, 1)
+                        }
+                        Ok(count) -> {
+                          let new_threefold_repetition_rule =
+                            dict.insert(
+                              threefold_repetition_rule,
+                              new_threefold_position,
+                              count + 1,
+                            )
+
+                          #(new_threefold_repetition_rule, count + 1)
+                        }
+                      }
+
+                      #(new_threefold_repetition_rule, count)
+                    }
+                  }
+
+                  let new_status = case new_status {
+                    Some(InProgress(
+                      fifty_move_rule: fifty_move_rule,
+                      threefold_repetition_rule: _,
+                    )) -> {
+                      case count {
+                        3 -> Some(Draw(ThreefoldRepetition))
+                        _ ->
+                          Some(InProgress(
+                            fifty_move_rule: fifty_move_rule,
+                            threefold_repetition_rule: new_threefold_repetition_rule,
+                          ))
+                      }
+                    }
+                    _ -> new_status
+                  }
+                  new_status
+                }
+                Some(_) -> panic("game is over, unable to apply moves to board")
+              }
+            }
+            move.Castle(from: _, to: _) -> {
+              case game.status {
+                None -> None
+                Some(InProgress(
+                  fifty_move_rule: fifty_move_rule,
+                  threefold_repetition_rule: threefold_repetition_rule,
+                )) -> {
+                  let new_fifty_move_rule = fifty_move_rule + 1
+                  case new_fifty_move_rule / 2 + 1 {
+                    50 -> Some(Draw(FiftyMoveRule))
+                    _ ->
+                      Some(InProgress(
+                        fifty_move_rule: new_fifty_move_rule,
+                        threefold_repetition_rule: threefold_repetition_rule,
+                      ))
+                  }
+                }
+
+                Some(_) -> panic("game is over, unable to apply moves to board")
+              }
+            }
+            move.EnPassant(from: _, to: _) -> {
+              case game.status {
+                None -> None
+                Some(InProgress(
+                  fifty_move_rule: _,
+                  threefold_repetition_rule: threefold_repetition_rule,
+                )) -> {
+                  Some(InProgress(
+                    fifty_move_rule: 0,
+                    threefold_repetition_rule: threefold_repetition_rule,
+                  ))
+                }
+                Some(_) -> panic("game is over, unable to apply moves to board")
+              }
+            }
+          }
+          let new_game_state = Game(..new_game_state, status: new_status)
           new_game_state
         }
         [False, True] -> {
@@ -4234,8 +4249,6 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
   }
 }
 
-// TODO: This doesnt handle status yet, but it should
-// it should be as simple as keeping the logic for parsing uci and then calling apply_move
 pub fn apply_move_uci(game: Game, move: String) -> Game {
   case game.status {
     Some(InProgress(_, _)) | None ->
@@ -4304,8 +4317,7 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
             _ -> None
           }
 
-          // TODO: This could be way more efficient if we just kept track of the legal moves
-          // or if we had a way to generate legal moves from a given position
+          // TODO: we need to find a different way of converting the uci to a real move
           let legal_moves = {
             generate_pseudo_legal_move_list(game, game.turn)
             |> list.filter(fn(move) { is_move_legal(game, move) })
@@ -4351,7 +4363,8 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
                 }
               }
             })
-          let new_game_state = apply_move_raw(game, move)
+
+          let new_game_state = apply_move(game, move)
           new_game_state
         }
         _ -> panic("Invalid move")

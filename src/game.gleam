@@ -4303,17 +4303,11 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
             _ -> panic("Invalid move")
           }
 
-          let promo = case list.length(move_chars) {
-            5 -> {
-              let assert Ok(move_chars) = list.rest(move_chars)
-              case list.first(move_chars) {
-                Ok("q") -> Some(Queen)
-                Ok("r") -> Some(Rook)
-                Ok("b") -> Some(Bishop)
-                Ok("n") -> Some(Knight)
-                _ -> panic("Invalid move")
-              }
-            }
+          let promo = case string.slice(move, 4, 1) {
+            "q" -> Some(Queen)
+            "r" -> Some(Rook)
+            "b" -> Some(Bishop)
+            "n" -> Some(Knight)
             _ -> None
           }
 

@@ -21,3 +21,11 @@ apply_move_uci_string(server, "e2e4")
 
 print_board(server)
 ```
+
+## Installation
+
+Add the following to gleam.toml:
+
+```
+gchess = "~> 0.1.4"
+```

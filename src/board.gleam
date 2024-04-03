@@ -1,10 +1,10 @@
 import bitboard.{type Bitboard, and, new_bitboard, shift_left}
-import position.{type Position}
-import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
 import color.{Black, White}
-import gleam/option.{None, Some}
 import gleam/list
+import gleam/option.{None, Some}
 import gleam/set
+import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
+import position.{type Position}
 
 pub type BoardBB {
   BoardBB(
@@ -31,7 +31,8 @@ pub fn remove_piece_at_position(
 
   let new_board = case get_piece_at_position(board, position) {
     None -> None
-    Some(piece.Piece(color: color, kind: kind)) if color == White && kind == King -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == White
+      && kind == King -> {
       Some(
         BoardBB(
           ..board,
@@ -39,7 +40,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Queen -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == White
+      && kind == Queen -> {
       Some(
         BoardBB(
           ..board,
@@ -50,7 +52,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Rook -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == White
+      && kind == Rook -> {
       Some(
         BoardBB(
           ..board,
@@ -59,7 +62,8 @@ pub fn remove_piece_at_position(
       )
     }
 
-    Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Bishop -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == White
+      && kind == Bishop -> {
       Some(
         BoardBB(
           ..board,
@@ -70,7 +74,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Knight -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == White
+      && kind == Knight -> {
       Some(
         BoardBB(
           ..board,
@@ -81,7 +86,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == White && kind == Pawn -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == White
+      && kind == Pawn -> {
       Some(
         BoardBB(
           ..board,
@@ -92,7 +98,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == King -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == Black
+      && kind == King -> {
       Some(
         BoardBB(
           ..board,
@@ -100,7 +107,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Queen -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == Black
+      && kind == Queen -> {
       Some(
         BoardBB(
           ..board,
@@ -111,7 +119,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Rook -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == Black
+      && kind == Rook -> {
       Some(
         BoardBB(
           ..board,
@@ -119,7 +128,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Bishop -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == Black
+      && kind == Bishop -> {
       Some(
         BoardBB(
           ..board,
@@ -130,7 +140,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Knight -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == Black
+      && kind == Knight -> {
       Some(
         BoardBB(
           ..board,
@@ -141,7 +152,8 @@ pub fn remove_piece_at_position(
         ),
       )
     }
-    Some(piece.Piece(color: color, kind: kind)) if color == Black && kind == Pawn -> {
+    Some(piece.Piece(color: color, kind: kind)) if color == Black
+      && kind == Pawn -> {
       Some(
         BoardBB(
           ..board,
@@ -281,7 +293,7 @@ pub fn get_piece_at_position(board: BoardBB, position: Position) {
   let white_pawns_bb_compare =
     bitboard.and(board.white_pawns_bitboard, bitboard)
 
-  let piece = case bitboard.bitboard {
+  let piece = case bitboard {
     0 -> None
     _ -> {
       let piece = case bitboard {
@@ -334,27 +346,23 @@ pub fn get_all_positions(board: BoardBB) -> List(Position) {
   ]
 
   let positions =
-    list.fold(
-      list_of_bitboards,
-      set.new(),
-      fn(acc, bitboard) {
-        let positions = get_positions(bitboard)
-        let positions = set.from_list(positions)
-        set.union(acc, positions)
-      },
-    )
+    list.fold(list_of_bitboards, set.new(), fn(acc, bitboard) {
+      let positions = get_positions(bitboard)
+      let positions = set.from_list(positions)
+      set.union(acc, positions)
+    })
 
   set.to_list(positions)
 }
 
 pub fn get_positions(bitboard: Bitboard) -> List(Position) {
   let positions = []
-  case bitboard.bitboard {
+  case bitboard {
     0 -> positions
     _ -> {
       let count = 63
       let just_first_bit_of_bb = and(bitboard, new_bitboard(0x8000000000000000))
-      case just_first_bit_of_bb.bitboard {
+      case just_first_bit_of_bb {
         0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
         _ -> {
           let assert Some(position_dest) = position.from_int(count)
@@ -373,7 +381,7 @@ pub fn get_positions_inner(bitboard: Bitboard, count: Int) -> List(Position) {
     True -> []
     False -> {
       let just_first_bit_of_bb = and(bitboard, new_bitboard(0x8000000000000000))
-      case just_first_bit_of_bb.bitboard {
+      case just_first_bit_of_bb {
         0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
         _ -> {
           let assert Some(position_dest) = position.from_int(count)

@@ -1,9 +1,9 @@
-import gleam/otp/actor
-import gleam/erlang/process.{type Subject}
-import move.{type Move}
-import gleam/option.{type Option}
-import game.{type Game}
 import color.{type Color}
+import game.{type Game}
+import gleam/erlang/process.{type Subject}
+import gleam/option.{type Option}
+import gleam/otp/actor
+import move.{type Move}
 import status.{type Status}
 
 pub type Message {
@@ -23,6 +23,11 @@ pub type Message {
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
+
+// TODO: This module contains all functions related to interacting
+// with erlang processes. It keeps the library from being compiled
+// to javascript. At some point in the future, I would like to 
+// address this issue so that the library can target js.
 
 pub fn print_board(game_actor: Subject(Message)) {
   process.call(game_actor, PrintBoard, 1000)

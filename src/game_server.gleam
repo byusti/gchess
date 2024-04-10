@@ -77,6 +77,10 @@ pub fn new_game_from_fen(game_actor: Subject(Message), fen: String) {
   process.call(game_actor, NewGameFromFen(_, fen), 1000)
 }
 
+pub fn shutdown(game_actor: Subject(Message)) {
+  process.send(game_actor, Shutdown)
+}
+
 fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
   case message {
     AllLegalMoves(client) -> handle_all_legal_moves(game, client)

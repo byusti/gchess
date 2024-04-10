@@ -12,7 +12,7 @@ import gleam/option.{type Option, None, Some}
 import gleam/result
 import gleam/string.{length}
 import knight_target
-import move.{type Move}
+import move.{type Move, type MoveWithCapture}
 import move_san
 import pgn
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
@@ -29,7 +29,7 @@ pub type Game {
   Game(
     board: BoardBB,
     turn: Color,
-    history: List(Move),
+    history: List(MoveWithCapture),
     status: Option(Status),
     ply: Int,
     white_kingside_castle: CastleRights,
@@ -394,8 +394,7 @@ pub fn load_pgn(pgn: String) -> Result(Game, String) {
 fn is_move_legal(game: Game, move: Move) -> Bool {
   let new_game_state = apply_move_raw(game, move)
   case move {
-    move.Normal(from: _, to: _, captured: _, promotion: _)
-    | move.EnPassant(from: _, to: _) -> {
+    move.Normal(from: _, to: _, promotion: _) | move.EnPassant(from: _, to: _) -> {
       !is_king_in_check(new_game_state, game.turn)
     }
     move.Castle(from: _from, to: to) -> {
@@ -454,20 +453,20 @@ fn is_move_legal(game: Game, move: Move) -> Bool {
 // during tests. 
 pub fn apply_move_raw(game: Game, move: Move) -> Game {
   case move {
-    move.Normal(
-        from: from,
-        to: to,
-        captured: captured_piece,
-        promotion: promo_piece,
-      ) -> {
+    move.Normal(from: from, to: to, promotion: promo_piece) -> {
       let assert Some(moving_piece) =
         board.get_piece_at_position(game.board, from)
+      let captured_piece = piece_at_position(game, to)
+
+      let assert Some(new_board) =
+        board.remove_piece_at_position(game.board, from)
+      let new_game_state = Game(..game, board: new_board)
       let new_game_state = case captured_piece {
-        None -> game
+        None -> new_game_state
         Some(_) -> {
           let assert Some(new_board) =
-            board.remove_piece_at_position(game.board, to)
-          Game(..game, board: new_board)
+            board.remove_piece_at_position(new_game_state.board, to)
+          Game(..new_game_state, board: new_board)
         }
       }
 
@@ -492,10 +491,6 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           )
         }
       }
-
-      let assert Some(new_board) =
-        board.remove_piece_at_position(new_game_state.board, from)
-      let new_game_state = Game(..new_game_state, board: new_board)
 
       let new_ply = new_game_state.ply + 1
       let new_white_king_castle = case game.turn {
@@ -560,8 +555,8 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           Black -> White
         }
       }
-
-      let new_history = [move, ..game.history]
+      let move_with_capture = move.MoveWithCapture(move, captured_piece)
+      let new_history = [move_with_capture, ..game.history]
 
       let new_en_passant = case moving_piece {
         piece.Piece(color: color, kind: piece.Pawn) -> {
@@ -610,13 +605,16 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
       new_game_state
     }
     move.Castle(from: from, to: to) -> {
+      let assert Some(new_board) =
+        board.remove_piece_at_position(game.board, from)
+      let new_game_state = Game(..game, board: new_board)
       let new_game_state =
         Game(
-          ..game,
+          ..new_game_state,
           board: board.set_piece_at_position(
-            game.board,
+            new_game_state.board,
             to,
-            piece.Piece(color: game.turn, kind: King),
+            piece.Piece(color: new_game_state.turn, kind: King),
           ),
         )
       let rook_castling_target_square = case to {
@@ -646,10 +644,6 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
             piece.Piece(color: game.turn, kind: Rook),
           ),
         )
-
-      let assert Some(new_board) =
-        board.remove_piece_at_position(new_game_state.board, from)
-      let new_game_state = Game(..new_game_state, board: new_board)
 
       let rook_castling_origin_square = case to {
         position.Position(file: G, rank: One) ->
@@ -693,7 +687,9 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
         ]
       }
 
-      let new_history = [move, ..game.history]
+      let move_with_capture = move.MoveWithCapture(move, None)
+
+      let new_history = [move_with_capture, ..game.history]
 
       let new_en_passant = None
 
@@ -773,9 +769,6 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           panic("Invalid en passant move")
         }
       }
-      let new_game_state = Game(..new_game_state, board: new_board)
-
-      let new_history = [move, ..game.history]
 
       let new_ply = new_game_state.ply + 1
 
@@ -785,6 +778,14 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           Black -> White
         }
       }
+
+      let new_game_state = Game(..new_game_state, board: new_board)
+      let move_with_capture =
+        move.MoveWithCapture(
+          move,
+          Some(piece.Piece(color: new_turn, kind: Pawn)),
+        )
+      let new_history = [move_with_capture, ..game.history]
 
       let new_en_passant = None
 
@@ -900,10 +901,12 @@ fn is_king_in_check(game: Game, color: Color) -> Bool {
   let enemy_move_list = {
     enemy_move_list
     |> list.filter(fn(move) {
-      case move {
-        move.Normal(from: _, to: _, captured: Some(piece), promotion: _) ->
-          piece == piece.Piece(color: color, kind: King)
-        _ -> False
+      let piece = piece_at_position(game, move.to)
+      case piece {
+        None -> False
+        Some(piece) -> {
+          piece.color == color && piece.kind == King
+        }
       }
     })
   }
@@ -1921,20 +1924,12 @@ fn generate_king_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
 
     let simple_moves =
       list.map(board.get_positions(simple_moves), fn(dest) -> Move {
-        move.Normal(from: origin, to: dest, captured: None, promotion: None)
+        move.Normal(from: origin, to: dest, promotion: None)
       })
 
     let captures =
       list.map(board.get_positions(captures), fn(dest) -> Move {
-        move.Normal(
-          from: origin,
-          to: dest,
-          captured: {
-            let assert Some(piece) = piece_at_position(game, dest)
-            Some(piece)
-          },
-          promotion: None,
-        )
+        move.Normal(from: origin, to: dest, promotion: None)
       })
     let all_moves = list.append(simple_moves, captures)
     list.append(collector, all_moves)
@@ -2084,25 +2079,12 @@ fn generate_queen_pseudo_legal_move_list(color: Color, game: Game) -> List(Move)
 
           let simple_moves =
             list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
-              move.Normal(
-                from: queen_origin_square,
-                to: dest,
-                captured: None,
-                promotion: None,
-              )
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
             })
 
           let captures =
             list.map(board.get_positions(captures), fn(dest) -> Move {
-              move.Normal(
-                from: queen_origin_square,
-                to: dest,
-                captured: {
-                  let assert Some(piece) = piece_at_position(game, dest)
-                  Some(piece)
-                },
-                promotion: None,
-              )
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
             })
           let simple_moves = list.append(collector, simple_moves)
           let all_moves = list.append(simple_moves, captures)
@@ -2263,25 +2245,12 @@ fn generate_queen_pseudo_legal_move_list(color: Color, game: Game) -> List(Move)
 
           let simple_moves =
             list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
-              move.Normal(
-                from: queen_origin_square,
-                to: dest,
-                captured: None,
-                promotion: None,
-              )
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
             })
 
           let captures =
             list.map(board.get_positions(captures), fn(dest) -> Move {
-              move.Normal(
-                from: queen_origin_square,
-                to: dest,
-                captured: {
-                  let assert Some(piece) = piece_at_position(game, dest)
-                  Some(piece)
-                },
-                promotion: None,
-              )
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
             })
           let simple_moves = list.append(collector, simple_moves)
           let all_moves = list.append(simple_moves, captures)
@@ -2437,25 +2406,12 @@ fn generate_rook_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
 
           let simple_moves =
             list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
-              move.Normal(
-                from: rook_origin_square,
-                to: dest,
-                captured: None,
-                promotion: None,
-              )
+              move.Normal(from: rook_origin_square, to: dest, promotion: None)
             })
 
           let captures =
             list.map(board.get_positions(rook_captures), fn(dest) -> Move {
-              move.Normal(
-                from: rook_origin_square,
-                to: dest,
-                captured: {
-                  let assert Some(piece) = piece_at_position(game, dest)
-                  Some(piece)
-                },
-                promotion: None,
-              )
+              move.Normal(from: rook_origin_square, to: dest, promotion: None)
             })
           let simple_moves = list.append(collector, simple_moves)
           let all_moves = list.append(simple_moves, captures)
@@ -2678,25 +2634,12 @@ fn generate_bishop_pseudo_legal_move_list(
 
           let simple_moves =
             list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
-              move.Normal(
-                from: bishop_origin_square,
-                to: dest,
-                captured: None,
-                promotion: None,
-              )
+              move.Normal(from: bishop_origin_square, to: dest, promotion: None)
             })
 
           let captures =
             list.map(board.get_positions(captures), fn(dest) -> Move {
-              move.Normal(
-                from: bishop_origin_square,
-                to: dest,
-                captured: {
-                  let assert Some(piece) = piece_at_position(game, dest)
-                  Some(piece)
-                },
-                promotion: None,
-              )
+              move.Normal(from: bishop_origin_square, to: dest, promotion: None)
             })
           let simple_moves = list.append(collector, simple_moves)
           let all_moves = list.append(simple_moves, captures)
@@ -2818,20 +2761,12 @@ fn generate_knight_pseudo_legal_move_list(
 
     let simple_moves =
       list.map(board.get_positions(simple_moves), fn(dest) -> Move {
-        move.Normal(from: origin, to: dest, captured: None, promotion: None)
+        move.Normal(from: origin, to: dest, promotion: None)
       })
 
     let captures =
       list.map(board.get_positions(captures), fn(dest) -> Move {
-        move.Normal(
-          from: origin,
-          to: dest,
-          captured: {
-            let assert Some(piece) = piece_at_position(game, dest)
-            Some(piece)
-          },
-          promotion: None,
-        )
+        move.Normal(from: origin, to: dest, promotion: None)
       })
     let all_moves = list.append(simple_moves, captures)
     list.append(collector, all_moves)
@@ -2853,25 +2788,21 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Queen)),
             ),
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Rook)),
             ),
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Bishop)),
             ),
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Knight)),
             ),
           ]
@@ -2881,31 +2812,27 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Queen)),
             ),
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Rook)),
             ),
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Bishop)),
             ),
             move.Normal(
               from: origin,
               to: dest,
-              captured: None,
               promotion: Some(piece.Piece(color, Knight)),
             ),
           ]
         }
         _ -> {
-          [move.Normal(from: origin, to: dest, captured: None, promotion: None)]
+          [move.Normal(from: origin, to: dest, promotion: None)]
         }
       }
       list.append(acc, moves)
@@ -2926,14 +2853,12 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.A, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             position.B -> {
               move.Normal(
                 from: position.Position(file: position.B, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -2941,7 +2866,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.C, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -2949,7 +2873,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.D, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -2957,7 +2880,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.E, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -2965,7 +2887,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.F, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -2973,7 +2894,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.G, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -2981,7 +2901,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.H, rank: position.Two),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -2994,14 +2913,12 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.A, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             position.B -> {
               move.Normal(
                 from: position.Position(file: position.B, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -3009,7 +2926,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.C, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -3017,7 +2933,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.D, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -3025,7 +2940,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.E, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -3033,7 +2947,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.F, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -3041,7 +2954,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.G, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -3049,7 +2961,6 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               move.Normal(
                 from: position.Position(file: position.H, rank: position.Seven),
                 to: dest,
-                captured: None,
                 promotion: None,
               )
             }
@@ -3286,41 +3197,21 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Queen)),
                   ),
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Rook)),
                   ),
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Bishop)),
                   ),
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Knight)),
                   ),
                 ]
@@ -3328,55 +3219,26 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Queen)),
                   ),
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Rook)),
                   ),
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Bishop)),
                   ),
                   move.Normal(
                     from: position,
                     to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Knight)),
                   ),
                 ]
                 _ -> [
-                  move.Normal(
-                    from: position,
-                    to: east_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, east_attack)
-                      Some(piece)
-                    },
-                    promotion: None,
-                  ),
+                  move.Normal(from: position, to: east_attack, promotion: None),
                 ]
               }
               east_moves
@@ -3416,41 +3278,21 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Queen)),
                   ),
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Rook)),
                   ),
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Bishop)),
                   ),
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Knight)),
                   ),
                 ]
@@ -3458,55 +3300,26 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Queen)),
                   ),
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Rook)),
                   ),
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Bishop)),
                   ),
                   move.Normal(
                     from: position,
                     to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
                     promotion: Some(piece.Piece(color, Knight)),
                   ),
                 ]
                 _ -> [
-                  move.Normal(
-                    from: position,
-                    to: west_attack,
-                    captured: {
-                      let assert Some(piece) =
-                        piece_at_position(game, west_attack)
-                      Some(piece)
-                    },
-                    promotion: None,
-                  ),
+                  move.Normal(from: position, to: west_attack, promotion: None),
                 ]
               }
               west_moves
@@ -3836,12 +3649,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
         }
         [True, False] | [False, False] -> {
           let new_status = case move {
-            move.Normal(
-                from: from,
-                to: _,
-                captured: captured_piece,
-                promotion: _,
-              ) -> {
+            move.Normal(from: from, to: to, promotion: _) -> {
               let assert Some(moving_piece) =
                 board.get_piece_at_position(game.board, from)
 
@@ -3851,6 +3659,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
                     fifty_move_rule: fifty_move_rule,
                     threefold_repetition_rule: threefold_repetition_rule,
                   )) -> {
+                  let captured_piece = piece_at_position(game, to)
                   let new_fifty_move_rule = case captured_piece {
                     Some(_) -> 0
                     None -> {
@@ -4013,12 +3822,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
             let potential_moves =
               list.filter(all_legal_moves(game), fn(move) {
                 case move {
-                  move.Normal(
-                      from: _,
-                      to: to_legal,
-                      captured: _,
-                      promotion: promo_legal,
-                    )
+                  move.Normal(from: _, to: to_legal, promotion: promo_legal)
                     if to_legal == to && promo_legal == promotion
                   -> {
                     True
@@ -4031,7 +3835,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
               [] -> Error("No potential moves found")
               [move] -> {
                 case move {
-                  move.Normal(from: _, to: _, captured: _, promotion: _) -> {
+                  move.Normal(from: _, to: _, promotion: _) -> {
                     Ok(move)
                   }
                   _ -> panic("This panic should be unreachable")
@@ -4041,7 +3845,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
                 let maybe_move =
                   list.filter(move_list, fn(move) {
                     case move {
-                      move.Normal(from: from, to: _, captured: _, promotion: _) -> {
+                      move.Normal(from: from, to: _, promotion: _) -> {
                         let assert Some(piece) =
                           board.get_piece_at_position(game.board, from)
                         piece.kind == moving_piece
@@ -4216,52 +4020,104 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
             _ -> None
           }
 
-          // TODO: we need to find a different way of converting the uci to a real move
-          let legal_moves = {
-            generate_pseudo_legal_move_list(game, game.turn)
-            |> list.filter(fn(move) { is_move_legal(game, move) })
-          }
+          let assert Some(piece) =
+            piece_at_position(
+              game,
+              position.Position(file: from_file, rank: from_rank),
+            )
 
-          let assert Ok(move) =
-            list.find(legal_moves, fn(legal_move) {
-              case legal_move {
-                move.Normal(
-                    from: from,
-                    to: to,
-                    captured: _,
-                    promotion: Some(promotion),
-                  ) -> {
-                  case promo {
-                    Some(promo) ->
-                      from.file == from_file
-                      && from.rank == from_rank
-                      && to.file == to_file
-                      && to.rank == to_rank
-                      && promo == promotion.kind
-                    None -> False
+          let maybe_enemy_piece =
+            piece_at_position(
+              game,
+              position.Position(file: to_file, rank: to_rank),
+            )
+
+          let move = case promo {
+            Some(promo) -> {
+              move.Normal(
+                from: position.Position(file: from_file, rank: from_rank),
+                to: position.Position(file: to_file, rank: to_rank),
+                promotion: Some(piece.Piece(game.turn, promo)),
+              )
+            }
+            None -> {
+              case piece {
+                piece.Piece(color: _, kind: Pawn) -> {
+                  case from_file == to_file {
+                    True ->
+                      move.Normal(
+                        from: position.Position(
+                          file: from_file,
+                          rank: from_rank,
+                        ),
+                        to: position.Position(file: to_file, rank: to_rank),
+                        promotion: None,
+                      )
+                    False -> {
+                      case maybe_enemy_piece {
+                        Some(_) ->
+                          move.Normal(
+                            from: position.Position(
+                              file: from_file,
+                              rank: from_rank,
+                            ),
+                            to: position.Position(file: to_file, rank: to_rank),
+                            promotion: None,
+                          )
+                        None ->
+                          move.EnPassant(
+                            from: position.Position(
+                              file: from_file,
+                              rank: from_rank,
+                            ),
+                            to: position.Position(file: to_file, rank: to_rank),
+                          )
+                      }
+                    }
                   }
                 }
-                move.Normal(from: from, to: to, captured: _, promotion: None) -> {
-                  from.file == from_file
-                  && from.rank == from_rank
-                  && to.file == to_file
-                  && to.rank == to_rank
-                  && promo == None
+                piece.Piece(color: _, kind: King) -> {
+                  case
+                    position.file_to_int(from_file)
+                    - position.file_to_int(to_file)
+                  {
+                    2 ->
+                      move.Castle(
+                        from: position.Position(
+                          file: position.E,
+                          rank: from_rank,
+                        ),
+                        to: position.Position(file: to_file, rank: to_rank),
+                      )
+                    -2 ->
+                      move.Castle(
+                        from: position.Position(
+                          file: position.E,
+                          rank: from_rank,
+                        ),
+                        to: position.Position(file: to_file, rank: to_rank),
+                      )
+                    _ ->
+                      move.Normal(
+                        from: position.Position(
+                          file: from_file,
+                          rank: from_rank,
+                        ),
+                        to: position.Position(file: to_file, rank: to_rank),
+                        promotion: None,
+                      )
+                  }
                 }
-                move.Castle(from: from, to: to) -> {
-                  from.file == from_file
-                  && from.rank == from_rank
-                  && to.file == to_file
-                  && to.rank == to_rank
-                }
-                move.EnPassant(from: from, to: to) -> {
-                  from.file == from_file
-                  && from.rank == from_rank
-                  && to.file == to_file
-                  && to.rank == to_rank
+                _ -> {
+                  move.Normal(
+                    from: position.Position(file: from_file, rank: from_rank),
+                    to: position.Position(file: to_file, rank: to_rank),
+                    promotion: None,
+                  )
                 }
               }
-            })
+            }
+          }
 
           let new_game_state = apply_move(game, move)
           new_game_state
@@ -4281,11 +4137,9 @@ pub fn undo_move(game: Game) -> Game {
         }
         [move, ..rest] -> {
           case move {
-            move.Normal(
-                from: from,
-                to: to,
-                captured: captured_piece,
-                promotion: promo_piece,
+            move.MoveWithCapture(
+                captured_piece: captured_piece,
+                move: move.Normal(from: from, to: to, promotion: promo_piece),
               ) -> {
               let moving_piece = case
                 board.get_piece_at_position(game.board, to)
@@ -4387,11 +4241,13 @@ pub fn undo_move(game: Game) -> Game {
                 [] -> None
                 [move] | [move, ..] -> {
                   case move {
-                    move.Normal(
-                        from: position.Position(file: _, rank: Two),
-                        to: position.Position(file: file, rank: Four),
-                        captured: None,
-                        promotion: None,
+                    move.MoveWithCapture(
+                        captured_piece: _captured_piece,
+                        move: move.Normal(
+                          from: position.Position(file: _, rank: Two),
+                          to: position.Position(file: file, rank: Four),
+                          promotion: None,
+                        ),
                       )
                       if game.turn == White
                     -> {
@@ -4414,11 +4270,13 @@ pub fn undo_move(game: Game) -> Game {
                         _ -> None
                       }
                     }
-                    move.Normal(
-                        from: position.Position(file: _, rank: Seven),
-                        to: position.Position(file: file, rank: Five),
-                        captured: None,
-                        promotion: None,
+                    move.MoveWithCapture(
+                        captured_piece: _captured_piece,
+                        move: move.Normal(
+                          from: position.Position(file: _, rank: Seven),
+                          to: position.Position(file: file, rank: Five),
+                          promotion: None,
+                        ),
                       ) if game.turn == Black -> {
                       let moving_piece = case
                         board.get_piece_at_position(
@@ -4503,22 +4361,10 @@ pub fn undo_move(game: Game) -> Game {
 
               new_game_state
             }
-            move.Castle(from: from, to: to) -> {
-              let new_turn = {
-                case game.turn {
-                  White -> Black
-                  Black -> White
-                }
-              }
-              let new_game_state =
-                Game(
-                  ..game,
-                  board: board.set_piece_at_position(
-                    game.board,
-                    from,
-                    piece.Piece(color: new_turn, kind: King),
-                  ),
-                )
+            move.MoveWithCapture(
+                captured_piece: _captured_piece,
+                move: move.Castle(from: from, to: to),
+              ) -> {
               let rook_castling_target_square = case to {
                 position.Position(file: G, rank: One) ->
                   position.Position(file: F, rank: One)
@@ -4533,7 +4379,7 @@ pub fn undo_move(game: Game) -> Game {
 
               let new_board = case
                 board.remove_piece_at_position(
-                  new_game_state.board,
+                  game.board,
                   rook_castling_target_square,
                 )
               {
@@ -4543,7 +4389,7 @@ pub fn undo_move(game: Game) -> Game {
                     "Undoing Castle Move: Could not remove piece at position",
                   )
               }
-              let new_game_state = Game(..new_game_state, board: new_board)
+              let new_game_state = Game(..game, board: new_board)
 
               let assert Some(new_board) =
                 board.remove_piece_at_position(new_game_state.board, to)
@@ -4560,6 +4406,22 @@ pub fn undo_move(game: Game) -> Game {
                   position.Position(file: A, rank: Eight)
                 _ -> panic("Undoing Castle Move: Invalid castle move")
               }
+
+              let new_turn = {
+                case new_game_state.turn {
+                  White -> Black
+                  Black -> White
+                }
+              }
+              let new_game_state =
+                Game(
+                  ..new_game_state,
+                  board: board.set_piece_at_position(
+                    new_game_state.board,
+                    from,
+                    piece.Piece(color: new_turn, kind: King),
+                  ),
+                )
 
               let new_game_state =
                 Game(
@@ -4623,11 +4485,13 @@ pub fn undo_move(game: Game) -> Game {
                 [] -> None
                 [move] | [move, ..] -> {
                   case move {
-                    move.Normal(
-                        from: position.Position(file: _, rank: Two),
-                        to: position.Position(file: file, rank: Four),
-                        captured: None,
-                        promotion: None,
+                    move.MoveWithCapture(
+                        captured_piece: _captured_piece,
+                        move: move.Normal(
+                          from: position.Position(file: _, rank: Two),
+                          to: position.Position(file: file, rank: Four),
+                          promotion: None,
+                        ),
                       )
                       if game.turn == White
                     -> {
@@ -4650,11 +4514,13 @@ pub fn undo_move(game: Game) -> Game {
                         _ -> None
                       }
                     }
-                    move.Normal(
-                        from: position.Position(file: _, rank: Seven),
-                        to: position.Position(file: file, rank: Five),
-                        captured: None,
-                        promotion: None,
+                    move.MoveWithCapture(
+                        captured_piece: _captured_piece,
+                        move: move.Normal(
+                          from: position.Position(file: _, rank: Seven),
+                          to: position.Position(file: file, rank: Five),
+                          promotion: None,
+                        ),
                       ) if game.turn == Black -> {
                       let moving_piece = case
                         board.get_piece_at_position(
@@ -4716,7 +4582,10 @@ pub fn undo_move(game: Game) -> Game {
               new_game_state
             }
 
-            move.EnPassant(from: from, to: to) -> {
+            move.MoveWithCapture(
+                captured_piece: _captured_piece,
+                move: move.EnPassant(from: from, to: to),
+              ) -> {
               let assert Some(new_board) =
                 board.remove_piece_at_position(game.board, to)
               let new_game_state = Game(..game, board: new_board)

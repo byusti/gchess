@@ -1,14 +1,14 @@
-import gleam/list
 import game_server.{disable_status, new_game_from_fen, new_server}
-import gleam/io
-import gleam/int
 import gleam/erlang.{Second, system_time}
+import gleam/int
+import gleam/io
+import gleam/list
 
 pub fn main() {
   let server = new_server()
   new_game_from_fen(
     server,
-    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
   )
   disable_status(server)
   let start = system_time(Second)

@@ -17,7 +17,7 @@ all_legal_moves(server)
 |> list.map(move.to_string)
 |> list.each(io.println)
 
-apply_move_uci_string(server, "e2e4")
+let assert Ok(_) = apply_move_uci_string(server, "e2e4")
 
 print_board(server)
 ```

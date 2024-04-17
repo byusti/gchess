@@ -8,18 +8,18 @@ import status.{type Status}
 
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
-  ApplyMove(reply_with: Subject(Game), move: Move)
-  ApplyMoveUciString(reply_with: Subject(Game), move: String)
-  ApplyMoveSanString(reply_with: Subject(Game), move: String)
+  ApplyMove(reply_with: Subject(Result(Game, Nil)), move: Move)
+  ApplyMoveUciString(reply_with: Subject(Result(Game, Nil)), move: String)
+  ApplyMoveSanString(reply_with: Subject(Result(Game, Nil)), move: String)
   ApplyMoveRaw(reply_with: Subject(Game), move: Move)
-  UndoMove(reply_with: Subject(Game))
+  UndoMove(reply_with: Subject(Result(Game, Nil)))
   GetState(reply_with: Subject(Game))
   GetSideToMove(reply_with: Subject(Color))
   GetFen(reply_with: Subject(String))
   GetStatus(reply_with: Subject(Option(Status)))
   NewGame(reply_with: Subject(Game))
-  NewGameFromFen(reply_with: Subject(Game), fen: String)
-  DisableStatus(reply_with: Subject(Game))
+  NewGameFromFen(reply_with: Subject(Result(Game, Nil)), fen: String)
+  DisableStatus(reply_with: Subject(Result(Game, Nil)))
   Shutdown
   PrintBoard(reply_with: Subject(Nil))
 }
@@ -37,7 +37,10 @@ pub fn apply_move(game_actor: Subject(Message), move: Move) {
   process.call(game_actor, ApplyMove(_, move), 1000)
 }
 
-pub fn apply_move_uci_string(game_actor: Subject(Message), move_uci: String) {
+pub fn apply_move_uci_string(
+  game_actor: Subject(Message),
+  move_uci: String,
+) -> Result(Game, _) {
   process.call(game_actor, ApplyMoveUciString(_, move_uci), 1000)
 }
 
@@ -110,13 +113,13 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
       actor.continue(new_game)
     }
     NewGameFromFen(client, fen) -> {
-      let new_game = game.from_fen_string(fen)
-      process.send(client, new_game)
+      let assert Ok(new_game) = game.from_fen_string(fen)
+      process.send(client, Ok(new_game))
       actor.continue(new_game)
     }
     DisableStatus(client) -> {
       let new_game = game.disable_status(game)
-      process.send(client, new_game)
+      process.send(client, Ok(new_game))
       actor.continue(new_game)
     }
     Shutdown -> actor.Stop(process.Normal)
@@ -132,28 +135,36 @@ fn handle_all_legal_moves(
   actor.continue(game)
 }
 
-fn handle_undo_move(game: Game, client: Subject(Game)) {
-  let new_game_state = game.undo_move(game)
+fn handle_undo_move(game: Game, client: Subject(Result(Game, _))) {
+  let assert Ok(new_game_state) = game.undo_move(game)
 
-  process.send(client, new_game_state)
+  process.send(client, Ok(new_game_state))
   actor.continue(new_game_state)
 }
 
-fn handle_apply_move_san_string(game: Game, client: Subject(Game), move: String) {
+fn handle_apply_move_san_string(
+  game: Game,
+  client: Subject(Result(Game, _)),
+  move: String,
+) {
   let assert Ok(new_game_state) = game.apply_move_san_string(game, move)
-  process.send(client, new_game_state)
+  process.send(client, Ok(new_game_state))
   actor.continue(new_game_state)
 }
 
-fn handle_apply_move_uci(game: Game, client: Subject(Game), move: String) {
-  let new_game_state = game.apply_move_uci(game, move)
-  process.send(client, new_game_state)
+fn handle_apply_move_uci(
+  game: Game,
+  client: Subject(Result(Game, _)),
+  move: String,
+) {
+  let assert Ok(new_game_state) = game.apply_move_uci(game, move)
+  process.send(client, Ok(new_game_state))
   actor.continue(new_game_state)
 }
 
-fn handle_apply_move(game: Game, client: Subject(Game), move: Move) {
-  let new_game_state = game.apply_move(game, move)
-  process.send(client, new_game_state)
+fn handle_apply_move(game: Game, client: Subject(Result(Game, _)), move: Move) {
+  let assert Ok(new_game_state) = game.apply_move(game, move)
+  process.send(client, Ok(new_game_state))
   actor.continue(new_game_state)
 }
 

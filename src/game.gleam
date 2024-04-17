@@ -307,7 +307,7 @@ pub fn new_game() -> Game {
   )
 }
 
-pub fn from_fen_string(fen_string: String) -> Game {
+pub fn from_fen_string(fen_string: String) -> Result(Game, _) {
   let fen = fen.from_string(fen_string)
 
   let status =
@@ -345,7 +345,7 @@ pub fn from_fen_string(fen_string: String) -> Game {
     False -> No(2)
   }
 
-  Game(
+  Ok(Game(
     board: fen.board,
     turn: fen.turn,
     history: [],
@@ -356,7 +356,7 @@ pub fn from_fen_string(fen_string: String) -> Game {
     black_kingside_castle: black_kingside_castle,
     black_queenside_castle: black_queenside_castle,
     en_passant: fen.en_passant,
-  )
+  ))
 }
 
 pub fn load_pgn(pgn: String) -> Result(Game, String) {
@@ -3595,7 +3595,7 @@ pub fn disable_status(game: Game) -> Game {
   Game(..game, status: None)
 }
 
-pub fn apply_move(game: Game, move: Move) -> Game {
+pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
   case game.status {
     None -> {
       let legal_moves = {
@@ -3613,7 +3613,7 @@ pub fn apply_move(game: Game, move: Move) -> Game {
         }
       }
 
-      new_game_state
+      Ok(new_game_state)
     }
     Some(InProgress(_, _)) -> {
       let legal_moves = {
@@ -3792,10 +3792,10 @@ pub fn apply_move(game: Game, move: Move) -> Game {
         _ -> panic
       }
 
-      new_game_state
+      Ok(new_game_state)
     }
     Some(_) -> {
-      game
+      Ok(game)
     }
   }
 }
@@ -3865,7 +3865,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
           case move {
             Ok(move) -> {
               let new_game_state = apply_move(game, move)
-              Ok(new_game_state)
+              new_game_state
             }
             Error(error) -> Error(error)
           }
@@ -3919,7 +3919,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
               }
             }
           }
-          Ok(apply_move(game, move))
+          apply_move(game, move)
         }
         move_san.EnPassant(from: from, to: to, maybe_check_or_checkmate: _) -> {
           let ep_moves =
@@ -3934,17 +3934,17 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
 
           case ep_moves {
             [] -> Error("Illegal move")
-            [move] -> Ok(apply_move(game, move))
+            [move] -> apply_move(game, move)
             [move_1, move_2] -> {
               case from {
                 Some(move_san.PositionSan(file: Some(file), rank: _))
                   if file == move_1.from.file
                 -> {
-                  Ok(apply_move(game, move_1))
+                  apply_move(game, move_1)
                 }
                 Some(move_san.PositionSan(file: Some(file), rank: _)) if file
                   == move_2.from.file -> {
-                  Ok(apply_move(game, move_2))
+                  apply_move(game, move_2)
                 }
                 _ -> Error("Illegal move")
               }
@@ -3958,7 +3958,7 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
   }
 }
 
-pub fn apply_move_uci(game: Game, move: String) -> Game {
+pub fn apply_move_uci(game: Game, move: String) -> Result(Game, _) {
   case game.status {
     Some(InProgress(_, _)) | None ->
       case length(move) {
@@ -4124,16 +4124,16 @@ pub fn apply_move_uci(game: Game, move: String) -> Game {
         }
         _ -> panic("Invalid move")
       }
-    Some(_) -> game
+    Some(_) -> Ok(game)
   }
 }
 
-pub fn undo_move(game: Game) -> Game {
+pub fn undo_move(game: Game) -> Result(Game, _) {
   case game.status {
     Some(InProgress(_, _)) | None -> {
       case game.history {
         [] -> {
-          game
+          Ok(game)
         }
         [move, ..rest] -> {
           case move {
@@ -4359,7 +4359,7 @@ pub fn undo_move(game: Game) -> Game {
                   en_passant: new_en_passant,
                 )
 
-              new_game_state
+              Ok(new_game_state)
             }
             move.MoveWithCapture(
                 captured_piece: _captured_piece,
@@ -4579,7 +4579,7 @@ pub fn undo_move(game: Game) -> Game {
                   en_passant: new_en_passant,
                 )
 
-              new_game_state
+              Ok(new_game_state)
             }
 
             move.MoveWithCapture(
@@ -4721,14 +4721,14 @@ pub fn undo_move(game: Game) -> Game {
                   en_passant: Some(new_en_passant),
                 )
 
-              new_game_state
+              Ok(new_game_state)
             }
           }
         }
       }
     }
     Some(_) -> {
-      game
+      Ok(game)
     }
   }
 }

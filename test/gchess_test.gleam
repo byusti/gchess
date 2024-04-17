@@ -1,14 +1,14 @@
+import game
+import game_server.{disable_status, new_game_from_fen, new_server}
+import gleam/list
+import gleam/option.{None, Some}
 import gleeunit
 import gleeunit/should
-import game_server.{disable_status, new_game_from_fen, new_server}
-import game
+import move_san
 import pgn
 import piece
-import move_san
 import position
-import gleam/option.{None, Some}
 import status.{Draw, InProgress, ThreefoldRepetition}
-import gleam/list
 
 pub fn main() {
   gleeunit.main()
@@ -18,33 +18,36 @@ pub fn main() {
 // If run these tests in main via 'gleam run' instead of 'gleam test' they work fine.
 pub fn perft_1_test() {
   let server = new_server()
-  new_game_from_fen(
-    server,
-    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-  )
-  disable_status(server)
+  let assert Ok(_) =
+    new_game_from_fen(
+      server,
+      "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+    )
+  let assert Ok(_) = disable_status(server)
   perft(server, 2)
   |> should.equal(2039)
 }
 
 pub fn perft_2_test() {
   let server = new_server()
-  new_game_from_fen(
-    server,
-    "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
-  )
-  disable_status(server)
+  let assert Ok(_) =
+    new_game_from_fen(
+      server,
+      "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
+    )
+  let assert Ok(_) = disable_status(server)
   perft(server, 2)
   |> should.equal(2039)
 }
 
 pub fn perft_3_test() {
   let server = new_server()
-  new_game_from_fen(
-    server,
-    "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-  )
-  disable_status(server)
+  let assert Ok(_) =
+    new_game_from_fen(
+      server,
+      "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
+    )
+  let assert Ok(_) = disable_status(server)
   perft(server, 2)
   |> should.equal(264)
 }
@@ -81,7 +84,7 @@ pub fn perft(game_server_subject, depth) {
           game_server.apply_move_raw(game_server_subject, move)
           let nodes = nodes + perft(game_server_subject, depth - 1)
 
-          game_server.undo_move(game_server_subject)
+          let assert Ok(_) = game_server.undo_move(game_server_subject)
           nodes
         })
       nodes
@@ -173,13 +176,13 @@ pub fn split_movetext_test() {
 
 pub fn threefold_repetition_rule_test() {
   let server = new_server()
-  game_server.apply_move_uci_string(server, "e2e4")
-  game_server.apply_move_uci_string(server, "e7e5")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e2e4")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e7e5")
 
-  game_server.apply_move_uci_string(server, "f1e2")
-  game_server.apply_move_uci_string(server, "f8e7")
-  game_server.apply_move_uci_string(server, "e2f1")
-  game_server.apply_move_uci_string(server, "e7f8")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "f1e2")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "f8e7")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e2f1")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e7f8")
   game_server.print_board(server)
   case game_server.get_status(server) {
     Some(InProgress(_, _)) -> True
@@ -187,10 +190,10 @@ pub fn threefold_repetition_rule_test() {
   }
   |> should.equal(True)
 
-  game_server.apply_move_uci_string(server, "f1e2")
-  game_server.apply_move_uci_string(server, "f8e7")
-  game_server.apply_move_uci_string(server, "e2f1")
-  game_server.apply_move_uci_string(server, "e7f8")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "f1e2")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "f8e7")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e2f1")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e7f8")
   game_server.print_board(server)
   case game_server.get_status(server) {
     Some(InProgress(_, _)) -> True
@@ -198,10 +201,10 @@ pub fn threefold_repetition_rule_test() {
   }
   |> should.equal(True)
 
-  game_server.apply_move_uci_string(server, "f1e2")
-  game_server.apply_move_uci_string(server, "f8e7")
-  game_server.apply_move_uci_string(server, "e2f1")
-  game_server.apply_move_uci_string(server, "e7f8")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "f1e2")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "f8e7")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e2f1")
+  let assert Ok(_) = game_server.apply_move_uci_string(server, "e7f8")
   game_server.print_board(server)
   game_server.get_status(server)
   |> should.equal(Some(Draw(ThreefoldRepetition)))

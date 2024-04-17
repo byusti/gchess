@@ -390,7 +390,6 @@ pub fn load_pgn(pgn: String) -> Result(Game, String) {
   })
 }
 
-// TODO: This function needs to be written to not be so slow
 fn is_move_legal(game: Game, move: Move) -> Bool {
   let new_game_state = apply_move_raw(game, move)
   case move {

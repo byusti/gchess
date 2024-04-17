@@ -6,7 +6,7 @@ A chess library for Gleam.
 ```
 let server = new_server()
 
-new_game_from_fen(
+let assert Ok(_) = new_game_from_fen(
     server,
     "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
   )

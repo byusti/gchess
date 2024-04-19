@@ -3987,68 +3987,63 @@ pub fn apply_move_uci(game: Game, move: String) -> Result(Game, _) {
                 Ok("8") -> Ok(Eight)
                 _ -> Error("Could not parse origin rank")
               }
-              let assert Ok(move_chars) = list.rest(move_chars)
-              let to_file = case list.first(move_chars) {
-                Ok("a") -> Ok(A)
-                Ok("b") -> Ok(B)
-                Ok("c") -> Ok(C)
-                Ok("d") -> Ok(D)
-                Ok("e") -> Ok(E)
-                Ok("f") -> Ok(F)
-                Ok("g") -> Ok(G)
-                Ok("h") -> Ok(H)
-                _ -> Error("Could not parse destination file")
-              }
-              let assert Ok(move_chars) = list.rest(move_chars)
-              let to_rank = case list.first(move_chars) {
-                Ok("1") -> Ok(One)
-                Ok("2") -> Ok(Two)
-                Ok("3") -> Ok(Three)
-                Ok("4") -> Ok(Four)
-                Ok("5") -> Ok(Five)
-                Ok("6") -> Ok(Six)
-                Ok("7") -> Ok(Seven)
-                Ok("8") -> Ok(Eight)
-                _ -> Error("Could not parse destination rank")
-              }
-
-              case from_file, from_rank, to_file, to_rank {
-                Ok(from_file), Ok(from_rank), Ok(to_file), Ok(to_rank) -> {
-                  let promo = case string.slice(move, 4, 1) {
-                    "q" -> Some(Queen)
-                    "r" -> Some(Rook)
-                    "b" -> Some(Bishop)
-                    "n" -> Some(Knight)
-                    _ -> None
+              case list.rest(move_chars) {
+                Ok(move_chars) -> {
+                  let to_file = case list.first(move_chars) {
+                    Ok("a") -> Ok(A)
+                    Ok("b") -> Ok(B)
+                    Ok("c") -> Ok(C)
+                    Ok("d") -> Ok(D)
+                    Ok("e") -> Ok(E)
+                    Ok("f") -> Ok(F)
+                    Ok("g") -> Ok(G)
+                    Ok("h") -> Ok(H)
+                    _ -> Error("Could not parse destination file")
                   }
-                  let assert Some(piece) =
-                    piece_at_position(
-                      game,
-                      position.Position(file: from_file, rank: from_rank),
-                    )
+                  case list.rest(move_chars) {
+                    Ok(move_chars) -> {
+                      let to_rank = case list.first(move_chars) {
+                        Ok("1") -> Ok(One)
+                        Ok("2") -> Ok(Two)
+                        Ok("3") -> Ok(Three)
+                        Ok("4") -> Ok(Four)
+                        Ok("5") -> Ok(Five)
+                        Ok("6") -> Ok(Six)
+                        Ok("7") -> Ok(Seven)
+                        Ok("8") -> Ok(Eight)
+                        _ -> Error("Could not parse destination rank")
+                      }
 
-                  let maybe_enemy_piece =
-                    piece_at_position(
-                      game,
-                      position.Position(file: to_file, rank: to_rank),
-                    )
+                      case from_file, from_rank, to_file, to_rank {
+                        Ok(from_file), Ok(from_rank), Ok(to_file), Ok(to_rank) -> {
+                          let promo = case string.slice(move, 4, 1) {
+                            "q" -> Some(Queen)
+                            "r" -> Some(Rook)
+                            "b" -> Some(Bishop)
+                            "n" -> Some(Knight)
+                            _ -> None
+                          }
+                          use piece <- result.try(case
+                            piece_at_position(
+                              game,
+                              position.Position(
+                                file: from_file,
+                                rank: from_rank,
+                              ),
+                            )
+                          {
+                            Some(piece) -> Ok(piece)
+                            None -> Error("No piece at origin")
+                          })
 
-                  let move = case promo {
-                    Some(promo) -> {
-                      move.Normal(
-                        from: position.Position(
-                          file: from_file,
-                          rank: from_rank,
-                        ),
-                        to: position.Position(file: to_file, rank: to_rank),
-                        promotion: Some(piece.Piece(game.turn, promo)),
-                      )
-                    }
-                    None -> {
-                      case piece {
-                        piece.Piece(color: _, kind: Pawn) -> {
-                          case from_file == to_file {
-                            True ->
+                          let maybe_enemy_piece =
+                            piece_at_position(
+                              game,
+                              position.Position(file: to_file, rank: to_rank),
+                            )
+
+                          let move = case promo {
+                            Some(promo) -> {
                               move.Normal(
                                 from: position.Position(
                                   file: from_file,
@@ -4058,11 +4053,96 @@ pub fn apply_move_uci(game: Game, move: String) -> Result(Game, _) {
                                   file: to_file,
                                   rank: to_rank,
                                 ),
-                                promotion: None,
+                                promotion: Some(piece.Piece(game.turn, promo)),
                               )
-                            False -> {
-                              case maybe_enemy_piece {
-                                Some(_) ->
+                            }
+                            None -> {
+                              case piece {
+                                piece.Piece(color: _, kind: Pawn) -> {
+                                  case from_file == to_file {
+                                    True ->
+                                      move.Normal(
+                                        from: position.Position(
+                                          file: from_file,
+                                          rank: from_rank,
+                                        ),
+                                        to: position.Position(
+                                          file: to_file,
+                                          rank: to_rank,
+                                        ),
+                                        promotion: None,
+                                      )
+                                    False -> {
+                                      case maybe_enemy_piece {
+                                        Some(_) ->
+                                          move.Normal(
+                                            from: position.Position(
+                                              file: from_file,
+                                              rank: from_rank,
+                                            ),
+                                            to: position.Position(
+                                              file: to_file,
+                                              rank: to_rank,
+                                            ),
+                                            promotion: None,
+                                          )
+                                        None ->
+                                          move.EnPassant(
+                                            from: position.Position(
+                                              file: from_file,
+                                              rank: from_rank,
+                                            ),
+                                            to: position.Position(
+                                              file: to_file,
+                                              rank: to_rank,
+                                            ),
+                                          )
+                                      }
+                                    }
+                                  }
+                                }
+                                piece.Piece(color: _, kind: King) -> {
+                                  case
+                                    position.file_to_int(from_file)
+                                    - position.file_to_int(to_file)
+                                  {
+                                    2 ->
+                                      move.Castle(
+                                        from: position.Position(
+                                          file: position.E,
+                                          rank: from_rank,
+                                        ),
+                                        to: position.Position(
+                                          file: to_file,
+                                          rank: to_rank,
+                                        ),
+                                      )
+                                    -2 ->
+                                      move.Castle(
+                                        from: position.Position(
+                                          file: position.E,
+                                          rank: from_rank,
+                                        ),
+                                        to: position.Position(
+                                          file: to_file,
+                                          rank: to_rank,
+                                        ),
+                                      )
+                                    _ ->
+                                      move.Normal(
+                                        from: position.Position(
+                                          file: from_file,
+                                          rank: from_rank,
+                                        ),
+                                        to: position.Position(
+                                          file: to_file,
+                                          rank: to_rank,
+                                        ),
+                                        promotion: None,
+                                      )
+                                  }
+                                }
+                                _ -> {
                                   move.Normal(
                                     from: position.Position(
                                       file: from_file,
@@ -4074,90 +4154,31 @@ pub fn apply_move_uci(game: Game, move: String) -> Result(Game, _) {
                                     ),
                                     promotion: None,
                                   )
-                                None ->
-                                  move.EnPassant(
-                                    from: position.Position(
-                                      file: from_file,
-                                      rank: from_rank,
-                                    ),
-                                    to: position.Position(
-                                      file: to_file,
-                                      rank: to_rank,
-                                    ),
-                                  )
+                                }
                               }
                             }
                           }
+
+                          let new_game_state = apply_move(game, move)
+                          new_game_state
                         }
-                        piece.Piece(color: _, kind: King) -> {
-                          case
-                            position.file_to_int(from_file)
-                            - position.file_to_int(to_file)
-                          {
-                            2 ->
-                              move.Castle(
-                                from: position.Position(
-                                  file: position.E,
-                                  rank: from_rank,
-                                ),
-                                to: position.Position(
-                                  file: to_file,
-                                  rank: to_rank,
-                                ),
-                              )
-                            -2 ->
-                              move.Castle(
-                                from: position.Position(
-                                  file: position.E,
-                                  rank: from_rank,
-                                ),
-                                to: position.Position(
-                                  file: to_file,
-                                  rank: to_rank,
-                                ),
-                              )
-                            _ ->
-                              move.Normal(
-                                from: position.Position(
-                                  file: from_file,
-                                  rank: from_rank,
-                                ),
-                                to: position.Position(
-                                  file: to_file,
-                                  rank: to_rank,
-                                ),
-                                promotion: None,
-                              )
-                          }
-                        }
-                        _ -> {
-                          move.Normal(
-                            from: position.Position(
-                              file: from_file,
-                              rank: from_rank,
-                            ),
-                            to: position.Position(file: to_file, rank: to_rank),
-                            promotion: None,
-                          )
+                        from_file_result,
+                          from_rank_result,
+                          to_file_result,
+                          to_rank_result -> {
+                          let #(_, file_errors) =
+                            result.partition([from_file_result, to_file_result])
+                          let #(_, rank_errors) =
+                            result.partition([from_rank_result, to_rank_result])
+                          let errors = list.concat([file_errors, rank_errors])
+                          Error(string.join(errors, ", "))
                         }
                       }
                     }
+                    _ -> Error("Invalid move")
                   }
-
-                  let new_game_state = apply_move(game, move)
-                  new_game_state
                 }
-                from_file_result,
-                  from_rank_result,
-                  to_file_result,
-                  to_rank_result -> {
-                  let #(_, file_errors) =
-                    result.partition([from_file_result, to_file_result])
-                  let #(_, rank_errors) =
-                    result.partition([from_rank_result, to_rank_result])
-                  let errors = list.concat([file_errors, rank_errors])
-                  Error(string.join(errors, ", "))
-                }
+                Error(_) -> Error("Invalid move")
               }
             }
             Error(_) -> Error("Invalid move")

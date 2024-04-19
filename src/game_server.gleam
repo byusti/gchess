@@ -11,7 +11,7 @@ pub type Message {
   ApplyMove(reply_with: Subject(Result(Game, Nil)), move: Move)
   ApplyMoveUciString(reply_with: Subject(Result(Game, Nil)), move: String)
   ApplyMoveSanString(reply_with: Subject(Result(Game, Nil)), move: String)
-  ApplyMoveRaw(reply_with: Subject(Game), move: Move)
+  ApplyMoveRaw(reply_with: Subject(Result(Game, String)), move: Move)
   UndoMove(reply_with: Subject(Result(Game, Nil)))
   GetState(reply_with: Subject(Game))
   GetSideToMove(reply_with: Subject(Color))
@@ -168,10 +168,17 @@ fn handle_apply_move(game: Game, client: Subject(Result(Game, _)), move: Move) {
   actor.continue(new_game_state)
 }
 
-fn handle_apply_move_raw(game: Game, client: Subject(Game), move: Move) {
+fn handle_apply_move_raw(
+  game: Game,
+  client: Subject(Result(Game, _)),
+  move: Move,
+) {
   let new_game_state = game.apply_move_raw(game, move)
   process.send(client, new_game_state)
-  actor.continue(new_game_state)
+  case new_game_state {
+    Ok(new_game_state) -> actor.continue(new_game_state)
+    Error(_) -> actor.continue(game)
+  }
 }
 
 fn handle_get_fen(game: Game, client: Subject(String)) {

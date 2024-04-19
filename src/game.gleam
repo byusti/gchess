@@ -390,53 +390,58 @@ pub fn load_pgn(pgn: String) -> Result(Game, String) {
   })
 }
 
-fn is_move_legal(game: Game, move: Move) -> Bool {
-  let new_game_state = apply_move_raw(game, move)
+fn is_move_legal(game: Game, move: Move) -> Result(Bool, _) {
+  use new_game_state <- result.try(apply_move_raw(game, move))
   case move {
     move.Normal(from: _, to: _, promotion: _) | move.EnPassant(from: _, to: _) -> {
-      !is_king_in_check(new_game_state, game.turn)
+      Ok(!is_king_in_check(new_game_state, game.turn))
     }
     move.Castle(from: _from, to: to) -> {
       //First determine if the king is in check,
       //If so then the king cannot castle
       case is_king_in_check(game, game.turn) {
-        True -> False
+        True -> Ok(False)
         False -> {
           case is_king_in_check(new_game_state, game.turn) {
-            True -> False
+            True -> Ok(False)
             False -> {
               //Then determine if the king is attacked while traversing the castling squares
               //Example: If the king is on E1 and castling to G1, then we need to check if
               //the king is attacked while traversing F1 and G1
               let king_castling_target_square = case to {
                 position.Position(file: G, rank: One) ->
-                  position.Position(file: F, rank: One)
+                  Ok(position.Position(file: F, rank: One))
                 position.Position(file: G, rank: Eight) ->
-                  position.Position(file: F, rank: Eight)
+                  Ok(position.Position(file: F, rank: Eight))
                 position.Position(file: C, rank: One) ->
-                  position.Position(file: D, rank: One)
+                  Ok(position.Position(file: D, rank: One))
                 position.Position(file: C, rank: Eight) ->
-                  position.Position(file: D, rank: Eight)
-                _ -> panic("Invalid castle move")
+                  Ok(position.Position(file: D, rank: Eight))
+                _ -> Error("Invalid castle move")
               }
 
-              let new_game_state =
-                Game(
-                  ..new_game_state,
-                  board: board.set_piece_at_position(
-                    new_game_state.board,
-                    king_castling_target_square,
-                    piece.Piece(color: game.turn, kind: King),
-                  ),
-                )
+              case king_castling_target_square {
+                Error(_) -> Ok(False)
+                Ok(king_castling_target_square) -> {
+                  let new_game_state =
+                    Game(
+                      ..new_game_state,
+                      board: board.set_piece_at_position(
+                        new_game_state.board,
+                        king_castling_target_square,
+                        piece.Piece(color: game.turn, kind: King),
+                      ),
+                    )
 
-              let assert Some(new_board) =
-                board.remove_piece_at_position(new_game_state.board, to)
-              let new_game_state = Game(..new_game_state, board: new_board)
+                  let assert Some(new_board) =
+                    board.remove_piece_at_position(new_game_state.board, to)
+                  let new_game_state = Game(..new_game_state, board: new_board)
 
-              case is_king_in_check(new_game_state, game.turn) {
-                True -> False
-                False -> True
+                  case is_king_in_check(new_game_state, game.turn) {
+                    True -> Ok(False)
+                    False -> Ok(True)
+                  }
+                }
               }
             }
           }
@@ -450,7 +455,7 @@ fn is_move_legal(game: Game, move: Move) -> Bool {
 // the move is possible, it just attempts to apply a move to the board.
 // This function is used for check detection and speeding up move application
 // during tests. 
-pub fn apply_move_raw(game: Game, move: Move) -> Game {
+pub fn apply_move_raw(game: Game, move: Move) -> Result(Game, _) {
   case move {
     move.Normal(from: from, to: to, promotion: promo_piece) -> {
       let assert Some(moving_piece) =
@@ -601,7 +606,7 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           black_queenside_castle: new_black_queen_castle,
           en_passant: new_en_passant,
         )
-      new_game_state
+      Ok(new_game_state)
     }
     move.Castle(from: from, to: to) -> {
       let assert Some(new_board) =
@@ -616,95 +621,98 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
             piece.Piece(color: new_game_state.turn, kind: King),
           ),
         )
-      let rook_castling_target_square = case to {
-        position.Position(file: G, rank: One) ->
-          position.Position(file: F, rank: One)
-        position.Position(file: G, rank: Eight) ->
-          position.Position(file: F, rank: Eight)
-        position.Position(file: C, rank: One) ->
-          position.Position(file: D, rank: One)
-        position.Position(file: C, rank: Eight) ->
-          position.Position(file: D, rank: Eight)
-        _ -> panic("Invalid castle move")
-      }
+      result.try(
+        case to {
+          position.Position(file: G, rank: One) ->
+            Ok(position.Position(file: F, rank: One))
+          position.Position(file: G, rank: Eight) ->
+            Ok(position.Position(file: F, rank: Eight))
+          position.Position(file: C, rank: One) ->
+            Ok(position.Position(file: D, rank: One))
+          position.Position(file: C, rank: Eight) ->
+            Ok(position.Position(file: D, rank: Eight))
+          _ -> Error("Invalid castle move")
+        },
+        fn(rook_castling_target_square) {
+          let new_turn = {
+            case game.turn {
+              White -> Black
+              Black -> White
+            }
+          }
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              board: board.set_piece_at_position(
+                new_game_state.board,
+                rook_castling_target_square,
+                piece.Piece(color: game.turn, kind: Rook),
+              ),
+            )
 
-      let new_turn = {
-        case game.turn {
-          White -> Black
-          Black -> White
-        }
-      }
-      let new_game_state =
-        Game(
-          ..new_game_state,
-          board: board.set_piece_at_position(
-            new_game_state.board,
-            rook_castling_target_square,
-            piece.Piece(color: game.turn, kind: Rook),
-          ),
-        )
+          use rook_castling_origin_square <- result.try(case to {
+            position.Position(file: G, rank: One) ->
+              Ok(position.Position(file: H, rank: One))
+            position.Position(file: G, rank: Eight) ->
+              Ok(position.Position(file: H, rank: Eight))
+            position.Position(file: C, rank: One) ->
+              Ok(position.Position(file: A, rank: One))
+            position.Position(file: C, rank: Eight) ->
+              Ok(position.Position(file: A, rank: Eight))
+            _ -> Error("Invalid castle move")
+          })
 
-      let rook_castling_origin_square = case to {
-        position.Position(file: G, rank: One) ->
-          position.Position(file: H, rank: One)
-        position.Position(file: G, rank: Eight) ->
-          position.Position(file: H, rank: Eight)
-        position.Position(file: C, rank: One) ->
-          position.Position(file: A, rank: One)
-        position.Position(file: C, rank: Eight) ->
-          position.Position(file: A, rank: Eight)
-        _ -> panic("Invalid castle move")
-      }
+          let assert Some(new_board) =
+            board.remove_piece_at_position(
+              new_game_state.board,
+              rook_castling_origin_square,
+            )
 
-      let assert Some(new_board) =
-        board.remove_piece_at_position(
-          new_game_state.board,
-          rook_castling_origin_square,
-        )
+          let new_game_state = Game(..new_game_state, board: new_board)
 
-      let new_game_state = Game(..new_game_state, board: new_board)
+          let new_ply = new_game_state.ply + 1
 
-      let new_ply = new_game_state.ply + 1
+          let assert [
+            new_white_king_castle,
+            new_white_queen_castle,
+            new_black_king_castle,
+            new_black_queen_castle,
+          ] = case game.turn {
+            White -> [
+              No(new_ply),
+              No(new_ply),
+              game.black_kingside_castle,
+              game.black_queenside_castle,
+            ]
+            Black -> [
+              game.white_kingside_castle,
+              game.white_queenside_castle,
+              No(new_ply),
+              No(new_ply),
+            ]
+          }
 
-      let assert [
-        new_white_king_castle,
-        new_white_queen_castle,
-        new_black_king_castle,
-        new_black_queen_castle,
-      ] = case game.turn {
-        White -> [
-          No(new_ply),
-          No(new_ply),
-          game.black_kingside_castle,
-          game.black_queenside_castle,
-        ]
-        Black -> [
-          game.white_kingside_castle,
-          game.white_queenside_castle,
-          No(new_ply),
-          No(new_ply),
-        ]
-      }
+          let move_with_capture = move.MoveWithCapture(move, None)
 
-      let move_with_capture = move.MoveWithCapture(move, None)
+          let new_history = [move_with_capture, ..game.history]
 
-      let new_history = [move_with_capture, ..game.history]
+          let new_en_passant = None
 
-      let new_en_passant = None
-
-      let new_game_state =
-        Game(
-          ..new_game_state,
-          turn: new_turn,
-          history: new_history,
-          ply: new_ply,
-          en_passant: new_en_passant,
-          white_kingside_castle: new_white_king_castle,
-          white_queenside_castle: new_white_queen_castle,
-          black_kingside_castle: new_black_king_castle,
-          black_queenside_castle: new_black_queen_castle,
-        )
-      new_game_state
+          let new_game_state =
+            Game(
+              ..new_game_state,
+              turn: new_turn,
+              history: new_history,
+              ply: new_ply,
+              en_passant: new_en_passant,
+              white_kingside_castle: new_white_king_castle,
+              white_queenside_castle: new_white_queen_castle,
+              black_kingside_castle: new_black_king_castle,
+              black_queenside_castle: new_black_queen_castle,
+            )
+          Ok(new_game_state)
+        },
+      )
     }
     move.EnPassant(from: from, to: to) -> {
       let new_game_state =
@@ -721,53 +729,53 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
         board.remove_piece_at_position(new_game_state.board, from)
       let new_game_state = Game(..new_game_state, board: new_board)
 
-      let captured_pawn_square = case to {
+      use captured_pawn_square <- result.try(case to {
         position.Position(file: A, rank: Three) ->
-          position.Position(file: A, rank: Four)
+          Ok(position.Position(file: A, rank: Four))
         position.Position(file: A, rank: Six) ->
-          position.Position(file: A, rank: Five)
+          Ok(position.Position(file: A, rank: Five))
         position.Position(file: B, rank: Three) ->
-          position.Position(file: B, rank: Four)
+          Ok(position.Position(file: B, rank: Four))
         position.Position(file: B, rank: Six) ->
-          position.Position(file: B, rank: Five)
+          Ok(position.Position(file: B, rank: Five))
         position.Position(file: C, rank: Three) ->
-          position.Position(file: C, rank: Four)
+          Ok(position.Position(file: C, rank: Four))
         position.Position(file: C, rank: Six) ->
-          position.Position(file: C, rank: Five)
+          Ok(position.Position(file: C, rank: Five))
         position.Position(file: D, rank: Three) ->
-          position.Position(file: D, rank: Four)
+          Ok(position.Position(file: D, rank: Four))
         position.Position(file: D, rank: Six) ->
-          position.Position(file: D, rank: Five)
+          Ok(position.Position(file: D, rank: Five))
         position.Position(file: E, rank: Three) ->
-          position.Position(file: E, rank: Four)
+          Ok(position.Position(file: E, rank: Four))
         position.Position(file: E, rank: Six) ->
-          position.Position(file: E, rank: Five)
+          Ok(position.Position(file: E, rank: Five))
         position.Position(file: F, rank: Three) ->
-          position.Position(file: F, rank: Four)
+          Ok(position.Position(file: F, rank: Four))
         position.Position(file: F, rank: Six) ->
-          position.Position(file: F, rank: Five)
+          Ok(position.Position(file: F, rank: Five))
         position.Position(file: G, rank: Three) ->
-          position.Position(file: G, rank: Four)
+          Ok(position.Position(file: G, rank: Four))
         position.Position(file: G, rank: Six) ->
-          position.Position(file: G, rank: Five)
+          Ok(position.Position(file: G, rank: Five))
         position.Position(file: H, rank: Three) ->
-          position.Position(file: H, rank: Four)
+          Ok(position.Position(file: H, rank: Four))
         position.Position(file: H, rank: Six) ->
-          position.Position(file: H, rank: Five)
-        _ -> panic("Invalid en passant move")
-      }
+          Ok(position.Position(file: H, rank: Five))
+        _ -> Error("Invalid en passant move")
+      })
 
-      let new_board = case
+      use new_board <- result.try(case
         board.remove_piece_at_position(
           new_game_state.board,
           captured_pawn_square,
         )
       {
-        Some(new_board) -> new_board
+        Some(new_board) -> Ok(new_board)
         None -> {
-          panic("Invalid en passant move")
+          Error("Invalid en passant move")
         }
-      }
+      })
 
       let new_ply = new_game_state.ply + 1
 
@@ -796,7 +804,7 @@ pub fn apply_move_raw(game: Game, move: Move) -> Game {
           ply: new_ply,
           en_passant: new_en_passant,
         )
-      new_game_state
+      Ok(new_game_state)
     }
   }
 }
@@ -3599,7 +3607,12 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
     None -> {
       let legal_moves = {
         generate_pseudo_legal_move_list(game, game.turn)
-        |> list.filter(fn(move) { is_move_legal(game, move) })
+        |> list.filter(fn(move) {
+          case is_move_legal(game, move) {
+            Ok(legality) -> legality
+            Error(_) -> False
+          }
+        })
       }
 
       let new_game_state = case list.contains(legal_moves, move) {
@@ -3608,27 +3621,32 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
           new_game_state
         }
         False -> {
-          game
+          Ok(game)
         }
       }
 
-      Ok(new_game_state)
+      new_game_state
     }
     Some(InProgress(_, _)) -> {
       let legal_moves = {
         generate_pseudo_legal_move_list(game, game.turn)
-        |> list.filter(fn(move) { is_move_legal(game, move) })
+        |> list.filter(fn(move) {
+          case is_move_legal(game, move) {
+            Ok(legality) -> legality
+            Error(_) -> False
+          }
+        })
       }
 
-      let new_game_state = case list.contains(legal_moves, move) {
+      use new_game_state <- result.try(case list.contains(legal_moves, move) {
         True -> {
           let new_game_state = apply_move_raw(game, move)
           new_game_state
         }
         False -> {
-          game
+          Ok(game)
         }
-      }
+      })
 
       let new_game_state = case
         [
@@ -4800,7 +4818,12 @@ pub fn all_legal_moves(game: Game) -> List(Move) {
     Some(InProgress(_, _)) | None -> {
       let legal_moves = {
         generate_pseudo_legal_move_list(game, game.turn)
-        |> list.filter(fn(move) { is_move_legal(game, move) })
+        |> list.filter(fn(move) {
+          case is_move_legal(game, move) {
+            Ok(legality) -> legality
+            Error(_) -> False
+          }
+        })
       }
       legal_moves
     }

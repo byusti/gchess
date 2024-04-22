@@ -3,6 +3,7 @@ import game.{type Game}
 import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option}
 import gleam/otp/actor
+import gleam/result
 import move.{type Move}
 import status.{type Status}
 
@@ -86,19 +87,45 @@ pub fn shutdown(game_actor: Subject(Message)) {
 
 fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
   case message {
-    AllLegalMoves(client) -> handle_all_legal_moves(game, client)
-    ApplyMove(client, move) -> handle_apply_move(game, client, move)
+    AllLegalMoves(client) ->
+      case handle_all_legal_moves(game, client) {
+        Ok(next) -> next
+        Error(_) -> actor.continue(game)
+      }
+    ApplyMove(client, move) ->
+      case handle_apply_move(game, client, move) {
+        Ok(next) -> next
+        Error(_) -> actor.continue(game)
+      }
     ApplyMoveUciString(client, move) ->
-      handle_apply_move_uci(game, client, move)
+      case handle_apply_move_uci(game, client, move) {
+        Ok(next) -> next
+        Error(_) -> actor.continue(game)
+      }
     ApplyMoveSanString(client, move) ->
-      handle_apply_move_san_string(game, client, move)
-    ApplyMoveRaw(client, move) -> handle_apply_move_raw(game, client, move)
-    UndoMove(client) -> handle_undo_move(game, client)
+      case handle_apply_move_san_string(game, client, move) {
+        Ok(next) -> next
+        Error(_) -> actor.continue(game)
+      }
+    ApplyMoveRaw(client, move) ->
+      case handle_apply_move_raw(game, client, move) {
+        Ok(next) -> next
+        Error(_) -> actor.continue(game)
+      }
+    UndoMove(client) ->
+      case handle_undo_move(game, client) {
+        Ok(next) -> next
+        Error(_) -> actor.continue(game)
+      }
     GetState(client) -> {
       process.send(client, game)
       actor.continue(game)
     }
-    GetFen(client) -> handle_get_fen(game, client)
+    GetFen(client) ->
+      case handle_get_fen(game, client) {
+        Ok(next) -> next
+        Error(_) -> actor.continue(game)
+      }
     GetStatus(client) -> {
       process.send(client, game.status)
       actor.continue(game)
@@ -130,60 +157,68 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
 fn handle_all_legal_moves(
   game: Game,
   client: Subject(List(Move)),
-) -> actor.Next(Message, Game) {
-  process.send(client, game.all_legal_moves(game))
-  actor.continue(game)
+) -> Result(actor.Next(Message, Game), _) {
+  use all_legal_moves <- result.try(game.all_legal_moves(game))
+  process.send(client, all_legal_moves)
+  Ok(actor.continue(game))
 }
 
-fn handle_undo_move(game: Game, client: Subject(Result(Game, _))) {
+fn handle_undo_move(
+  game: Game,
+  client: Subject(Result(Game, _)),
+) -> Result(actor.Next(Message, Game), _) {
   let assert Ok(new_game_state) = game.undo_move(game)
 
   process.send(client, Ok(new_game_state))
-  actor.continue(new_game_state)
+  Ok(actor.continue(new_game_state))
 }
 
 fn handle_apply_move_san_string(
   game: Game,
   client: Subject(Result(Game, _)),
   move: String,
-) {
+) -> Result(actor.Next(Message, Game), _) {
   let assert Ok(new_game_state) = game.apply_move_san_string(game, move)
   process.send(client, Ok(new_game_state))
-  actor.continue(new_game_state)
+  Ok(actor.continue(new_game_state))
 }
 
 fn handle_apply_move_uci(
   game: Game,
   client: Subject(Result(Game, _)),
   move: String,
-) {
+) -> Result(actor.Next(Message, Game), _) {
   let assert Ok(new_game_state) = game.apply_move_uci(game, move)
   process.send(client, Ok(new_game_state))
-  actor.continue(new_game_state)
+  Ok(actor.continue(new_game_state))
 }
 
-fn handle_apply_move(game: Game, client: Subject(Result(Game, _)), move: Move) {
+fn handle_apply_move(
+  game: Game,
+  client: Subject(Result(Game, _)),
+  move: Move,
+) -> Result(actor.Next(Message, Game), _) {
   let assert Ok(new_game_state) = game.apply_move(game, move)
   process.send(client, Ok(new_game_state))
-  actor.continue(new_game_state)
+  Ok(actor.continue(new_game_state))
 }
 
 fn handle_apply_move_raw(
   game: Game,
   client: Subject(Result(Game, _)),
   move: Move,
-) {
+) -> Result(actor.Next(Message, Game), _) {
   let new_game_state = game.apply_move_raw(game, move)
   process.send(client, new_game_state)
-  case new_game_state {
+  Ok(case new_game_state {
     Ok(new_game_state) -> actor.continue(new_game_state)
     Error(_) -> actor.continue(game)
-  }
+  })
 }
 
 fn handle_get_fen(game: Game, client: Subject(String)) {
   process.send(client, game.to_fen(game))
-  actor.continue(game)
+  Ok(actor.continue(game))
 }
 
 fn handle_print_board(

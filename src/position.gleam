@@ -1,6 +1,5 @@
 import bitboard.{type Bitboard}
 import color.{type Color, Black, White}
-import gleam/option.{type Option, None, Some}
 
 pub type Position {
   Position(file: File, rank: Rank)
@@ -111,14 +110,14 @@ pub fn rank_to_int(rank: Rank) -> Int {
   }
 }
 
-pub fn from_int(i: Int) -> Option(Position) {
+pub fn from_int(i: Int) -> Result(Position, _) {
   case i {
     i if i >= 0 && i < 64 -> {
       let file = int_to_file(i % 8)
       let rank = int_to_rank(i / 8)
-      Some(Position(file, rank))
+      Ok(Position(file, rank))
     }
-    _ -> None
+    _ -> Error("Invalid position")
   }
 }
 

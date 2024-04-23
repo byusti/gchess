@@ -2,6 +2,7 @@ import bitboard.{type Bitboard, and, new_bitboard, shift_left}
 import color.{Black, White}
 import gleam/list
 import gleam/option.{None, Some}
+import gleam/result
 import gleam/set
 import piece.{type Piece, Bishop, King, Knight, Pawn, Queen, Rook}
 import position.{type Position}
@@ -26,14 +27,14 @@ pub type BoardBB {
 pub fn remove_piece_at_position(
   board: BoardBB,
   position: Position,
-) -> option.Option(BoardBB) {
+) -> Result(BoardBB, _) {
   let bitboard = bitboard.not(from_position(position))
 
   let new_board = case get_piece_at_position(board, position) {
-    None -> None
+    None -> Error("No piece at position")
     Some(piece.Piece(color: color, kind: kind)) if color == White
       && kind == King -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           white_king_bitboard: bitboard.and(bitboard, board.white_king_bitboard),
@@ -42,7 +43,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White
       && kind == Queen -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           white_queen_bitboard: bitboard.and(
@@ -54,7 +55,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White
       && kind == Rook -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           white_rook_bitboard: bitboard.and(bitboard, board.white_rook_bitboard),
@@ -64,7 +65,7 @@ pub fn remove_piece_at_position(
 
     Some(piece.Piece(color: color, kind: kind)) if color == White
       && kind == Bishop -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           white_bishop_bitboard: bitboard.and(
@@ -76,7 +77,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White
       && kind == Knight -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           white_knight_bitboard: bitboard.and(
@@ -88,7 +89,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == White
       && kind == Pawn -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           white_pawns_bitboard: bitboard.and(
@@ -100,7 +101,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black
       && kind == King -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           black_king_bitboard: bitboard.and(bitboard, board.black_king_bitboard),
@@ -109,7 +110,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black
       && kind == Queen -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           black_queen_bitboard: bitboard.and(
@@ -121,7 +122,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black
       && kind == Rook -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           black_rook_bitboard: bitboard.and(bitboard, board.black_rook_bitboard),
@@ -130,7 +131,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black
       && kind == Bishop -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           black_bishop_bitboard: bitboard.and(
@@ -142,7 +143,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black
       && kind == Knight -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           black_knight_bitboard: bitboard.and(
@@ -154,7 +155,7 @@ pub fn remove_piece_at_position(
     }
     Some(piece.Piece(color: color, kind: kind)) if color == Black
       && kind == Pawn -> {
-      Some(
+      Ok(
         BoardBB(
           ..board,
           black_pawns_bitboard: bitboard.and(
@@ -329,7 +330,7 @@ pub fn get_piece_at_position(board: BoardBB, position: Position) {
   piece
 }
 
-pub fn get_all_positions(board: BoardBB) -> List(Position) {
+pub fn get_all_positions(board: BoardBB) -> Result(List(Position), _) {
   let list_of_bitboards = [
     board.black_king_bitboard,
     board.black_queen_bitboard,
@@ -347,48 +348,56 @@ pub fn get_all_positions(board: BoardBB) -> List(Position) {
 
   let positions =
     list.fold(list_of_bitboards, set.new(), fn(acc, bitboard) {
-      let positions = get_positions(bitboard)
+      let positions = case get_positions(bitboard) {
+        Ok(positions) -> positions
+        Error(_) -> []
+      }
       let positions = set.from_list(positions)
       set.union(acc, positions)
     })
 
-  set.to_list(positions)
+  Ok(set.to_list(positions))
 }
 
-pub fn get_positions(bitboard: Bitboard) -> List(Position) {
+pub fn get_positions(bitboard: Bitboard) -> Result(List(Position), _) {
   let positions = []
   case bitboard {
-    0 -> positions
+    0 -> Ok(positions)
     _ -> {
       let count = 63
       let just_first_bit_of_bb = and(bitboard, new_bitboard(0x8000000000000000))
       case just_first_bit_of_bb {
         0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
         _ -> {
-          let assert Some(position_dest) = position.from_int(count)
-          [
-            position_dest,
-            ..get_positions_inner(shift_left(bitboard, 1), count - 1)
-          ]
+          use position_dest <- result.try(position.from_int(count))
+          use positions_inner <- result.try(get_positions_inner(
+            shift_left(bitboard, 1),
+            count - 1,
+          ))
+          Ok([position_dest, ..positions_inner])
         }
       }
     }
   }
 }
 
-pub fn get_positions_inner(bitboard: Bitboard, count: Int) -> List(Position) {
+pub fn get_positions_inner(
+  bitboard: Bitboard,
+  count: Int,
+) -> Result(List(Position), _) {
   case count < 0 {
-    True -> []
+    True -> Ok([])
     False -> {
       let just_first_bit_of_bb = and(bitboard, new_bitboard(0x8000000000000000))
       case just_first_bit_of_bb {
         0 -> get_positions_inner(shift_left(bitboard, 1), count - 1)
         _ -> {
-          let assert Some(position_dest) = position.from_int(count)
-          [
-            position_dest,
-            ..get_positions_inner(shift_left(bitboard, 1), count - 1)
-          ]
+          use position_dest <- result.try(position.from_int(count))
+          use positions_inner <- result.try(get_positions_inner(
+            shift_left(bitboard, 1),
+            count - 1,
+          ))
+          Ok([position_dest, ..positions_inner])
         }
       }
     }

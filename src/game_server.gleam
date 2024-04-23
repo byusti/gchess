@@ -9,20 +9,20 @@ import status.{type Status}
 
 pub type Message {
   AllLegalMoves(reply_with: Subject(List(Move)))
-  ApplyMove(reply_with: Subject(Result(Game, Nil)), move: Move)
-  ApplyMoveUciString(reply_with: Subject(Result(Game, Nil)), move: String)
-  ApplyMoveSanString(reply_with: Subject(Result(Game, Nil)), move: String)
+  ApplyMove(reply_with: Subject(Result(Game, String)), move: Move)
+  ApplyMoveUciString(reply_with: Subject(Result(Game, String)), move: String)
+  ApplyMoveSanString(reply_with: Subject(Result(Game, String)), move: String)
   ApplyMoveRaw(reply_with: Subject(Result(Game, String)), move: Move)
-  UndoMove(reply_with: Subject(Result(Game, Nil)))
+  UndoMove(reply_with: Subject(Result(Game, String)))
   GetState(reply_with: Subject(Game))
   GetSideToMove(reply_with: Subject(Color))
   GetFen(reply_with: Subject(String))
   GetStatus(reply_with: Subject(Option(Status)))
   NewGame(reply_with: Subject(Game))
-  NewGameFromFen(reply_with: Subject(Result(Game, Nil)), fen: String)
+  NewGameFromFen(reply_with: Subject(Result(Game, String)), fen: String)
   DisableStatus(reply_with: Subject(Result(Game, Nil)))
   Shutdown
-  PrintBoard(reply_with: Subject(Nil))
+  PrintBoard(reply_with: Subject(Result(String, String)))
 }
 
 // TODO: This module contains all functions related to interacting
@@ -140,9 +140,16 @@ fn handle_message(message: Message, game: Game) -> actor.Next(Message, Game) {
       actor.continue(new_game)
     }
     NewGameFromFen(client, fen) -> {
-      let assert Ok(new_game) = game.from_fen_string(fen)
-      process.send(client, Ok(new_game))
-      actor.continue(new_game)
+      case game.from_fen_string(fen) {
+        Ok(new_game) -> {
+          process.send(client, Ok(new_game))
+          actor.continue(new_game)
+        }
+        Error(_) -> {
+          process.send(client, Error("Failed to create game from fen"))
+          actor.continue(game)
+        }
+      }
     }
     DisableStatus(client) -> {
       let new_game = game.disable_status(game)
@@ -167,10 +174,16 @@ fn handle_undo_move(
   game: Game,
   client: Subject(Result(Game, _)),
 ) -> Result(actor.Next(Message, Game), _) {
-  let assert Ok(new_game_state) = game.undo_move(game)
-
-  process.send(client, Ok(new_game_state))
-  Ok(actor.continue(new_game_state))
+  case game.undo_move(game) {
+    Ok(new_game_state) -> {
+      process.send(client, Ok(new_game_state))
+      Ok(actor.continue(new_game_state))
+    }
+    Error(_) -> {
+      process.send(client, Error("Failed to undo move"))
+      Ok(actor.continue(game))
+    }
+  }
 }
 
 fn handle_apply_move_san_string(
@@ -178,9 +191,16 @@ fn handle_apply_move_san_string(
   client: Subject(Result(Game, _)),
   move: String,
 ) -> Result(actor.Next(Message, Game), _) {
-  let assert Ok(new_game_state) = game.apply_move_san_string(game, move)
-  process.send(client, Ok(new_game_state))
-  Ok(actor.continue(new_game_state))
+  case game.apply_move_san_string(game, move) {
+    Ok(new_game_state) -> {
+      process.send(client, Ok(new_game_state))
+      Ok(actor.continue(new_game_state))
+    }
+    Error(_) -> {
+      process.send(client, Error("Failed to apply move"))
+      Ok(actor.continue(game))
+    }
+  }
 }
 
 fn handle_apply_move_uci(
@@ -188,9 +208,16 @@ fn handle_apply_move_uci(
   client: Subject(Result(Game, _)),
   move: String,
 ) -> Result(actor.Next(Message, Game), _) {
-  let assert Ok(new_game_state) = game.apply_move_uci(game, move)
-  process.send(client, Ok(new_game_state))
-  Ok(actor.continue(new_game_state))
+  case game.apply_move_uci(game, move) {
+    Ok(new_game_state) -> {
+      process.send(client, Ok(new_game_state))
+      Ok(actor.continue(new_game_state))
+    }
+    Error(_) -> {
+      process.send(client, Error("Failed to apply move"))
+      Ok(actor.continue(game))
+    }
+  }
 }
 
 fn handle_apply_move(
@@ -198,9 +225,16 @@ fn handle_apply_move(
   client: Subject(Result(Game, _)),
   move: Move,
 ) -> Result(actor.Next(Message, Game), _) {
-  let assert Ok(new_game_state) = game.apply_move(game, move)
-  process.send(client, Ok(new_game_state))
-  Ok(actor.continue(new_game_state))
+  case game.apply_move(game, move) {
+    Ok(new_game_state) -> {
+      process.send(client, Ok(new_game_state))
+      Ok(actor.continue(new_game_state))
+    }
+    Error(_) -> {
+      process.send(client, Error("Failed to apply move"))
+      Ok(actor.continue(game))
+    }
+  }
 }
 
 fn handle_apply_move_raw(
@@ -223,24 +257,23 @@ fn handle_get_fen(game: Game, client: Subject(String)) {
 
 fn handle_print_board(
   game: Game,
-  client: Subject(Nil),
+  client: Subject(Result(String, String)),
 ) -> actor.Next(Message, Game) {
-  game.print_board(game)
-
-  process.send(client, Nil)
+  process.send(client, game.print_board(game))
   actor.continue(game)
 }
 
 pub fn new_server() {
-  let assert Ok(actor) = actor.start(game.new_game(), handle_message)
-  actor
+  actor.start(game.new_game(), handle_message)
 }
 
 pub fn load_pgn(pgn_string: String) {
   case game.load_pgn(pgn_string) {
     Ok(game) -> {
-      let assert Ok(actor) = actor.start(game, handle_message)
-      Ok(actor)
+      case actor.start(game, handle_message) {
+        Ok(actor) -> Ok(actor)
+        Error(_) -> Error("Failed to start actor")
+      }
     }
     Error(error) -> Error(error)
   }

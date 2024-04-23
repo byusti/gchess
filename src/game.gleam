@@ -365,9 +365,9 @@ pub fn load_pgn(pgn: String) -> Result(Game, String) {
   let pgn = pgn.remove_tags(pgn)
   let list_of_movetext = pgn.split_movetext(pgn)
   list.fold(list_of_movetext, Ok(game), fn(game, movetext) {
+    use game <- result.try(game)
     let game = case string.split(movetext, " ") {
       [white_ply, black_ply] -> {
-        let assert Ok(game) = game
         let game = apply_move_san_string(game, white_ply)
         case game {
           Ok(game) -> {
@@ -377,7 +377,6 @@ pub fn load_pgn(pgn: String) -> Result(Game, String) {
         }
       }
       [white_ply] -> {
-        let assert Ok(game) = game
         let game = apply_move_san_string(game, white_ply)
         game
       }
@@ -442,8 +441,10 @@ fn is_move_legal(game: Game, move: Move) -> Result(Bool, _) {
                       ),
                     )
 
-                  let assert Some(new_board) =
-                    board.remove_piece_at_position(new_game_state.board, to)
+                  use new_board <- result.try(board.remove_piece_at_position(
+                    new_game_state.board,
+                    to,
+                  ))
                   let new_game_state = Game(..new_game_state, board: new_board)
                   use is_king_in_check_ok <- result.try(is_king_in_check(
                     new_game_state,
@@ -470,21 +471,31 @@ fn is_move_legal(game: Game, move: Move) -> Result(Bool, _) {
 pub fn apply_move_raw(game: Game, move: Move) -> Result(Game, _) {
   case move {
     move.Normal(from: from, to: to, promotion: promo_piece) -> {
-      let assert Some(moving_piece) =
+      use moving_piece <- result.try(case
         board.get_piece_at_position(game.board, from)
+      {
+        Some(piece) -> Ok(piece)
+        None -> {
+          Error("No piece at from position")
+        }
+      })
       let captured_piece = piece_at_position(game, to)
 
-      let assert Some(new_board) =
-        board.remove_piece_at_position(game.board, from)
+      use new_board <- result.try(board.remove_piece_at_position(
+        game.board,
+        from,
+      ))
       let new_game_state = Game(..game, board: new_board)
-      let new_game_state = case captured_piece {
-        None -> new_game_state
+      use new_game_state <- result.try(case captured_piece {
+        None -> Ok(new_game_state)
         Some(_) -> {
-          let assert Some(new_board) =
-            board.remove_piece_at_position(new_game_state.board, to)
-          Game(..new_game_state, board: new_board)
+          use new_board <- result.try(board.remove_piece_at_position(
+            new_game_state.board,
+            to,
+          ))
+          Ok(Game(..new_game_state, board: new_board))
         }
-      }
+      })
 
       let new_game_state = case promo_piece {
         None ->
@@ -621,8 +632,10 @@ pub fn apply_move_raw(game: Game, move: Move) -> Result(Game, _) {
       Ok(new_game_state)
     }
     move.Castle(from: from, to: to) -> {
-      let assert Some(new_board) =
-        board.remove_piece_at_position(game.board, from)
+      use new_board <- result.try(board.remove_piece_at_position(
+        game.board,
+        from,
+      ))
       let new_game_state = Game(..game, board: new_board)
       let new_game_state =
         Game(
@@ -674,35 +687,38 @@ pub fn apply_move_raw(game: Game, move: Move) -> Result(Game, _) {
             _ -> Error("Invalid castle move")
           })
 
-          let assert Some(new_board) =
-            board.remove_piece_at_position(
-              new_game_state.board,
-              rook_castling_origin_square,
-            )
+          use new_board <- result.try(board.remove_piece_at_position(
+            new_game_state.board,
+            rook_castling_origin_square,
+          ))
 
           let new_game_state = Game(..new_game_state, board: new_board)
 
           let new_ply = new_game_state.ply + 1
 
-          let assert [
-            new_white_king_castle,
-            new_white_queen_castle,
-            new_black_king_castle,
-            new_black_queen_castle,
-          ] = case game.turn {
-            White -> [
-              No(new_ply),
-              No(new_ply),
-              game.black_kingside_castle,
-              game.black_queenside_castle,
-            ]
-            Black -> [
-              game.white_kingside_castle,
-              game.white_queenside_castle,
-              No(new_ply),
-              No(new_ply),
-            ]
-          }
+          use
+            #(
+              new_white_king_castle,
+              new_white_queen_castle,
+              new_black_king_castle,
+              new_black_queen_castle,
+            )
+          <- result.try(case game.turn {
+            White ->
+              Ok(#(
+                No(new_ply),
+                No(new_ply),
+                game.black_kingside_castle,
+                game.black_queenside_castle,
+              ))
+            Black ->
+              Ok(#(
+                game.white_kingside_castle,
+                game.white_queenside_castle,
+                No(new_ply),
+                No(new_ply),
+              ))
+          })
 
           let move_with_capture = move.MoveWithCapture(move, None)
 
@@ -737,8 +753,10 @@ pub fn apply_move_raw(game: Game, move: Move) -> Result(Game, _) {
           ),
         )
 
-      let assert Some(new_board) =
-        board.remove_piece_at_position(new_game_state.board, from)
+      use new_board <- result.try(board.remove_piece_at_position(
+        new_game_state.board,
+        from,
+      ))
       let new_game_state = Game(..new_game_state, board: new_board)
 
       use captured_pawn_square <- result.try(case to {
@@ -783,8 +801,8 @@ pub fn apply_move_raw(game: Game, move: Move) -> Result(Game, _) {
           captured_pawn_square,
         )
       {
-        Some(new_board) -> Ok(new_board)
-        None -> {
+        Ok(new_board) -> Ok(new_board)
+        Error(_) -> {
           Error("Invalid en passant move")
         }
       })
@@ -838,7 +856,10 @@ fn is_king_in_check(game: Game, color: Color) -> Result(Bool, _) {
       White -> game.board.white_king_bitboard
       Black -> game.board.black_king_bitboard
     }
-    let assert [king_pos] = board.get_positions(king_bb)
+    use king_pos <- result.try(case board.get_positions(king_bb) {
+      Ok([king_pos]) -> Ok(king_pos)
+      _ -> Error("Invalid king position")
+    })
     let rook_bb = case color {
       White -> game.board.black_rook_bitboard
       Black -> game.board.white_rook_bitboard
@@ -849,10 +870,10 @@ fn is_king_in_check(game: Game, color: Color) -> Result(Bool, _) {
       |> bitboard.or(look_up_north_ray_bb(king_pos))
       |> bitboard.or(look_up_south_ray_bb(king_pos))
     let viable_attacking_rook_bb = bitboard.and(rook_bb, king_rook_ray_bb)
-    let rook_move_list = case viable_attacking_rook_bb {
-      0 -> []
+    use rook_move_list <- result.try(case viable_attacking_rook_bb {
+      0 -> Ok([])
       _ -> generate_rook_pseudo_legal_move_list(enemy_color, game)
-    }
+    })
 
     let bishop_bb = case color {
       White -> game.board.black_bishop_bitboard
@@ -866,10 +887,10 @@ fn is_king_in_check(game: Game, color: Color) -> Result(Bool, _) {
       |> bitboard.or(look_up_south_east_ray_bb(king_pos))
       |> bitboard.or(look_up_south_west_ray_bb(king_pos))
     let viable_attacking_bishop_bb = bitboard.and(bishop_bb, king_bishop_ray_bb)
-    let bishop_move_list = case viable_attacking_bishop_bb {
-      0 -> []
+    use bishop_move_list <- result.try(case viable_attacking_bishop_bb {
+      0 -> Ok([])
       _ -> generate_bishop_pseudo_legal_move_list(enemy_color, game)
-    }
+    })
 
     let queen_bb = case color {
       White -> game.board.black_queen_bitboard
@@ -895,19 +916,22 @@ fn is_king_in_check(game: Game, color: Color) -> Result(Bool, _) {
     let viable_attacking_knight_bb =
       bitboard.and(knight_bb, king_knight_target_bb)
 
-    let knight_move_list = case viable_attacking_knight_bb {
-      0 -> []
+    use knight_move_list <- result.try(case viable_attacking_knight_bb {
+      0 -> Ok([])
       _ -> generate_knight_pseudo_legal_move_list(enemy_color, game)
-    }
+    })
 
-    // TODO: use this same logic for the pawn move list
+    use pawn_move_list <- result.try(generate_pawn_pseudo_legal_move_list(
+      enemy_color,
+      game,
+    ))
 
     let list_of_move_lists = [
       rook_move_list,
       bishop_move_list,
       queen_move_list,
       knight_move_list,
-      generate_pawn_pseudo_legal_move_list(enemy_color, game),
+      pawn_move_list,
     ]
 
     let move_list =
@@ -950,11 +974,23 @@ fn generate_pseudo_legal_move_list(
   use en_passant_pseudo_legal_move_list <- result.try(
     generate_en_passant_pseudo_legal_move_list(color, game),
   )
-  let list_of_move_lists = [
+  use rook_pseudo_legal_move_list <- result.try(
     generate_rook_pseudo_legal_move_list(color, game),
+  )
+  use pawn_pseudo_legal_move_list <- result.try(
     generate_pawn_pseudo_legal_move_list(color, game),
+  )
+  use knight_pseudo_legal_move_list <- result.try(
     generate_knight_pseudo_legal_move_list(color, game),
+  )
+  use bishop_pseudo_legal_move_list <- result.try(
     generate_bishop_pseudo_legal_move_list(color, game),
+  )
+  let list_of_move_lists = [
+    rook_pseudo_legal_move_list,
+    bishop_pseudo_legal_move_list,
+    knight_pseudo_legal_move_list,
+    pawn_pseudo_legal_move_list,
     queen_pseudo_legal_move_list,
     king_pseudo_legal_move_list,
     castling_pseudo_legal_move_list,
@@ -1694,7 +1730,9 @@ fn generate_en_passant_pseudo_legal_move_list(
         }
       }
 
-      let ep_attacker_positions = board.get_positions(ep_attacker_bitboard)
+      use ep_attacker_positions <- result.try(board.get_positions(
+        ep_attacker_bitboard,
+      ))
 
       let ep_moves =
         list.map(ep_attacker_positions, fn(position) {
@@ -1716,10 +1754,10 @@ fn generate_castling_pseudo_legal_move_list(
   }
 
   use king_position <- result.try(case board.get_positions(king_bitboard) {
-    [] -> {
+    Ok([]) -> {
       Error("No king found on the board")
     }
-    [position] -> Ok(position)
+    Ok([position]) -> Ok(position)
     _ -> {
       Error("More than one king found on the board")
     }
@@ -1870,111 +1908,111 @@ fn generate_king_pseudo_legal_move_list(
     Black -> game.board.black_king_bitboard
   }
 
-  let king_origin_squares = board.get_positions(king_bitboard)
+  use king_origin_squares <- result.try(board.get_positions(king_bitboard))
 
-  Ok(
-    list.fold(king_origin_squares, [], fn(collector, origin) {
-      let king_bitboard = board.from_position(origin)
-      let north_west_north_east_target_squares =
+  list.fold(king_origin_squares, Ok([]), fn(collector, origin) {
+    let king_bitboard = board.from_position(origin)
+    let north_west_north_east_target_squares =
+      bitboard.or(
+        bitboard.and(bitboard.shift_left(king_bitboard, 9), not_a_file),
+        bitboard.and(bitboard.shift_left(king_bitboard, 7), not_h_file),
+      )
+
+    let south_west_south_east_target_squares =
+      bitboard.or(
+        bitboard.and(bitboard.shift_right(king_bitboard, 9), not_h_file),
+        bitboard.and(bitboard.shift_right(king_bitboard, 7), not_a_file),
+      )
+
+    let west_east_target_squares =
+      bitboard.or(
+        bitboard.and(bitboard.shift_left(king_bitboard, 1), not_a_file),
+        bitboard.and(bitboard.shift_right(king_bitboard, 1), not_h_file),
+      )
+
+    let north_south_target_squares =
+      bitboard.or(
+        bitboard.shift_left(king_bitboard, 8),
+        bitboard.shift_right(king_bitboard, 8),
+      )
+
+    let king_target_squares =
+      bitboard.or(
         bitboard.or(
-          bitboard.and(bitboard.shift_left(king_bitboard, 9), not_a_file),
-          bitboard.and(bitboard.shift_left(king_bitboard, 7), not_h_file),
-        )
+          north_west_north_east_target_squares,
+          south_west_south_east_target_squares,
+        ),
+        bitboard.or(west_east_target_squares, north_south_target_squares),
+      )
 
-      let south_west_south_east_target_squares =
-        bitboard.or(
-          bitboard.and(bitboard.shift_right(king_bitboard, 9), not_h_file),
-          bitboard.and(bitboard.shift_right(king_bitboard, 7), not_a_file),
-        )
+    let list_of_friendly_piece_bitboards = case color {
+      White -> [
+        game.board.white_king_bitboard,
+        game.board.white_queen_bitboard,
+        game.board.white_rook_bitboard,
+        game.board.white_bishop_bitboard,
+        game.board.white_knight_bitboard,
+        game.board.white_pawns_bitboard,
+      ]
+      Black -> [
+        game.board.black_king_bitboard,
+        game.board.black_queen_bitboard,
+        game.board.black_rook_bitboard,
+        game.board.black_bishop_bitboard,
+        game.board.black_knight_bitboard,
+        game.board.black_pawns_bitboard,
+      ]
+    }
 
-      let west_east_target_squares =
-        bitboard.or(
-          bitboard.and(bitboard.shift_left(king_bitboard, 1), not_a_file),
-          bitboard.and(bitboard.shift_right(king_bitboard, 1), not_h_file),
-        )
+    let friendly_pieces =
+      list.fold(
+        list_of_friendly_piece_bitboards,
+        0,
+        fn(collector, next) -> Bitboard { bitboard.or(collector, next) },
+      )
 
-      let north_south_target_squares =
-        bitboard.or(
-          bitboard.shift_left(king_bitboard, 8),
-          bitboard.shift_right(king_bitboard, 8),
-        )
+    //Get bitboard for target squares that are not occupied by friendly pieces
+    let king_unblocked_target_square_bb =
+      bitboard.and(king_target_squares, bitboard.not(friendly_pieces))
 
-      let king_target_squares =
-        bitboard.or(
-          bitboard.or(
-            north_west_north_east_target_squares,
-            south_west_south_east_target_squares,
-          ),
-          bitboard.or(west_east_target_squares, north_south_target_squares),
+    let captures = case color {
+      White -> {
+        //TODO: should probably add a occupied_squares_by_color function
+        bitboard.and(
+          king_unblocked_target_square_bb,
+          occupied_squares_black(game.board),
         )
-
-      let list_of_friendly_piece_bitboards = case color {
-        White -> [
-          game.board.white_king_bitboard,
-          game.board.white_queen_bitboard,
-          game.board.white_rook_bitboard,
-          game.board.white_bishop_bitboard,
-          game.board.white_knight_bitboard,
-          game.board.white_pawns_bitboard,
-        ]
-        Black -> [
-          game.board.black_king_bitboard,
-          game.board.black_queen_bitboard,
-          game.board.black_rook_bitboard,
-          game.board.black_bishop_bitboard,
-          game.board.black_knight_bitboard,
-          game.board.black_pawns_bitboard,
-        ]
       }
-
-      let friendly_pieces =
-        list.fold(
-          list_of_friendly_piece_bitboards,
-          0,
-          fn(collector, next) -> Bitboard { bitboard.or(collector, next) },
+      Black -> {
+        bitboard.and(
+          king_unblocked_target_square_bb,
+          occupied_squares_white(game.board),
         )
-
-      //Get bitboard for target squares that are not occupied by friendly pieces
-      let king_unblocked_target_square_bb =
-        bitboard.and(king_target_squares, bitboard.not(friendly_pieces))
-
-      let captures = case color {
-        White -> {
-          //TODO: should probably add a occupied_squares_by_color function
-          bitboard.and(
-            king_unblocked_target_square_bb,
-            occupied_squares_black(game.board),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            king_unblocked_target_square_bb,
-            occupied_squares_white(game.board),
-          )
-        }
       }
-      let simple_moves = case color {
-        White -> {
-          bitboard.exclusive_or(king_unblocked_target_square_bb, captures)
-        }
-        Black -> {
-          bitboard.exclusive_or(king_unblocked_target_square_bb, captures)
-        }
+    }
+    let simple_moves = case color {
+      White -> {
+        bitboard.exclusive_or(king_unblocked_target_square_bb, captures)
       }
+      Black -> {
+        bitboard.exclusive_or(king_unblocked_target_square_bb, captures)
+      }
+    }
+    use simple_moves_positions <- result.try(board.get_positions(simple_moves))
+    let simple_moves =
+      list.map(simple_moves_positions, fn(dest) -> Move {
+        move.Normal(from: origin, to: dest, promotion: None)
+      })
 
-      let simple_moves =
-        list.map(board.get_positions(simple_moves), fn(dest) -> Move {
-          move.Normal(from: origin, to: dest, promotion: None)
-        })
-
-      let captures =
-        list.map(board.get_positions(captures), fn(dest) -> Move {
-          move.Normal(from: origin, to: dest, promotion: None)
-        })
-      let all_moves = list.append(simple_moves, captures)
-      list.append(collector, all_moves)
-    }),
-  )
+    use captures_positions <- result.try(board.get_positions(captures))
+    let captures =
+      list.map(captures_positions, fn(dest) -> Move {
+        move.Normal(from: origin, to: dest, promotion: None)
+      })
+    let all_moves = list.append(simple_moves, captures)
+    use collector <- result.try(collector)
+    Ok(list.append(collector, all_moves))
+  })
 }
 
 fn generate_queen_pseudo_legal_move_list(
@@ -1986,360 +2024,13 @@ fn generate_queen_pseudo_legal_move_list(
     Black -> game.board.black_queen_bitboard
   }
 
-  let queen_origin_squares = board.get_positions(queen_bitboard)
+  use queen_origin_squares <- result.try(board.get_positions(queen_bitboard))
 
-  Ok(
-    list.fold(queen_origin_squares, [], fn(collector, queen_origin_square) {
-      let south_mask_bb = look_up_south_ray_bb(queen_origin_square)
-      let east_mask_bb = look_up_east_ray_bb(queen_origin_square)
-      let north_mask_bb = look_up_north_ray_bb(queen_origin_square)
-      let west_mask_bb = look_up_west_ray_bb(queen_origin_square)
-
-      let occupied_squares_bb = occupied_squares(game.board)
-
-      let south_blockers_bb = bitboard.and(south_mask_bb, occupied_squares_bb)
-      let east_blockers_bb = bitboard.and(east_mask_bb, occupied_squares_bb)
-      let north_blockers_bb = bitboard.and(north_mask_bb, occupied_squares_bb)
-      let west_blockers_bb = bitboard.and(west_mask_bb, occupied_squares_bb)
-
-      let first_blocker_south =
-        position.from_int(bitboard.bitscan_backward(south_blockers_bb))
-      let first_blocker_east =
-        position.from_int(bitboard.bitscan_forward(east_blockers_bb))
-      let first_blocker_north =
-        position.from_int(bitboard.bitscan_forward(north_blockers_bb))
-      let first_blocker_west =
-        position.from_int(bitboard.bitscan_backward(west_blockers_bb))
-
-      let first_blocker_south_mask_bb = case first_blocker_south {
-        None -> 0
-        Some(position) -> look_up_south_ray_bb(position)
-      }
-      let first_blocker_east_mask_bb = case first_blocker_east {
-        None -> 0
-        Some(position) -> look_up_east_ray_bb(position)
-      }
-      let first_blocker_north_mask_bb = case first_blocker_north {
-        None -> 0
-        Some(position) -> look_up_north_ray_bb(position)
-      }
-      let first_blocker_west_mask_bb = case first_blocker_west {
-        None -> 0
-        Some(position) -> look_up_west_ray_bb(position)
-      }
-
-      //Here we create the rays of the bishop with only the first first blocker
-      //included. Next we need to remove the first blocker from the ray
-      //if its our own piece, and include it if its an enemy piece.
-      let south_ray_bb_with_blocker =
-        bitboard.exclusive_or(south_mask_bb, first_blocker_south_mask_bb)
-      let east_ray_bb_with_blocker =
-        bitboard.exclusive_or(east_mask_bb, first_blocker_east_mask_bb)
-      let north_ray_bb_with_blocker =
-        bitboard.exclusive_or(north_mask_bb, first_blocker_north_mask_bb)
-      let west_ray_bb_with_blocker =
-        bitboard.exclusive_or(west_mask_bb, first_blocker_west_mask_bb)
-
-      //Here we remove the first blocker from the ray if its our own piece
-      let south_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            south_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            south_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let east_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let north_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            north_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            north_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let west_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let rook_moves =
-        list.fold(
-          [south_ray_bb, east_ray_bb, north_ray_bb, west_ray_bb],
-          [],
-          fn(collector, next) {
-            let captures = case color {
-              White -> {
-                //TODO: should probably add a occupied_squares_by_color function
-                bitboard.and(next, occupied_squares_black(game.board))
-              }
-              Black -> {
-                bitboard.and(next, occupied_squares_white(game.board))
-              }
-            }
-
-            // TODO: fix this abomination
-            let rook_simple_moves = case color {
-              White -> {
-                bitboard.exclusive_or(next, captures)
-              }
-              Black -> {
-                bitboard.exclusive_or(next, captures)
-              }
-            }
-
-            let simple_moves =
-              list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
-                move.Normal(
-                  from: queen_origin_square,
-                  to: dest,
-                  promotion: None,
-                )
-              })
-
-            let captures =
-              list.map(board.get_positions(captures), fn(dest) -> Move {
-                move.Normal(
-                  from: queen_origin_square,
-                  to: dest,
-                  promotion: None,
-                )
-              })
-            let simple_moves = list.append(collector, simple_moves)
-            let all_moves = list.append(simple_moves, captures)
-            all_moves
-          },
-        )
-
-      let south_west_mask_bb = look_up_south_west_ray_bb(queen_origin_square)
-      let south_east_mask_bb = look_up_south_east_ray_bb(queen_origin_square)
-      let north_east_mask_bb = look_up_north_east_ray_bb(queen_origin_square)
-      let north_west_mask_bb = look_up_north_west_ray_bb(queen_origin_square)
-
-      let occupied_squares_bb = occupied_squares(game.board)
-
-      let south_west_blockers_bb =
-        bitboard.and(south_west_mask_bb, occupied_squares_bb)
-      let south_east_blockers_bb =
-        bitboard.and(south_east_mask_bb, occupied_squares_bb)
-      let north_east_blockers_bb =
-        bitboard.and(north_east_mask_bb, occupied_squares_bb)
-      let north_west_blockers_bb =
-        bitboard.and(north_west_mask_bb, occupied_squares_bb)
-
-      let first_blocker_south_west =
-        position.from_int(bitboard.bitscan_backward(south_west_blockers_bb))
-      let first_blocker_south_east =
-        position.from_int(bitboard.bitscan_backward(south_east_blockers_bb))
-      let first_blocker_north_east =
-        position.from_int(bitboard.bitscan_forward(north_east_blockers_bb))
-      let first_blocker_north_west =
-        position.from_int(bitboard.bitscan_forward(north_west_blockers_bb))
-
-      let first_blocker_south_west_mask_bb = case first_blocker_south_west {
-        None -> 0
-        Some(position) -> look_up_south_west_ray_bb(position)
-      }
-      let first_blocker_south_east_mask_bb = case first_blocker_south_east {
-        None -> 0
-        Some(position) -> look_up_south_east_ray_bb(position)
-      }
-      let first_blocker_north_east_mask_bb = case first_blocker_north_east {
-        None -> 0
-        Some(position) -> look_up_north_east_ray_bb(position)
-      }
-      let first_blocker_north_west_mask_bb = case first_blocker_north_west {
-        None -> 0
-        Some(position) -> look_up_north_west_ray_bb(position)
-      }
-
-      //Here we create the rays of the bishop with only the first first blocker
-      //included. Next we need to remove the first blocker from the ray
-      //if its our own piece, and include it if its an enemy piece.
-      let south_west_ray_bb_with_blocker =
-        bitboard.exclusive_or(
-          south_west_mask_bb,
-          first_blocker_south_west_mask_bb,
-        )
-      let south_east_ray_bb_with_blocker =
-        bitboard.exclusive_or(
-          south_east_mask_bb,
-          first_blocker_south_east_mask_bb,
-        )
-      let north_east_ray_bb_with_blocker =
-        bitboard.exclusive_or(
-          north_east_mask_bb,
-          first_blocker_north_east_mask_bb,
-        )
-      let north_west_ray_bb_with_blocker =
-        bitboard.exclusive_or(
-          north_west_mask_bb,
-          first_blocker_north_west_mask_bb,
-        )
-
-      //Here we remove the first blocker from the ray if its our own piece
-      let south_west_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            south_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            south_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let south_east_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            south_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            south_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let north_east_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            north_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            north_east_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let north_west_ray_bb = case color {
-        White -> {
-          bitboard.and(
-            north_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_white(game.board)),
-          )
-        }
-        Black -> {
-          bitboard.and(
-            north_west_ray_bb_with_blocker,
-            bitboard.not(occupied_squares_black(game.board)),
-          )
-        }
-      }
-      let bishop_moves =
-        list.fold(
-          [
-            south_west_ray_bb,
-            south_east_ray_bb,
-            north_east_ray_bb,
-            north_west_ray_bb,
-          ],
-          [],
-          fn(collector, next) {
-            let captures = case color {
-              White -> {
-                //TODO: should probably add a occupied_squares_by_color function
-                bitboard.and(next, occupied_squares_black(game.board))
-              }
-              Black -> {
-                bitboard.and(next, occupied_squares_white(game.board))
-              }
-            }
-            let rook_simple_moves = case color {
-              White -> {
-                bitboard.exclusive_or(next, captures)
-              }
-              Black -> {
-                bitboard.exclusive_or(next, captures)
-              }
-            }
-
-            let simple_moves =
-              list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
-                move.Normal(
-                  from: queen_origin_square,
-                  to: dest,
-                  promotion: None,
-                )
-              })
-
-            let captures =
-              list.map(board.get_positions(captures), fn(dest) -> Move {
-                move.Normal(
-                  from: queen_origin_square,
-                  to: dest,
-                  promotion: None,
-                )
-              })
-            let simple_moves = list.append(collector, simple_moves)
-            let all_moves = list.append(simple_moves, captures)
-            all_moves
-          },
-        )
-
-      let all_moves =
-        list.append(list.append(collector, rook_moves), bishop_moves)
-
-      all_moves
-    }),
-  )
-}
-
-fn generate_rook_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) {
-  let rook_bitboard = case color {
-    White -> game.board.white_rook_bitboard
-    Black -> game.board.black_rook_bitboard
-  }
-
-  let rook_origin_squares = board.get_positions(rook_bitboard)
-
-  list.fold(rook_origin_squares, [], fn(collector, rook_origin_square) {
-    let south_mask_bb = look_up_south_ray_bb(rook_origin_square)
-    let east_mask_bb = look_up_east_ray_bb(rook_origin_square)
-    let north_mask_bb = look_up_north_ray_bb(rook_origin_square)
-    let west_mask_bb = look_up_west_ray_bb(rook_origin_square)
+  list.fold(queen_origin_squares, Ok([]), fn(collector, queen_origin_square) {
+    let south_mask_bb = look_up_south_ray_bb(queen_origin_square)
+    let east_mask_bb = look_up_east_ray_bb(queen_origin_square)
+    let north_mask_bb = look_up_north_ray_bb(queen_origin_square)
+    let west_mask_bb = look_up_west_ray_bb(queen_origin_square)
 
     let occupied_squares_bb = occupied_squares(game.board)
 
@@ -2358,20 +2049,20 @@ fn generate_rook_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
       position.from_int(bitboard.bitscan_backward(west_blockers_bb))
 
     let first_blocker_south_mask_bb = case first_blocker_south {
-      None -> 0
-      Some(position) -> look_up_south_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_south_ray_bb(position)
     }
     let first_blocker_east_mask_bb = case first_blocker_east {
-      None -> 0
-      Some(position) -> look_up_east_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_east_ray_bb(position)
     }
     let first_blocker_north_mask_bb = case first_blocker_north {
-      None -> 0
-      Some(position) -> look_up_north_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_north_ray_bb(position)
     }
     let first_blocker_west_mask_bb = case first_blocker_west {
-      None -> 0
-      Some(position) -> look_up_west_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_west_ray_bb(position)
     }
 
     //Here we create the rays of the bishop with only the first first blocker
@@ -2446,9 +2137,9 @@ fn generate_rook_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
     let rook_moves =
       list.fold(
         [south_ray_bb, east_ray_bb, north_ray_bb, west_ray_bb],
-        [],
+        Ok([]),
         fn(collector, next) {
-          let rook_captures = case color {
+          let captures = case color {
             White -> {
               //TODO: should probably add a occupied_squares_by_color function
               bitboard.and(next, occupied_squares_black(game.board))
@@ -2457,96 +2148,43 @@ fn generate_rook_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
               bitboard.and(next, occupied_squares_white(game.board))
             }
           }
+
+          // TODO: fix this abomination
           let rook_simple_moves = case color {
             White -> {
-              bitboard.exclusive_or(next, rook_captures)
+              bitboard.exclusive_or(next, captures)
             }
             Black -> {
-              bitboard.exclusive_or(next, rook_captures)
+              bitboard.exclusive_or(next, captures)
             }
           }
 
+          use rook_simple_moves_positions <- result.try(board.get_positions(
+            rook_simple_moves,
+          ))
+
           let simple_moves =
-            list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
-              move.Normal(from: rook_origin_square, to: dest, promotion: None)
+            list.map(rook_simple_moves_positions, fn(dest) -> Move {
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
             })
+
+          use captures_positions <- result.try(board.get_positions(captures))
 
           let captures =
-            list.map(board.get_positions(rook_captures), fn(dest) -> Move {
-              move.Normal(from: rook_origin_square, to: dest, promotion: None)
+            list.map(captures_positions, fn(dest) -> Move {
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
             })
+          use collector <- result.try(collector)
           let simple_moves = list.append(collector, simple_moves)
           let all_moves = list.append(simple_moves, captures)
-          all_moves
+          Ok(all_moves)
         },
       )
-    list.append(collector, rook_moves)
-  })
-}
 
-fn piece_at_position(game: Game, position: Position) -> Option(piece.Piece) {
-  let position_bb_masked =
-    bitboard.and(position.to_bitboard(position), occupied_squares(game.board))
-
-  let position_white_king =
-    bitboard.and(position_bb_masked, game.board.white_king_bitboard)
-  let position_white_queen =
-    bitboard.and(position_bb_masked, game.board.white_queen_bitboard)
-  let position_white_rook =
-    bitboard.and(position_bb_masked, game.board.white_rook_bitboard)
-  let position_white_bishop =
-    bitboard.and(position_bb_masked, game.board.white_bishop_bitboard)
-  let position_white_knight =
-    bitboard.and(position_bb_masked, game.board.white_knight_bitboard)
-  let position_white_pawn =
-    bitboard.and(position_bb_masked, game.board.white_pawns_bitboard)
-  let position_black_king =
-    bitboard.and(position_bb_masked, game.board.black_king_bitboard)
-  let position_black_queen =
-    bitboard.and(position_bb_masked, game.board.black_queen_bitboard)
-  let position_black_rook =
-    bitboard.and(position_bb_masked, game.board.black_rook_bitboard)
-  let position_black_bishop =
-    bitboard.and(position_bb_masked, game.board.black_bishop_bitboard)
-  let position_black_knight =
-    bitboard.and(position_bb_masked, game.board.black_knight_bitboard)
-  let position_black_pawn =
-    bitboard.and(position_bb_masked, game.board.black_pawns_bitboard)
-
-  case position_bb_masked {
-    0 -> option.None
-    _ if position_white_king != 0 -> option.Some(piece.Piece(White, King))
-    _ if position_white_queen != 0 -> option.Some(piece.Piece(White, Queen))
-    _ if position_white_rook != 0 -> option.Some(piece.Piece(White, Rook))
-    _ if position_white_bishop != 0 -> option.Some(piece.Piece(White, Bishop))
-    _ if position_white_knight != 0 -> option.Some(piece.Piece(White, Knight))
-    _ if position_white_pawn != 0 -> option.Some(piece.Piece(White, Pawn))
-    _ if position_black_king != 0 -> option.Some(piece.Piece(Black, King))
-    _ if position_black_queen != 0 -> option.Some(piece.Piece(Black, Queen))
-    _ if position_black_rook != 0 -> option.Some(piece.Piece(Black, Rook))
-    _ if position_black_bishop != 0 -> option.Some(piece.Piece(Black, Bishop))
-    _ if position_black_knight != 0 -> option.Some(piece.Piece(Black, Knight))
-    _ if position_black_pawn != 0 -> option.Some(piece.Piece(Black, Pawn))
-    _ -> panic
-  }
-}
-
-fn generate_bishop_pseudo_legal_move_list(
-  color: Color,
-  game: Game,
-) -> List(Move) {
-  let bishop_bitboard = case color {
-    White -> game.board.white_bishop_bitboard
-    Black -> game.board.black_bishop_bitboard
-  }
-
-  let bishop_origin_squares = board.get_positions(bishop_bitboard)
-
-  list.fold(bishop_origin_squares, [], fn(collector, bishop_origin_square) {
-    let south_west_mask_bb = look_up_south_west_ray_bb(bishop_origin_square)
-    let south_east_mask_bb = look_up_south_east_ray_bb(bishop_origin_square)
-    let north_east_mask_bb = look_up_north_east_ray_bb(bishop_origin_square)
-    let north_west_mask_bb = look_up_north_west_ray_bb(bishop_origin_square)
+    let south_west_mask_bb = look_up_south_west_ray_bb(queen_origin_square)
+    let south_east_mask_bb = look_up_south_east_ray_bb(queen_origin_square)
+    let north_east_mask_bb = look_up_north_east_ray_bb(queen_origin_square)
+    let north_west_mask_bb = look_up_north_west_ray_bb(queen_origin_square)
 
     let occupied_squares_bb = occupied_squares(game.board)
 
@@ -2569,20 +2207,20 @@ fn generate_bishop_pseudo_legal_move_list(
       position.from_int(bitboard.bitscan_forward(north_west_blockers_bb))
 
     let first_blocker_south_west_mask_bb = case first_blocker_south_west {
-      None -> 0
-      Some(position) -> look_up_south_west_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_south_west_ray_bb(position)
     }
     let first_blocker_south_east_mask_bb = case first_blocker_south_east {
-      None -> 0
-      Some(position) -> look_up_south_east_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_south_east_ray_bb(position)
     }
     let first_blocker_north_east_mask_bb = case first_blocker_north_east {
-      None -> 0
-      Some(position) -> look_up_north_east_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_north_east_ray_bb(position)
     }
     let first_blocker_north_west_mask_bb = case first_blocker_north_west {
-      None -> 0
-      Some(position) -> look_up_north_west_ray_bb(position)
+      Error(_) -> 0
+      Ok(position) -> look_up_north_west_ray_bb(position)
     }
 
     //Here we create the rays of the bishop with only the first first blocker
@@ -2674,7 +2312,7 @@ fn generate_bishop_pseudo_legal_move_list(
           north_east_ray_bb,
           north_west_ray_bb,
         ],
-        [],
+        Ok([]),
         fn(collector, next) {
           let captures = case color {
             White -> {
@@ -2694,36 +2332,452 @@ fn generate_bishop_pseudo_legal_move_list(
             }
           }
 
+          use rook_simple_moves_positions <- result.try(board.get_positions(
+            rook_simple_moves,
+          ))
+
           let simple_moves =
-            list.map(board.get_positions(rook_simple_moves), fn(dest) -> Move {
+            list.map(rook_simple_moves_positions, fn(dest) -> Move {
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
+            })
+
+          use captures_positions <- result.try(board.get_positions(captures))
+
+          let captures =
+            list.map(captures_positions, fn(dest) -> Move {
+              move.Normal(from: queen_origin_square, to: dest, promotion: None)
+            })
+          use collector <- result.try(collector)
+          let simple_moves = list.append(collector, simple_moves)
+          let all_moves = list.append(simple_moves, captures)
+          Ok(all_moves)
+        },
+      )
+    use rook_moves <- result.try(rook_moves)
+    use bishop_moves <- result.try(bishop_moves)
+    use collector <- result.try(collector)
+    let all_moves =
+      list.append(list.append(collector, rook_moves), bishop_moves)
+
+    Ok(all_moves)
+  })
+}
+
+fn generate_rook_pseudo_legal_move_list(
+  color: Color,
+  game: Game,
+) -> Result(List(Move), _) {
+  let rook_bitboard = case color {
+    White -> game.board.white_rook_bitboard
+    Black -> game.board.black_rook_bitboard
+  }
+
+  use rook_origin_squares <- result.try(board.get_positions(rook_bitboard))
+
+  list.fold(rook_origin_squares, Ok([]), fn(collector, rook_origin_square) {
+    let south_mask_bb = look_up_south_ray_bb(rook_origin_square)
+    let east_mask_bb = look_up_east_ray_bb(rook_origin_square)
+    let north_mask_bb = look_up_north_ray_bb(rook_origin_square)
+    let west_mask_bb = look_up_west_ray_bb(rook_origin_square)
+
+    let occupied_squares_bb = occupied_squares(game.board)
+
+    let south_blockers_bb = bitboard.and(south_mask_bb, occupied_squares_bb)
+    let east_blockers_bb = bitboard.and(east_mask_bb, occupied_squares_bb)
+    let north_blockers_bb = bitboard.and(north_mask_bb, occupied_squares_bb)
+    let west_blockers_bb = bitboard.and(west_mask_bb, occupied_squares_bb)
+
+    let first_blocker_south =
+      position.from_int(bitboard.bitscan_backward(south_blockers_bb))
+    let first_blocker_east =
+      position.from_int(bitboard.bitscan_forward(east_blockers_bb))
+    let first_blocker_north =
+      position.from_int(bitboard.bitscan_forward(north_blockers_bb))
+    let first_blocker_west =
+      position.from_int(bitboard.bitscan_backward(west_blockers_bb))
+
+    let first_blocker_south_mask_bb = case first_blocker_south {
+      Error(_) -> 0
+      Ok(position) -> look_up_south_ray_bb(position)
+    }
+    let first_blocker_east_mask_bb = case first_blocker_east {
+      Error(_) -> 0
+      Ok(position) -> look_up_east_ray_bb(position)
+    }
+    let first_blocker_north_mask_bb = case first_blocker_north {
+      Error(_) -> 0
+      Ok(position) -> look_up_north_ray_bb(position)
+    }
+    let first_blocker_west_mask_bb = case first_blocker_west {
+      Error(_) -> 0
+      Ok(position) -> look_up_west_ray_bb(position)
+    }
+
+    //Here we create the rays of the bishop with only the first first blocker
+    //included. Next we need to remove the first blocker from the ray
+    //if its our own piece, and include it if its an enemy piece.
+    let south_ray_bb_with_blocker =
+      bitboard.exclusive_or(south_mask_bb, first_blocker_south_mask_bb)
+    let east_ray_bb_with_blocker =
+      bitboard.exclusive_or(east_mask_bb, first_blocker_east_mask_bb)
+    let north_ray_bb_with_blocker =
+      bitboard.exclusive_or(north_mask_bb, first_blocker_north_mask_bb)
+    let west_ray_bb_with_blocker =
+      bitboard.exclusive_or(west_mask_bb, first_blocker_west_mask_bb)
+
+    //Here we remove the first blocker from the ray if its our own piece
+    let south_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          south_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          south_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let east_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          east_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          east_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let north_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          north_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          north_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let west_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          west_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          west_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let rook_moves =
+      list.fold(
+        [south_ray_bb, east_ray_bb, north_ray_bb, west_ray_bb],
+        Ok([]),
+        fn(collector, next) {
+          let rook_captures = case color {
+            White -> {
+              //TODO: should probably add a occupied_squares_by_color function
+              bitboard.and(next, occupied_squares_black(game.board))
+            }
+            Black -> {
+              bitboard.and(next, occupied_squares_white(game.board))
+            }
+          }
+          let rook_simple_moves = case color {
+            White -> {
+              bitboard.exclusive_or(next, rook_captures)
+            }
+            Black -> {
+              bitboard.exclusive_or(next, rook_captures)
+            }
+          }
+          use rook_simple_moves_positions <- result.try(board.get_positions(
+            rook_simple_moves,
+          ))
+          let simple_moves =
+            list.map(rook_simple_moves_positions, fn(dest) -> Move {
+              move.Normal(from: rook_origin_square, to: dest, promotion: None)
+            })
+
+          use rook_captures_positions <- result.try(board.get_positions(
+            rook_captures,
+          ))
+          let captures =
+            list.map(rook_captures_positions, fn(dest) -> Move {
+              move.Normal(from: rook_origin_square, to: dest, promotion: None)
+            })
+          use collector <- result.try(collector)
+          let simple_moves = list.append(collector, simple_moves)
+          let all_moves = list.append(simple_moves, captures)
+          Ok(all_moves)
+        },
+      )
+    use rook_moves <- result.try(rook_moves)
+    use collector <- result.try(collector)
+    Ok(list.append(collector, rook_moves))
+  })
+}
+
+fn piece_at_position(game: Game, position: Position) -> Option(piece.Piece) {
+  let position_bb_masked =
+    bitboard.and(position.to_bitboard(position), occupied_squares(game.board))
+
+  let position_white_king =
+    bitboard.and(position_bb_masked, game.board.white_king_bitboard)
+  let position_white_queen =
+    bitboard.and(position_bb_masked, game.board.white_queen_bitboard)
+  let position_white_rook =
+    bitboard.and(position_bb_masked, game.board.white_rook_bitboard)
+  let position_white_bishop =
+    bitboard.and(position_bb_masked, game.board.white_bishop_bitboard)
+  let position_white_knight =
+    bitboard.and(position_bb_masked, game.board.white_knight_bitboard)
+  let position_white_pawn =
+    bitboard.and(position_bb_masked, game.board.white_pawns_bitboard)
+  let position_black_king =
+    bitboard.and(position_bb_masked, game.board.black_king_bitboard)
+  let position_black_queen =
+    bitboard.and(position_bb_masked, game.board.black_queen_bitboard)
+  let position_black_rook =
+    bitboard.and(position_bb_masked, game.board.black_rook_bitboard)
+  let position_black_bishop =
+    bitboard.and(position_bb_masked, game.board.black_bishop_bitboard)
+  let position_black_knight =
+    bitboard.and(position_bb_masked, game.board.black_knight_bitboard)
+  let position_black_pawn =
+    bitboard.and(position_bb_masked, game.board.black_pawns_bitboard)
+
+  case position_bb_masked {
+    0 -> option.None
+    _ if position_white_king != 0 -> option.Some(piece.Piece(White, King))
+    _ if position_white_queen != 0 -> option.Some(piece.Piece(White, Queen))
+    _ if position_white_rook != 0 -> option.Some(piece.Piece(White, Rook))
+    _ if position_white_bishop != 0 -> option.Some(piece.Piece(White, Bishop))
+    _ if position_white_knight != 0 -> option.Some(piece.Piece(White, Knight))
+    _ if position_white_pawn != 0 -> option.Some(piece.Piece(White, Pawn))
+    _ if position_black_king != 0 -> option.Some(piece.Piece(Black, King))
+    _ if position_black_queen != 0 -> option.Some(piece.Piece(Black, Queen))
+    _ if position_black_rook != 0 -> option.Some(piece.Piece(Black, Rook))
+    _ if position_black_bishop != 0 -> option.Some(piece.Piece(Black, Bishop))
+    _ if position_black_knight != 0 -> option.Some(piece.Piece(Black, Knight))
+    _ if position_black_pawn != 0 -> option.Some(piece.Piece(Black, Pawn))
+    _ -> panic
+  }
+}
+
+fn generate_bishop_pseudo_legal_move_list(
+  color: Color,
+  game: Game,
+) -> Result(List(Move), _) {
+  let bishop_bitboard = case color {
+    White -> game.board.white_bishop_bitboard
+    Black -> game.board.black_bishop_bitboard
+  }
+
+  use bishop_origin_squares <- result.try(board.get_positions(bishop_bitboard))
+
+  list.fold(bishop_origin_squares, Ok([]), fn(collector, bishop_origin_square) {
+    let south_west_mask_bb = look_up_south_west_ray_bb(bishop_origin_square)
+    let south_east_mask_bb = look_up_south_east_ray_bb(bishop_origin_square)
+    let north_east_mask_bb = look_up_north_east_ray_bb(bishop_origin_square)
+    let north_west_mask_bb = look_up_north_west_ray_bb(bishop_origin_square)
+
+    let occupied_squares_bb = occupied_squares(game.board)
+
+    let south_west_blockers_bb =
+      bitboard.and(south_west_mask_bb, occupied_squares_bb)
+    let south_east_blockers_bb =
+      bitboard.and(south_east_mask_bb, occupied_squares_bb)
+    let north_east_blockers_bb =
+      bitboard.and(north_east_mask_bb, occupied_squares_bb)
+    let north_west_blockers_bb =
+      bitboard.and(north_west_mask_bb, occupied_squares_bb)
+
+    let first_blocker_south_west =
+      position.from_int(bitboard.bitscan_backward(south_west_blockers_bb))
+    let first_blocker_south_east =
+      position.from_int(bitboard.bitscan_backward(south_east_blockers_bb))
+    let first_blocker_north_east =
+      position.from_int(bitboard.bitscan_forward(north_east_blockers_bb))
+    let first_blocker_north_west =
+      position.from_int(bitboard.bitscan_forward(north_west_blockers_bb))
+
+    let first_blocker_south_west_mask_bb = case first_blocker_south_west {
+      Error(_) -> 0
+      Ok(position) -> look_up_south_west_ray_bb(position)
+    }
+    let first_blocker_south_east_mask_bb = case first_blocker_south_east {
+      Error(_) -> 0
+      Ok(position) -> look_up_south_east_ray_bb(position)
+    }
+    let first_blocker_north_east_mask_bb = case first_blocker_north_east {
+      Error(_) -> 0
+      Ok(position) -> look_up_north_east_ray_bb(position)
+    }
+    let first_blocker_north_west_mask_bb = case first_blocker_north_west {
+      Error(_) -> 0
+      Ok(position) -> look_up_north_west_ray_bb(position)
+    }
+
+    //Here we create the rays of the bishop with only the first first blocker
+    //included. Next we need to remove the first blocker from the ray
+    //if its our own piece, and include it if its an enemy piece.
+    let south_west_ray_bb_with_blocker =
+      bitboard.exclusive_or(
+        south_west_mask_bb,
+        first_blocker_south_west_mask_bb,
+      )
+    let south_east_ray_bb_with_blocker =
+      bitboard.exclusive_or(
+        south_east_mask_bb,
+        first_blocker_south_east_mask_bb,
+      )
+    let north_east_ray_bb_with_blocker =
+      bitboard.exclusive_or(
+        north_east_mask_bb,
+        first_blocker_north_east_mask_bb,
+      )
+    let north_west_ray_bb_with_blocker =
+      bitboard.exclusive_or(
+        north_west_mask_bb,
+        first_blocker_north_west_mask_bb,
+      )
+
+    //Here we remove the first blocker from the ray if its our own piece
+    let south_west_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          south_west_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          south_west_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let south_east_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          south_east_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          south_east_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let north_east_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          north_east_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          north_east_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let north_west_ray_bb = case color {
+      White -> {
+        bitboard.and(
+          north_west_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_white(game.board)),
+        )
+      }
+      Black -> {
+        bitboard.and(
+          north_west_ray_bb_with_blocker,
+          bitboard.not(occupied_squares_black(game.board)),
+        )
+      }
+    }
+    let bishop_moves =
+      list.fold(
+        [
+          south_west_ray_bb,
+          south_east_ray_bb,
+          north_east_ray_bb,
+          north_west_ray_bb,
+        ],
+        Ok([]),
+        fn(collector, next) {
+          let captures = case color {
+            White -> {
+              //TODO: should probably add a occupied_squares_by_color function
+              bitboard.and(next, occupied_squares_black(game.board))
+            }
+            Black -> {
+              bitboard.and(next, occupied_squares_white(game.board))
+            }
+          }
+          let rook_simple_moves = case color {
+            White -> {
+              bitboard.exclusive_or(next, captures)
+            }
+            Black -> {
+              bitboard.exclusive_or(next, captures)
+            }
+          }
+
+          use rook_simple_moves_positions <- result.try(board.get_positions(
+            rook_simple_moves,
+          ))
+          use captures_positions <- result.try(board.get_positions(captures))
+          let simple_moves =
+            list.map(rook_simple_moves_positions, fn(dest) -> Move {
               move.Normal(from: bishop_origin_square, to: dest, promotion: None)
             })
 
           let captures =
-            list.map(board.get_positions(captures), fn(dest) -> Move {
+            list.map(captures_positions, fn(dest) -> Move {
               move.Normal(from: bishop_origin_square, to: dest, promotion: None)
             })
+          use collector <- result.try(collector)
           let simple_moves = list.append(collector, simple_moves)
           let all_moves = list.append(simple_moves, captures)
-          all_moves
+          Ok(all_moves)
         },
       )
-    list.append(collector, bishop_moves)
+    use bishop_moves <- result.try(bishop_moves)
+    use collector <- result.try(collector)
+    Ok(list.append(collector, bishop_moves))
   })
 }
 
 fn generate_knight_pseudo_legal_move_list(
   color: Color,
   game: Game,
-) -> List(Move) {
+) -> Result(List(Move), _) {
   let knight_bitboard = case color {
     White -> game.board.white_knight_bitboard
     Black -> game.board.black_knight_bitboard
   }
 
-  let knight_origin_squares = board.get_positions(knight_bitboard)
+  use knight_origin_squares <- result.try(board.get_positions(knight_bitboard))
 
-  list.fold(knight_origin_squares, [], fn(collector, origin) {
+  list.fold(knight_origin_squares, Ok([]), fn(collector, origin) {
     let knight_bitboard = board.from_position(origin)
     let north_target_squares =
       bitboard.or(
@@ -2820,26 +2874,30 @@ fn generate_knight_pseudo_legal_move_list(
         bitboard.exclusive_or(knight_unblocked_target_square_bb, captures)
       }
     }
-
+    use simple_moves_positions <- result.try(board.get_positions(simple_moves))
     let simple_moves =
-      list.map(board.get_positions(simple_moves), fn(dest) -> Move {
+      list.map(simple_moves_positions, fn(dest) -> Move {
         move.Normal(from: origin, to: dest, promotion: None)
       })
-
+    use captures_positions <- result.try(board.get_positions(captures))
     let captures =
-      list.map(board.get_positions(captures), fn(dest) -> Move {
+      list.map(captures_positions, fn(dest) -> Move {
         move.Normal(from: origin, to: dest, promotion: None)
       })
     let all_moves = list.append(simple_moves, captures)
-    list.append(collector, all_moves)
+    use collector <- result.try(collector)
+    Ok(list.append(collector, all_moves))
   })
 }
 
-fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) {
-  let capture_list = generate_pawn_capture_move_list(color, game)
+fn generate_pawn_pseudo_legal_move_list(
+  color: Color,
+  game: Game,
+) -> Result(List(Move), _) {
+  use capture_list <- result.try(generate_pawn_capture_move_list(color, game))
   let moves_no_captures = generate_pawn_non_capture_move_bitboard(color, game)
 
-  let non_capture_dest_list = board.get_positions(moves_no_captures)
+  use non_capture_dest_list <- result.try(board.get_positions(moves_no_captures))
 
   let non_capture_move_list =
     list.fold(non_capture_dest_list, [], fn(acc, dest) -> List(Move) {
@@ -2903,8 +2961,9 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
   let initial_rank_double_move_list =
     generate_pawn_starting_rank_double_move_bitboard(color, game)
 
-  let initial_rank_double_dest_list =
-    board.get_positions(initial_rank_double_move_list)
+  use initial_rank_double_dest_list <- result.try(board.get_positions(
+    initial_rank_double_move_list,
+  ))
 
   let initial_rank_double_move_list =
     list.map(initial_rank_double_dest_list, fn(dest) -> Move {
@@ -3031,10 +3090,10 @@ fn generate_pawn_pseudo_legal_move_list(color: Color, game: Game) -> List(Move) 
       }
     })
 
-  list.append(
+  Ok(list.append(
     list.append(capture_list, non_capture_move_list),
     initial_rank_double_move_list,
-  )
+  ))
 }
 
 fn generate_pawn_starting_rank_double_move_bitboard(
@@ -3142,7 +3201,10 @@ fn generate_pawn_non_capture_move_bitboard(
   }
 }
 
-fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
+fn generate_pawn_capture_move_list(
+  color: Color,
+  game: Game,
+) -> Result(List(Move), _) {
   let pawn_attack_set = case color {
     White -> {
       generate_pawn_attack_set(game.board.white_pawns_bitboard, color)
@@ -3180,7 +3242,7 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
     })
   let pawn_capture_destination_set = bitboard.and(pawn_attack_set, enemy_pieces)
 
-  let assert [east_origins, west_origins] = case color {
+  let #(east_origins, west_origins) = case color {
     White -> {
       let east_origins =
         bitboard.and(
@@ -3192,10 +3254,10 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
           bitboard.shift_right(pawn_capture_destination_set, 7),
           not_a_file,
         )
-      [
+      #(
         bitboard.and(east_origins, game.board.white_pawns_bitboard),
         bitboard.and(west_origins, game.board.white_pawns_bitboard),
-      ]
+      )
     }
     Black -> {
       let west_origins =
@@ -3208,28 +3270,29 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
           bitboard.shift_left(pawn_capture_destination_set, 7),
           not_h_file,
         )
-      [
+      #(
         bitboard.and(east_origins, game.board.black_pawns_bitboard),
         bitboard.and(west_origins, game.board.black_pawns_bitboard),
-      ]
+      )
     }
   }
 
   let pawn_capture_origin_set = bitboard.or(east_origins, west_origins)
 
-  let pawn_capture_origin_list = board.get_positions(pawn_capture_origin_set)
+  use pawn_capture_origin_list <- result.try(board.get_positions(
+    pawn_capture_origin_set,
+  ))
 
-  let pawn_capture_destination_list =
-    board.get_positions(pawn_capture_destination_set)
+  use pawn_capture_destination_list <- result.try(board.get_positions(
+    pawn_capture_destination_set,
+  ))
 
   // we need to go through the list of origins and for each origin
   // if one or both of its attack squares are in the destination list,
   // then we combine the origin and dest into a move and add that move to the list of moves
   let pawn_capture_move_list =
-    list.fold(pawn_capture_origin_list, [], fn(collector, position) -> List(
-      Move,
-    ) {
-      let east_attack = case color {
+    list.fold(pawn_capture_origin_list, Ok([]), fn(collector, position) {
+      use east_attack <- result.try(case color {
         White ->
           board.get_positions(bitboard.and(
             bitboard.shift_left(position.to_bitboard(position), 9),
@@ -3241,7 +3304,7 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
             bitboard.shift_right(position.to_bitboard(position), 7),
             not_a_file,
           ))
-      }
+      })
 
       let east_moves = case east_attack {
         [] -> []
@@ -3310,7 +3373,7 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
         }
         _ -> panic
       }
-      let west_attack = case color {
+      use west_attack <- result.try(case color {
         White ->
           board.get_positions(bitboard.and(
             bitboard.shift_left(position.to_bitboard(position), 7),
@@ -3322,7 +3385,7 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
             bitboard.shift_right(position.to_bitboard(position), 9),
             not_h_file,
           ))
-      }
+      })
 
       let west_moves = case west_attack {
         [] -> []
@@ -3391,8 +3454,8 @@ fn generate_pawn_capture_move_list(color: Color, game: Game) -> List(Move) {
         }
         _ -> panic
       }
-
-      list.append(list.append(collector, east_moves), west_moves)
+      use collector <- result.try(collector)
+      Ok(list.append(list.append(collector, east_moves), west_moves))
     })
   pawn_capture_move_list
 }
@@ -3418,7 +3481,7 @@ fn generate_pawn_attack_set(pawn_bitboard: bitboard.Bitboard, color: Color) {
   }
 }
 
-fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardDict {
+fn bitboard_repr_to_map_repr(board: BoardBB) -> Result(BoardDict, _) {
   let white_king_bitboard = board.white_king_bitboard
   let white_queen_bitboard = board.white_queen_bitboard
   let white_rook_bitboard = board.white_rook_bitboard
@@ -3500,18 +3563,42 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardDict {
       #(position.Position(file: position.H, rank: position.Eight), None),
     ])
 
-  let white_king_positions = board.get_positions(white_king_bitboard)
-  let white_queen_positions = board.get_positions(white_queen_bitboard)
-  let white_rook_positions = board.get_positions(white_rook_bitboard)
-  let white_bishop_positions = board.get_positions(white_bishop_bitboard)
-  let white_knight_positions = board.get_positions(white_knight_bitboard)
-  let white_pawns_positions = board.get_positions(white_pawns_bitboard)
-  let black_king_positions = board.get_positions(black_king_bitboard)
-  let black_queen_positions = board.get_positions(black_queen_bitboard)
-  let black_rook_positions = board.get_positions(black_rook_bitboard)
-  let black_bishop_positions = board.get_positions(black_bishop_bitboard)
-  let black_knight_positions = board.get_positions(black_knight_bitboard)
-  let black_pawns_positions = board.get_positions(black_pawns_bitboard)
+  use white_king_positions <- result.try(board.get_positions(
+    white_king_bitboard,
+  ))
+  use white_queen_positions <- result.try(board.get_positions(
+    white_queen_bitboard,
+  ))
+  use white_rook_positions <- result.try(board.get_positions(
+    white_rook_bitboard,
+  ))
+  use white_bishop_positions <- result.try(board.get_positions(
+    white_bishop_bitboard,
+  ))
+  use white_knight_positions <- result.try(board.get_positions(
+    white_knight_bitboard,
+  ))
+  use white_pawns_positions <- result.try(board.get_positions(
+    white_pawns_bitboard,
+  ))
+  use black_king_positions <- result.try(board.get_positions(
+    black_king_bitboard,
+  ))
+  use black_queen_positions <- result.try(board.get_positions(
+    black_queen_bitboard,
+  ))
+  use black_rook_positions <- result.try(board.get_positions(
+    black_rook_bitboard,
+  ))
+  use black_bishop_positions <- result.try(board.get_positions(
+    black_bishop_bitboard,
+  ))
+  use black_knight_positions <- result.try(board.get_positions(
+    black_knight_bitboard,
+  ))
+  use black_pawns_positions <- result.try(board.get_positions(
+    black_pawns_bitboard,
+  ))
 
   let board_map =
     list.fold(white_king_positions, board_map, fn(board_map, position) {
@@ -3573,11 +3660,11 @@ fn bitboard_repr_to_map_repr(board: BoardBB) -> BoardDict {
       dict.insert(board_map, position, Some(piece.Piece(Black, Pawn)))
     })
 
-  board_map
+  Ok(board_map)
 }
 
 pub fn print_board(game: Game) {
-  let board_map = bitboard_repr_to_map_repr(game.board)
+  use board_map <- result.try(bitboard_repr_to_map_repr(game.board))
   io.print("\n")
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
@@ -3651,6 +3738,7 @@ pub fn print_board(game: Game) {
   })
   io.print("\n")
   io.print("     a   b   c   d   e   f   g   h\n")
+  Ok("Successfully Printed Board")
 }
 
 pub fn disable_status(game: Game) -> Game {
@@ -3723,19 +3811,25 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
             White -> Black
             Black -> White
           }
-          Game(
-            ..new_game_state,
-            status: Some(Win(winner: winner, reason: "Checkmate")),
+          Ok(
+            Game(
+              ..new_game_state,
+              status: Some(Win(winner: winner, reason: "Checkmate")),
+            ),
           )
         }
         [True, False] | [False, False] -> {
           let new_status = case move {
             move.Normal(from: from, to: to, promotion: _) -> {
-              let assert Some(moving_piece) =
+              use moving_piece <- result.try(case
                 board.get_piece_at_position(game.board, from)
+              {
+                Some(piece) -> Ok(piece)
+                None -> Error("no piece at from position")
+              })
 
               case game.status {
-                None -> None
+                None -> Ok(None)
                 Some(InProgress(
                     fifty_move_rule: fifty_move_rule,
                     threefold_repetition_rule: threefold_repetition_rule,
@@ -3822,26 +3916,28 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
                     }
                     _ -> new_status
                   }
-                  new_status
+                  Ok(new_status)
                 }
-                Some(_) -> panic("game is over, unable to apply moves to board")
+                Some(_) -> Error("game is over, unable to apply moves to board")
               }
             }
             move.Castle(from: _, to: _) -> {
               case game.status {
-                None -> None
+                None -> Ok(None)
                 Some(InProgress(
                     fifty_move_rule: fifty_move_rule,
                     threefold_repetition_rule: threefold_repetition_rule,
                   )) -> {
                   let new_fifty_move_rule = fifty_move_rule + 1
                   case new_fifty_move_rule / 2 + 1 {
-                    50 -> Some(Draw(FiftyMoveRule))
+                    50 -> Ok(Some(Draw(FiftyMoveRule)))
                     _ ->
-                      Some(InProgress(
-                        fifty_move_rule: new_fifty_move_rule,
-                        threefold_repetition_rule: threefold_repetition_rule,
-                      ))
+                      Ok(
+                        Some(InProgress(
+                          fifty_move_rule: new_fifty_move_rule,
+                          threefold_repetition_rule: threefold_repetition_rule,
+                        )),
+                      )
                   }
                 }
 
@@ -3850,30 +3946,35 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
             }
             move.EnPassant(from: _, to: _) -> {
               case game.status {
-                None -> None
+                None -> Ok(None)
                 Some(InProgress(
                     fifty_move_rule: _,
                     threefold_repetition_rule: threefold_repetition_rule,
                   )) -> {
-                  Some(InProgress(
-                    fifty_move_rule: 0,
-                    threefold_repetition_rule: threefold_repetition_rule,
-                  ))
+                  Ok(
+                    Some(InProgress(
+                      fifty_move_rule: 0,
+                      threefold_repetition_rule: threefold_repetition_rule,
+                    )),
+                  )
                 }
-                Some(_) -> panic("game is over, unable to apply moves to board")
+                Some(_) -> Error("game is over, unable to apply moves to board")
               }
             }
           }
+          use new_status <- result.try(new_status)
           let new_game_state = Game(..new_game_state, status: new_status)
-          new_game_state
+          Ok(new_game_state)
         }
         [False, True] -> {
-          Game(..new_game_state, status: Some(Draw(reason: status.Stalemate)))
+          Ok(
+            Game(..new_game_state, status: Some(Draw(reason: status.Stalemate))),
+          )
         }
-        _ -> panic
+        _ -> Error("This panic should be unreachable")
       }
 
-      Ok(new_game_state)
+      new_game_state
     }
     Some(_) -> {
       Ok(game)
@@ -3928,11 +4029,17 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
                   list.filter(move_list, fn(move) {
                     case move {
                       move.Normal(from: from, to: _, promotion: _) -> {
-                        let assert Some(piece) =
-                          board.get_piece_at_position(game.board, from)
-                        piece.kind == moving_piece
+                        case board.get_piece_at_position(game.board, from) {
+                          Some(piece) -> {
+                            piece.kind == moving_piece
+                          }
+                          None -> False
+                        }
                       }
-                      _ -> panic("This panic should be unreachable")
+                      _ -> {
+                        // this should be unreachable 
+                        False
+                      }
                     }
                   })
                 case maybe_move {
@@ -4308,23 +4415,27 @@ pub fn undo_move(game: Game) -> Result(Game, _) {
                 }
               }
 
-              let new_game_state = case captured_piece {
+              use new_game_state <- result.try(case captured_piece {
                 None -> {
-                  let assert Some(new_board) =
-                    board.remove_piece_at_position(game.board, to)
+                  use new_board <- result.try(board.remove_piece_at_position(
+                    game.board,
+                    to,
+                  ))
 
-                  Game(..game, board: new_board)
+                  Ok(Game(..game, board: new_board))
                 }
                 Some(piece) -> {
-                  let assert Some(new_board) =
-                    board.remove_piece_at_position(game.board, to)
+                  use new_board <- result.try(board.remove_piece_at_position(
+                    game.board,
+                    to,
+                  ))
 
                   let new_board =
                     board.set_piece_at_position(new_board, to, piece)
 
-                  Game(..game, board: new_board)
+                  Ok(Game(..game, board: new_board))
                 }
-              }
+              })
 
               let new_board =
                 board.set_piece_at_position(
@@ -4523,22 +4634,24 @@ pub fn undo_move(game: Game) -> Result(Game, _) {
                 _ -> panic("Undoing Castle Move: Invalid castle move")
               }
 
-              let new_board = case
+              use new_board <- result.try(case
                 board.remove_piece_at_position(
                   game.board,
                   rook_castling_target_square,
                 )
               {
-                Some(board) -> board
-                None ->
-                  panic(
+                Ok(board) -> Ok(board)
+                Error(_) ->
+                  Error(
                     "Undoing Castle Move: Could not remove piece at position",
                   )
-              }
+              })
               let new_game_state = Game(..game, board: new_board)
 
-              let assert Some(new_board) =
-                board.remove_piece_at_position(new_game_state.board, to)
+              use new_board <- result.try(board.remove_piece_at_position(
+                new_game_state.board,
+                to,
+              ))
               let new_game_state = Game(..new_game_state, board: new_board)
 
               let rook_castling_origin_square = case to {
@@ -4732,8 +4845,10 @@ pub fn undo_move(game: Game) -> Result(Game, _) {
                 captured_piece: _captured_piece,
                 move: move.EnPassant(from: from, to: to),
               ) -> {
-              let assert Some(new_board) =
-                board.remove_piece_at_position(game.board, to)
+              use new_board <- result.try(board.remove_piece_at_position(
+                game.board,
+                to,
+              ))
               let new_game_state = Game(..game, board: new_board)
               let new_game_state = case game.turn {
                 Black ->
@@ -4904,7 +5019,7 @@ pub fn all_legal_moves(game: Game) -> Result(List(Move), _) {
 
 pub fn print_board_from_fen(fen: String) {
   let parsed_fen = fen.from_string(fen)
-  let board_map = bitboard_repr_to_map_repr(parsed_fen.board)
+  use board_map <- result.try(bitboard_repr_to_map_repr(parsed_fen.board))
   io.print("\n")
   io.print("   +---+---+---+---+---+---+---+---+")
   list.each(positions_in_printing_order, fn(pos) {
@@ -4977,4 +5092,5 @@ pub fn print_board_from_fen(fen: String) {
   })
   io.print("\n")
   io.print("     a   b   c   d   e   f   g   h\n")
+  Ok("Successfully printed board")
 }

@@ -17,7 +17,7 @@ pub fn main() {
 // TODO: I cant run any perft tests past depth 2 without getting some kind of error.
 // If run these tests in main via 'gleam run' instead of 'gleam test' they work fine.
 pub fn perft_1_test() {
-  let server = new_server()
+  let assert Ok(server) = new_server()
   let assert Ok(_) =
     new_game_from_fen(
       server,
@@ -29,7 +29,7 @@ pub fn perft_1_test() {
 }
 
 pub fn perft_2_test() {
-  let server = new_server()
+  let assert Ok(server) = new_server()
   let assert Ok(_) =
     new_game_from_fen(
       server,
@@ -41,7 +41,7 @@ pub fn perft_2_test() {
 }
 
 pub fn perft_3_test() {
-  let server = new_server()
+  let assert Ok(server) = new_server()
   let assert Ok(_) =
     new_game_from_fen(
       server,
@@ -54,7 +54,7 @@ pub fn perft_3_test() {
 
 // TODO: fix this test, fails because of bad fen parsing
 // pub fn perft_3_test() {
-//   let server = new_server()
+//   let assert Ok(server) = new_server()
 //   new_game_from_fen(server, "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - 0 1")
 //   disable_status(server)
 //   perft(server, 3)
@@ -64,7 +64,7 @@ pub fn perft_3_test() {
 // TODO: test exceeds eunit default timeout of 5 seconds, either make the timeout configurable or
 // make the test faster
 // pub fn perft_4_test() {
-//   let server = new_server()
+//   let assert Ok(server) = new_server()
 //   new_game_from_fen(
 //     server,
 //     "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1",
@@ -176,7 +176,7 @@ pub fn split_movetext_test() {
 }
 
 pub fn threefold_repetition_rule_test() {
-  let server = new_server()
+  let assert Ok(server) = new_server()
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e2e4")
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e7e5")
 
@@ -184,7 +184,7 @@ pub fn threefold_repetition_rule_test() {
   let assert Ok(_) = game_server.apply_move_uci_string(server, "f8e7")
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e2f1")
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e7f8")
-  game_server.print_board(server)
+  let assert Ok(_) = game_server.print_board(server)
   case game_server.get_status(server) {
     Some(InProgress(_, _)) -> True
     _ -> False
@@ -195,7 +195,7 @@ pub fn threefold_repetition_rule_test() {
   let assert Ok(_) = game_server.apply_move_uci_string(server, "f8e7")
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e2f1")
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e7f8")
-  game_server.print_board(server)
+  let assert Ok(_) = game_server.print_board(server)
   case game_server.get_status(server) {
     Some(InProgress(_, _)) -> True
     _ -> False
@@ -206,7 +206,7 @@ pub fn threefold_repetition_rule_test() {
   let assert Ok(_) = game_server.apply_move_uci_string(server, "f8e7")
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e2f1")
   let assert Ok(_) = game_server.apply_move_uci_string(server, "e7f8")
-  game_server.print_board(server)
+  let assert Ok(_) = game_server.print_board(server)
   game_server.get_status(server)
   |> should.equal(Some(Draw(ThreefoldRepetition)))
 }

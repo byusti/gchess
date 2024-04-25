@@ -3748,7 +3748,6 @@ pub fn disable_status(game: Game) -> Game {
 pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
   case game.status {
     None -> {
-      // TODO: this wont be necessary once we have proper error handling
       use legal_moves <- result.try({
         use pseudo_legal_move_list <- result.try(
           generate_pseudo_legal_move_list(game, game.turn),

@@ -166,7 +166,7 @@ pub fn remove_piece_at_position(
       )
     }
     _ -> {
-      panic("Invalid piece")
+      panic as "Invalid piece"
     }
   }
   new_board
@@ -265,7 +265,7 @@ pub fn set_piece_at_position(
       )
     }
     _ -> {
-      panic("Invalid piece")
+      panic as "Invalid piece"
     }
   }
   new_board

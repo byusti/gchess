@@ -1,9 +1,9 @@
-import position.{type File, type Position, type Rank}
-import piece.{type Kind}
+import gleam/list
 import gleam/option.{type Option, None, Some}
 import gleam/string
 import gleam/string_builder
-import gleam/list
+import piece.{type Kind}
+import position.{type File, type Position, type Rank}
 
 pub type MoveSan {
   Normal(
@@ -44,8 +44,12 @@ pub type CheckOrCheckMate {
 
 pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
   case string.to_graphemes(san) {
-    [] -> panic("Cannot parse empty string.")
-    [piece_letter, ..rest] if piece_letter == "K" || piece_letter == "Q" || piece_letter == "R" || piece_letter == "B" || piece_letter == "N" -> {
+    [] -> panic as "Cannot parse empty string."
+    [piece_letter, ..rest] if piece_letter == "K"
+      || piece_letter == "Q"
+      || piece_letter == "R"
+      || piece_letter == "B"
+      || piece_letter == "N" -> {
       let check_or_checkmate = case list.last(rest) {
         Ok("+") -> Some(Check)
         Ok("#") -> Some(CheckMate)
@@ -58,7 +62,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
         "R" -> piece.Rook
         "B" -> piece.Bishop
         "N" -> piece.Knight
-        _ -> panic("Invalid piece letter.")
+        _ -> panic as "Invalid piece letter."
       }
 
       let promotion = None
@@ -83,7 +87,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "f" -> position.F
             "g" -> position.G
             "h" -> position.H
-            _ -> panic("Invalid file.")
+            _ -> panic as "Invalid file."
           }
 
           let from_rank = case from_rank {
@@ -95,7 +99,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "6" -> position.Six
             "7" -> position.Seven
             "8" -> position.Eight
-            _ -> panic("Invalid rank.")
+            _ -> panic as "Invalid rank."
           }
 
           let to_file = case to_file {
@@ -107,7 +111,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "f" -> position.F
             "g" -> position.G
             "h" -> position.H
-            _ -> panic("Invalid file.")
+            _ -> panic as "Invalid file."
           }
 
           let to_rank = case to_rank {
@@ -119,7 +123,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "6" -> position.Six
             "7" -> position.Seven
             "8" -> position.Eight
-            _ -> panic("Invalid rank.")
+            _ -> panic as "Invalid rank."
           }
 
           Ok(Normal(
@@ -145,7 +149,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "f" -> position.F
                 "g" -> position.G
                 "h" -> position.H
-                _ -> panic("Invalid file")
+                _ -> panic as "Invalid file"
               }
 
               let to_file = case to_file {
@@ -157,7 +161,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "f" -> position.F
                 "g" -> position.G
                 "h" -> position.H
-                _ -> panic("Invalid file.")
+                _ -> panic as "Invalid file."
               }
 
               let to_rank = case to_rank {
@@ -169,7 +173,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "6" -> position.Six
                 "7" -> position.Seven
                 "8" -> position.Eight
-                _ -> panic("Invalid rank.")
+                _ -> panic as "Invalid rank."
               }
 
               Ok(Normal(
@@ -191,7 +195,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "6" -> position.Six
                 "7" -> position.Seven
                 "8" -> position.Eight
-                _ -> panic("Invalid rank.")
+                _ -> panic as "Invalid rank."
               }
 
               let to_file = case to_file {
@@ -203,7 +207,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "f" -> position.F
                 "g" -> position.G
                 "h" -> position.H
-                _ -> panic("Invalid file.")
+                _ -> panic as "Invalid file."
               }
 
               let to_rank = case to_rank {
@@ -215,7 +219,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "6" -> position.Six
                 "7" -> position.Seven
                 "8" -> position.Eight
-                _ -> panic("Invalid rank.")
+                _ -> panic as "Invalid rank."
               }
 
               Ok(Normal(
@@ -241,7 +245,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "f" -> position.F
             "g" -> position.G
             "h" -> position.H
-            _ -> panic("Invalid file.")
+            _ -> panic as "Invalid file."
           }
 
           let to_rank = case to_rank {
@@ -253,7 +257,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "6" -> position.Six
             "7" -> position.Seven
             "8" -> position.Eight
-            _ -> panic("Invalid rank.")
+            _ -> panic as "Invalid rank."
           }
 
           Ok(Normal(
@@ -310,7 +314,14 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
         _ -> Error(InvalidCastleString)
       }
     }
-    [pawn_move_first_grapheme, ..rest] if pawn_move_first_grapheme == "a" || pawn_move_first_grapheme == "b" || pawn_move_first_grapheme == "c" || pawn_move_first_grapheme == "d" || pawn_move_first_grapheme == "e" || pawn_move_first_grapheme == "f" || pawn_move_first_grapheme == "g" || pawn_move_first_grapheme == "h" -> {
+    [pawn_move_first_grapheme, ..rest] if pawn_move_first_grapheme == "a"
+      || pawn_move_first_grapheme == "b"
+      || pawn_move_first_grapheme == "c"
+      || pawn_move_first_grapheme == "d"
+      || pawn_move_first_grapheme == "e"
+      || pawn_move_first_grapheme == "f"
+      || pawn_move_first_grapheme == "g"
+      || pawn_move_first_grapheme == "h" -> {
       let is_en_passant =
         string.contains(
           string_builder.to_string(string_builder.from_strings(rest)),
@@ -346,7 +357,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
         ["=", "R", ..] -> Some(piece.Rook)
         ["=", "B", ..] -> Some(piece.Bishop)
         ["=", "N", ..] -> Some(piece.Knight)
-        _ -> panic("Invalid promotion segment.")
+        _ -> panic as "Invalid promotion segment."
       }
 
       let maybe_check_or_checkmate = case list.last(rest) {
@@ -371,7 +382,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "f" -> position.F
             "g" -> position.G
             "h" -> position.H
-            _ -> panic("Invalid file.")
+            _ -> panic as "Invalid file."
           }
 
           let from_rank = case from_rank {
@@ -383,7 +394,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "6" -> position.Six
             "7" -> position.Seven
             "8" -> position.Eight
-            _ -> panic("Invalid rank.")
+            _ -> panic as "Invalid rank."
           }
 
           let to_file = case to_file {
@@ -395,7 +406,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "f" -> position.F
             "g" -> position.G
             "h" -> position.H
-            _ -> panic("Invalid file.")
+            _ -> panic as "Invalid file."
           }
 
           let to_rank = case to_rank {
@@ -407,7 +418,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "6" -> position.Six
             "7" -> position.Seven
             "8" -> position.Eight
-            _ -> panic("Invalid rank.")
+            _ -> panic as "Invalid rank."
           }
 
           case is_en_passant {
@@ -450,7 +461,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "f" -> position.F
                 "g" -> position.G
                 "h" -> position.H
-                _ -> panic("Invalid file")
+                _ -> panic as "Invalid file"
               }
 
               let to_file = case to_file {
@@ -462,7 +473,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "f" -> position.F
                 "g" -> position.G
                 "h" -> position.H
-                _ -> panic("Invalid file.")
+                _ -> panic as "Invalid file."
               }
 
               let to_rank = case to_rank {
@@ -474,7 +485,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "6" -> position.Six
                 "7" -> position.Seven
                 "8" -> position.Eight
-                _ -> panic("Invalid rank.")
+                _ -> panic as "Invalid rank."
               }
 
               case is_en_passant {
@@ -507,7 +518,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "6" -> position.Six
                 "7" -> position.Seven
                 "8" -> position.Eight
-                _ -> panic("Invalid rank.")
+                _ -> panic as "Invalid rank."
               }
 
               let to_file = case to_file {
@@ -519,7 +530,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "f" -> position.F
                 "g" -> position.G
                 "h" -> position.H
-                _ -> panic("Invalid file.")
+                _ -> panic as "Invalid file."
               }
 
               let to_rank = case to_rank {
@@ -531,7 +542,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
                 "6" -> position.Six
                 "7" -> position.Seven
                 "8" -> position.Eight
-                _ -> panic("Invalid rank.")
+                _ -> panic as "Invalid rank."
               }
 
               case is_en_passant {
@@ -568,7 +579,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "f" -> position.F
             "g" -> position.G
             "h" -> position.H
-            _ -> panic("Invalid file.")
+            _ -> panic as "Invalid file."
           }
 
           let to_rank = case to_rank {
@@ -580,7 +591,7 @@ pub fn from_string(san: String) -> Result(MoveSan, ErrorSan) {
             "6" -> position.Six
             "7" -> position.Seven
             "8" -> position.Eight
-            _ -> panic("Invalid rank.")
+            _ -> panic as "Invalid rank."
           }
 
           case is_en_passant {

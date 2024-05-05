@@ -144,7 +144,7 @@ fn board_to_fen_string(board: BoardBB) -> String {
             Ok("7") -> {
               string.append(string.drop_right(acc, 1), "8")
             }
-            Ok("8") -> panic("Unable to encode BoardBB to FEN string")
+            Ok("8") -> panic as "Unable to encode BoardBB to FEN string"
             Ok(_) -> {
               string.append(acc, "1")
             }

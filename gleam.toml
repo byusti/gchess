@@ -1,5 +1,5 @@
 name = "gchess"
-version = "0.1.4"
+version = "0.1.5"
 description = "A Gleam project"
 licences = ["MIT"]
 gleam = ">= 0.32.0"

@@ -926,12 +926,18 @@ fn is_king_in_check(game: Game, color: Color) -> Result(Bool, _) {
       game,
     ))
 
+    use enemy_king_move_list <- result.try(generate_king_pseudo_legal_move_list(
+      enemy_color,
+      game,
+    ))
+
     let list_of_move_lists = [
       rook_move_list,
       bishop_move_list,
       queen_move_list,
       knight_move_list,
       pawn_move_list,
+      enemy_king_move_list,
     ]
 
     let move_list =
@@ -3776,21 +3782,22 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
       new_game_state
     }
     Some(InProgress(_, _)) -> {
-      use pseudo_legal_move_list <- result.try(generate_pseudo_legal_move_list(
-        game,
-        game.turn,
-      ))
-      let legal_moves = {
-        pseudo_legal_move_list
-        |> list.filter(fn(move) {
-          case is_move_legal(game, move) {
-            Ok(legality) -> legality
-            Error(_) -> False
-          }
-        })
-      }
+      use legal_moves <- result.try({
+        use pseudo_legal_move_list <- result.try(
+          generate_pseudo_legal_move_list(game, game.turn),
+        )
+        Ok(
+          pseudo_legal_move_list
+          |> list.filter(fn(move) {
+            case is_move_legal(game, move) {
+              Ok(legality) -> legality
+              Error(_) -> False
+            }
+          }),
+        )
+      })
 
-      use new_game_state <- result.try(case list.contains(legal_moves, move) {
+      let new_game_state = case list.contains(legal_moves, move) {
         True -> {
           let new_game_state = apply_move_raw(game, move)
           new_game_state
@@ -3798,14 +3805,15 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
         False -> {
           Ok(game)
         }
-      })
-      use has_moves_ok <- result.try(has_moves(new_game_state))
-      use is_king_in_check_ok <- result.try(is_king_in_check(
+      }
+      use new_game_state <- result.try(new_game_state)
+      use has_moves <- result.try(has_moves(new_game_state))
+      use is_king_in_check <- result.try(is_king_in_check(
         new_game_state,
         new_game_state.turn,
       ))
-      let new_game_state = case [is_king_in_check_ok, !has_moves_ok] {
-        [True, True] -> {
+      let new_game_state = case [is_king_in_check, has_moves] {
+        [True, False] -> {
           let winner = case new_game_state.turn {
             White -> Black
             Black -> White
@@ -3817,7 +3825,7 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
             ),
           )
         }
-        [True, False] | [False, False] -> {
+        [True, True] | [False, True] -> {
           let new_status = case move {
             move.Normal(from: from, to: to, promotion: _) -> {
               use moving_piece <- result.try(case
@@ -3966,7 +3974,7 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
           let new_game_state = Game(..new_game_state, status: new_status)
           Ok(new_game_state)
         }
-        [False, True] -> {
+        [False, False] -> {
           Ok(
             Game(..new_game_state, status: Some(Draw(reason: status.Stalemate))),
           )
@@ -3977,7 +3985,7 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
       new_game_state
     }
     Some(_) -> {
-      Ok(game)
+      Error("Game is over, unable to apply moves to board")
     }
   }
 }

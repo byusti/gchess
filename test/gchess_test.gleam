@@ -61,6 +61,15 @@ pub fn perft_4_test() {
   |> should.equal(2812)
 }
 
+pub fn perft_5_test() {
+  let assert Ok(server) = new_server()
+  let assert Ok(_) =
+    new_game_from_fen(server, "8/3k4/8/2BKB3/2PRP3/8/8/8 w - - 0 1")
+  let assert Ok(_) = disable_status(server)
+  perft(server, 3)
+  |> should.equal(1445)
+}
+
 pub fn perft(game_server_subject, depth) {
   case depth {
     0 -> 1

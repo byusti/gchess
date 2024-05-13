@@ -8,13 +8,10 @@ import gleam/result
 pub fn main() {
   use server <- result.try(new_server())
   let assert Ok(_) =
-    new_game_from_fen(
-      server,
-      "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1",
-    )
+    new_game_from_fen(server, "8/3k4/8/2BKB3/2PRP3/8/8/8 w - - 0 1")
   let assert Ok(_) = disable_status(server)
   let start = system_time(Second)
-  let perft_result = perft(server, 3)
+  let perft_result = perft(server, 2)
   let end = system_time(Second)
 
   io.print("Perft result: ")

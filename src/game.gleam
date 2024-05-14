@@ -3756,6 +3756,8 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
     None -> {
       use legal_moves <- result.try({
         use pseudo_legal_move_list <- result.try(
+          // TODO: There is definitely a faster way to do this
+          // instead of generating all pseudo-legal moves and then filtering
           generate_pseudo_legal_move_list(game, game.turn),
         )
         Ok(

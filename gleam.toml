@@ -3,7 +3,7 @@ version = "0.1.5"
 description = "A Gleam project"
 licences = ["MIT"]
 gleam = ">= 0.32.0"
-repository = { type = "github", user = "macroby", repo = "gchess" }
+repository = { type = "github", user = "byusti", repo = "gchess" }
 
 [dependencies]
 gleam_stdlib = "~> 0.34"

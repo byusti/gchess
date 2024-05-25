@@ -261,6 +261,7 @@ pub fn to_string(fen: Fen) -> String {
 }
 
 pub fn from_string(fen: String) -> Fen {
+  let fen = string.trim(fen)
   let fen_string_parts = string.split(fen, " ")
   case list.length(fen_string_parts) == 6 {
     False -> panic as "Invalid FEN string"

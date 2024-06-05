@@ -27,5 +27,5 @@ print_board(server)
 Add the following to gleam.toml:
 
 ```
-gchess = "~> 0.1.4"
+gchess = "~> 0.1.6"
 ```

@@ -1865,8 +1865,8 @@ fn generate_castling_pseudo_legal_move_list(
   }
   let castling_moves =
     list.append(
-      case [queenside_rook_flag, queenside_clear_flag, king_position_flag] {
-        [True, True, True] if queenside_castle == Yes ->
+      case queenside_rook_flag, queenside_clear_flag, king_position_flag {
+        True, True, True if queenside_castle == Yes ->
           case color {
             White -> [
               move.Castle(
@@ -1881,10 +1881,10 @@ fn generate_castling_pseudo_legal_move_list(
               ),
             ]
           }
-        _ -> []
+        _, _, _ -> []
       },
-      case [kingside_rook_flag, kingside_clear_flag, king_position_flag] {
-        [True, True, True] if kingside_castle == Yes ->
+      case kingside_rook_flag, kingside_clear_flag, king_position_flag {
+        True, True, True if kingside_castle == Yes ->
           case color {
             White -> [
               move.Castle(
@@ -1899,7 +1899,7 @@ fn generate_castling_pseudo_legal_move_list(
               ),
             ]
           }
-        _ -> []
+        _, _, _ -> []
       },
     )
   Ok(castling_moves)
@@ -3346,7 +3346,9 @@ fn generate_pawn_capture_move_list(
                     promotion: Some(piece.Piece(color, Knight)),
                   ),
                 ]
-                position.Position(file: _, rank: position.One) if color == Black -> [
+                position.Position(file: _, rank: position.One)
+                  if color == Black
+                -> [
                   move.Normal(
                     from: position,
                     to: east_attack,
@@ -3427,7 +3429,9 @@ fn generate_pawn_capture_move_list(
                     promotion: Some(piece.Piece(color, Knight)),
                   ),
                 ]
-                position.Position(file: _, rank: position.One) if color == Black -> [
+                position.Position(file: _, rank: position.One)
+                  if color == Black
+                -> [
                   move.Normal(
                     from: position,
                     to: west_attack,
@@ -3812,8 +3816,8 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
         new_game_state,
         new_game_state.turn,
       ))
-      let new_game_state = case [is_king_in_check, has_moves] {
-        [True, False] -> {
+      let new_game_state = case is_king_in_check, has_moves {
+        True, False -> {
           let winner = case new_game_state.turn {
             White -> Black
             Black -> White
@@ -3825,7 +3829,7 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
             ),
           )
         }
-        [True, True] | [False, True] -> {
+        True, True | False, True -> {
           let new_status = case move {
             move.Normal(from: from, to: to, promotion: _) -> {
               use moving_piece <- result.try(case
@@ -3974,12 +3978,11 @@ pub fn apply_move(game: Game, move: Move) -> Result(Game, _) {
           let new_game_state = Game(..new_game_state, status: new_status)
           Ok(new_game_state)
         }
-        [False, False] -> {
+        False, False -> {
           Ok(
             Game(..new_game_state, status: Some(Draw(reason: status.Stalemate))),
           )
         }
-        _ -> Error("This panic should be unreachable")
       }
 
       new_game_state
@@ -4140,8 +4143,9 @@ pub fn apply_move_san_string(game: Game, move: String) -> Result(Game, String) {
                 -> {
                   apply_move(game, move_1)
                 }
-                Some(move_san.PositionSan(file: Some(file), rank: _)) if file
-                  == move_2.from.file -> {
+                Some(move_san.PositionSan(file: Some(file), rank: _))
+                  if file == move_2.from.file
+                -> {
                   apply_move(game, move_2)
                 }
                 _ -> Error("Illegal move")
@@ -4364,7 +4368,8 @@ pub fn apply_move_uci(game: Game, move: String) -> Result(Game, _) {
                         from_file_result,
                           from_rank_result,
                           to_file_result,
-                          to_rank_result -> {
+                          to_rank_result
+                        -> {
                           let #(_, file_errors) =
                             result.partition([from_file_result, to_file_result])
                           let #(_, rank_errors) =
@@ -4540,7 +4545,9 @@ pub fn undo_move(game: Game) -> Result(Game, _) {
                         to: position.Position(file: file, rank: Five),
                         promotion: None,
                       ),
-                    ) if game.turn == Black -> {
+                    )
+                      if game.turn == Black
+                    -> {
                       let moving_piece = case
                         board.get_piece_at_position(
                           new_game_state.board,
@@ -4780,7 +4787,9 @@ pub fn undo_move(game: Game) -> Result(Game, _) {
                         to: position.Position(file: file, rank: Five),
                         promotion: None,
                       ),
-                    ) if game.turn == Black -> {
+                    )
+                      if game.turn == Black
+                    -> {
                       let moving_piece = case
                         board.get_piece_at_position(
                           new_game_state.board,

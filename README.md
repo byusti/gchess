@@ -24,8 +24,10 @@ print_board(server)
 
 ## Installation
 
-Add the following to gleam.toml:
+To get the most update version of the library, I recommend cloning the repo into your gleam project directory and referencing it from within the .toml file of the project.
 
+Assuming the cloned repo is at the root of the project directory, the .toml would like this:
 ```
-gchess = "~> 0.1.6"
+[dependencies]
+gchess = { path = "gchess" }
 ```
